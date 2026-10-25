@@ -56,6 +56,42 @@ export class PaymentsService {
     return { clientSecret: paymentIntent.client_secret };
   }
 
+  async confirmPayment(orderId: string, customerId: string) {
+    const [order] = await this.db
+      .select()
+      .from(schema.orders)
+      .where(eq(schema.orders.id, orderId));
+
+    if (!order || order.customerId !== customerId) {
+      throw new NotFoundException('Order not found');
+    }
+
+    // Idempotent: if already confirmed or beyond, return immediately
+    if (order.status !== 'PENDING') {
+      return order;
+    }
+
+    if (order.stripePaymentIntentId) {
+      const paymentIntent = await this.stripe.paymentIntents.retrieve(
+        order.stripePaymentIntentId,
+      );
+
+      if (paymentIntent.status !== 'succeeded') {
+        throw new BadRequestException('Payment has not succeeded yet');
+      }
+    }
+
+    const [updated] = await this.db
+      .update(schema.orders)
+      .set({ status: 'CONFIRMED', updatedAt: new Date() })
+      .where(eq(schema.orders.id, order.id))
+      .returning();
+
+    this.ordersGateway.emitOrderUpdate(updated);
+
+    return updated;
+  }
+
   async handleWebhook(rawBody: Buffer, signature: string) {
     let event: ReturnType<typeof this.stripe.webhooks.constructEvent>;
 
@@ -84,7 +120,7 @@ export class PaymentsService {
       if (!order) return { received: true }; // order not found — ignore
 
       // idempotency check — skip if already confirmed (Stripe can resend webhooks)
-      if (order.status === 'CONFIRMED') return { received: true };
+      if (order.status !== 'PENDING') return { received: true };
 
       const [updated] = await this.db
         .update(schema.orders)

@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull, ne } from 'drizzle-orm';
 import { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import * as schema from '../db/schema';
 import { UserRole } from '@food-delivery/types';
@@ -11,6 +11,35 @@ export class DriverService {
     @Inject('DB') private db: NeonHttpDatabase<typeof schema>,
     private ordersGateway: OrdersGateway,
   ) {}
+
+  private async assignPendingOrdersToDriver(driverId: string) {
+    const unassignedReadyOrders = await this.db
+      .select()
+      .from(schema.orders)
+      .where(
+        and(
+          eq(schema.orders.status, 'READY'),
+          isNull(schema.orders.driverId),
+        ),
+      );
+
+    for (const order of unassignedReadyOrders) {
+      const [updatedOrder] = await this.db
+        .update(schema.orders)
+        .set({ driverId, updatedAt: new Date() })
+        .where(
+          and(
+            eq(schema.orders.id, order.id),
+            isNull(schema.orders.driverId),
+          ),
+        )
+        .returning();
+
+      if (updatedOrder) {
+        this.ordersGateway.emitDriverAssigned(driverId, updatedOrder);
+      }
+    }
+  }
 
   async toggleOnline(driverId: string) {
     const [driver] = await this.db
@@ -26,6 +55,10 @@ export class DriverService {
       .where(eq(schema.users.id, driverId))
       .returning();
 
+    if (updated.isOnline) {
+      await this.assignPendingOrdersToDriver(driverId);
+    }
+
     return { isOnline: updated.isOnline };
   }
 
@@ -36,19 +69,28 @@ export class DriverService {
       .where(eq(schema.users.id, driverId));
 
     if (!driver) throw new NotFoundException('Driver not found');
+
+    if (driver.isOnline) {
+      await this.assignPendingOrdersToDriver(driverId);
+    }
+
     return { isOnline: driver.isOnline };
   }
 
-  async assignDriver(orderId: string) {
+  async assignDriver(orderId: string, excludeDriverId?: string) {
+    const conditions = [
+      eq(schema.users.role, UserRole.DRIVER),
+      eq(schema.users.isOnline, true),
+    ];
+
+    if (excludeDriverId) {
+      conditions.push(ne(schema.users.id, excludeDriverId));
+    }
+
     const [driver] = await this.db
       .select()
       .from(schema.users)
-      .where(
-        and(
-          eq(schema.users.role, UserRole.DRIVER),
-          eq(schema.users.isOnline, true),
-        ),
-      );
+      .where(and(...conditions));
 
     if (!driver) {
       console.log('No online drivers available for order:', orderId);
@@ -85,7 +127,7 @@ export class DriverService {
       .where(eq(schema.orders.id, orderId));
 
     // try to find another online driver
-    await this.assignDriver(orderId);
+    await this.assignDriver(orderId, driverId);
 
     return { message: 'Order declined' };
   }

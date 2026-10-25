@@ -32,6 +32,17 @@ export class PaymentsController {
     return this.paymentsService.createPaymentIntent(dto.orderId, req.user.sub);
   }
 
+  @Post('confirm')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CUSTOMER)
+  confirmPayment(
+    @Request() req: AuthRequest,
+    @Body() dto: CreatePaymentIntentDto,
+  ) {
+    return this.paymentsService.confirmPayment(dto.orderId, req.user.sub);
+  }
+
   @Post('webhook')
   @HttpCode(200) // Stripe expects 200 — any other status triggers a retry
   handleWebhook(

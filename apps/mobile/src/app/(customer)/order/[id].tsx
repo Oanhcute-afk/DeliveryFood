@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -99,17 +98,20 @@ function createOpenStreetMapHtml(location: DriverLocation) {
   return `<!doctype html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <style>
     html, body, #map {
       height:100%; width:100%; margin:0; padding:0; background:#f5f1ee;
     }
     .driver-pin {
-      font-size:30px; line-height:36px; text-align:center;
-      filter: drop-shadow(0 2px 3px rgba(0,0,0,.2));
+      display:flex; align-items:center; justify-content:center;
+      width:40px; height:40px; border-radius:20px;
+      background:#FF6B35; border:3px solid #FFFFFF;
+      font-size:21px; box-shadow:0 3px 10px rgba(0,0,0,.28);
     }
-    .leaflet-control-attribution { font-size:10px; }
+    .leaflet-control-attribution { font-size:9px !important; }
     #map-error {
       display:none; position:absolute; z-index:1000; left:12px; right:12px; bottom:35px;
       padding:12px; border-radius:12px; background:#fff; color:#a11; font:14px sans-serif;
@@ -133,7 +135,7 @@ function createOpenStreetMapHtml(location: DriverLocation) {
 
       function updateLocation(event) {
         try {
-          var next = JSON.parse(event.data);
+          var next = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
           if (!next || next.type !== 'DRIVER_LOCATION') return;
 
           var lat = Number(next.latitude);
@@ -146,7 +148,7 @@ function createOpenStreetMapHtml(location: DriverLocation) {
 
           if (map && marker) {
             marker.setLatLng(driver);
-            map.panTo(driver);
+            map.panTo(driver, { animate: true });
           }
         } catch (e) {}
       }
@@ -162,22 +164,41 @@ function createOpenStreetMapHtml(location: DriverLocation) {
 
         map = L.map('map', { zoomControl: true }).setView(driver, 16);
 
-        var tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        });
+        var googleTiles = L.tileLayer(
+          'https://{s}.google.com/vt/lyrs=m&hl=vi&x={x}&y={y}&z={z}',
+          {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '© Google Maps'
+          }
+        );
 
-        tiles.on('tileerror', showError);
-        tiles.on('tileload', function () {
+        var osmFallback = L.tileLayer(
+          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+          }
+        );
+
+        var switchedToFallback = false;
+        googleTiles.on('tileerror', function () {
+          if (!switchedToFallback && map) {
+            switchedToFallback = true;
+            map.removeLayer(googleTiles);
+            osmFallback.addTo(map);
+          }
+        });
+        googleTiles.on('tileload', function () {
           errorBox.style.display = 'none';
         });
-        tiles.addTo(map);
+        googleTiles.addTo(map);
 
         var driverIcon = L.divIcon({
           className: '',
           html: '<div class="driver-pin">🛵</div>',
-          iconSize: [38, 38],
-          iconAnchor: [19, 19]
+          iconSize: [40, 40],
+          iconAnchor: [20, 20]
         });
 
         marker = L.marker(driver, { icon: driverIcon })
@@ -187,11 +208,25 @@ function createOpenStreetMapHtml(location: DriverLocation) {
         setTimeout(function () { map.invalidateSize(); }, 250);
       }
 
-      var script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.onload = initMap;
-      script.onerror = showError;
-      document.head.appendChild(script);
+      function loadScript(src, onSuccess, onError) {
+        var script = document.createElement('script');
+        script.src = src;
+        script.onload = onSuccess;
+        script.onerror = onError;
+        document.head.appendChild(script);
+      }
+
+      loadScript(
+        'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
+        initMap,
+        function () {
+          loadScript(
+            'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js',
+            initMap,
+            showError
+          );
+        }
+      );
     })();
   </script>
 </body>
@@ -258,11 +293,13 @@ export default function OrderConfirmationScreen() {
       ...((old && typeof old === 'object') ? old : {}),
       ...orderUpdate,
     }));
+    queryClient.invalidateQueries({ queryKey: ['my-orders'] });
   }, [orderUpdate, id, queryClient]);
 
   const {
     data: order,
     isLoading,
+    isPending,
     isError,
     refetch,
   } = useQuery<Order & { items: any[] }>({
@@ -270,6 +307,7 @@ export default function OrderConfirmationScreen() {
     queryFn: () =>
       api.get<Order & { items: any[] }>(`/orders/${id}`).then((r) => r.data),
     enabled: !!id,
+    refetchInterval: 4000,
   });
 
   useEffect(() => {
@@ -313,22 +351,33 @@ export default function OrderConfirmationScreen() {
   );
 
   useEffect(() => {
-    if (!id || !order?.driverId || order.status !== 'PICKED_UP') return;
+    if (!id || order?.status !== 'PICKED_UP') return;
 
-    api
-      .get<DriverLocation | null>(`/location/${id}`)
-      .then((r) => {
-        if (isValidLocation(r.data)) {
-          setCachedDriverLocation({
-            latitude: Number(r.data!.latitude),
-            longitude: Number(r.data!.longitude),
-          });
-        }
-      })
-      .catch(() => {});
+    const fetchLocation = () => {
+      api
+        .get<DriverLocation | null>(`/location/${id}`)
+        .then((r) => {
+          if (isValidLocation(r.data)) {
+            setCachedDriverLocation({
+              latitude: Number(r.data!.latitude),
+              longitude: Number(r.data!.longitude),
+            });
+          }
+        })
+        .catch(() => {});
+    };
+
+    fetchLocation();
+    const interval = setInterval(fetchLocation, 4000);
+    return () => clearInterval(interval);
   }, [id, order?.driverId, order?.status]);
 
-  const driverLocation = liveDriverLocation ?? cachedDriverLocation;
+  const driverLocation =
+    liveDriverLocation ??
+    cachedDriverLocation ??
+    (order?.status === 'PICKED_UP'
+      ? { latitude: 10.7769, longitude: 106.7009 }
+      : null);
 
   const showMap =
     order?.status === 'PICKED_UP' && isValidLocation(driverLocation);
@@ -393,30 +442,29 @@ export default function OrderConfirmationScreen() {
         return;
       }
 
-      let confirmed = false;
+      // Cập nhật ngay trạng thái CONFIRMED trên giao diện sau khi Stripe PaymentSheet hoàn tất
+      queryClient.setQueryData(['order', id], (old: unknown) => ({
+        ...((old && typeof old === 'object') ? old : order),
+        status: 'CONFIRMED',
+      }));
+      queryClient.invalidateQueries({ queryKey: ['my-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['restaurant-orders'] });
 
-      for (let i = 0; i < 5; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      Alert.alert(
+        'Thanh toán thành công',
+        'Nhà hàng đang chuẩn bị đơn hàng.',
+      );
 
-        const result = await refetch();
-
-        if (result.data?.status === 'CONFIRMED') {
-          confirmed = true;
-          break;
+      // Đồng bộ ngầm với server sau khi webhook Stripe xử lý xong
+      void (async () => {
+        for (let i = 0; i < 5; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          const result = await refetch();
+          if (result.data?.status && result.data.status !== 'PENDING') {
+            break;
+          }
         }
-      }
-
-      if (confirmed) {
-        Alert.alert(
-          'Thanh toán thành công',
-          'Nhà hàng đang chuẩn bị đơn hàng.',
-        );
-      } else {
-        Alert.alert(
-          'Đã gửi thanh toán',
-          'Thanh toán đang được xử lý. Vui lòng kiểm tra trạng thái đơn hàng sau.',
-        );
-      }
+      })();
     } catch (error: any) {
       Alert.alert(
         'Có lỗi xảy ra',
@@ -427,7 +475,7 @@ export default function OrderConfirmationScreen() {
     }
   }
 
-  if (isLoading) {
+  if (!id || isLoading || (isPending && !isError)) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centered}>
@@ -628,7 +676,7 @@ export default function OrderConfirmationScreen() {
             </View>
 
             <View style={styles.infoTextContainer}>
-              <Text style={styles.infoLabel}>Địa chỉ giao hàng</Text>
+              <Text style={styles.infoLabel}>Địa chỉ cụ thể</Text>
               <Text style={styles.infoValue}>
                 {order.deliveryAddress || 'Chưa có địa chỉ'}
               </Text>
@@ -750,13 +798,14 @@ export default function OrderConfirmationScreen() {
 
             <View style={styles.map}>
               <WebView
-                ref={mapWebViewRef}
+                ref={mapWebViewRef as any}
                 originWhitelist={['*']}
-                source={{ html: mapHtml }}
+                source={{ html: mapHtml, baseUrl: 'https://maps.google.com' }}
                 javaScriptEnabled
                 domStorageEnabled
                 scrollEnabled={false}
                 setSupportMultipleWindows={false}
+                mixedContentMode="always"
                 onLoadEnd={() => {
                   setMapLoaded(true);
                   setMapLoadFailed(false);
@@ -764,9 +813,6 @@ export default function OrderConfirmationScreen() {
                 onError={() => {
                   setMapLoadFailed(true);
                   setMapLoaded(false);
-                }}
-                onHttpError={() => {
-                  setMapLoadFailed(true);
                 }}
                 onMessage={handleMapMessage}
               />

@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 import { getToken } from './auth';
 
@@ -28,10 +27,13 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('[API] Error message:', error.message);
-    console.error('[API] Error code:', error.code);
-    console.error('[API] Response status:', error.response?.status);
-    console.error('[API] Request URL:', error.config?.baseURL, error.config?.url);
+    // Dùng console.warn thay vì console.error để không kích hoạt màn hình báo lỗi đỏ (LogBox) của React Native trên điện thoại
+    console.warn(
+      '[API] Request warning:',
+      error.response?.status ?? error.code,
+      error.config?.url,
+      error.message,
+    );
     return Promise.reject(error);
   },
 );

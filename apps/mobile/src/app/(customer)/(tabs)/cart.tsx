@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { api } from '@/lib/axios';
 import { useCartStore } from '@/store/cart-store';
@@ -28,9 +27,44 @@ const COLORS = {
   border: '#F0E8E3',
   danger: '#EF4444',
   green: '#16A34A',
+  greenLight: '#DCFCE7',
 };
 
+function buildSpecificAddress(
+  houseNumber: string,
+  floorApartment: string,
+  streetName: string,
+  addressNote: string,
+): string {
+  const h = houseNumber.trim();
+  const f = floorApartment.trim();
+  const s = streetName.trim();
+  const n = addressNote.trim();
+
+  const parts: string[] = [];
+
+  if (h) {
+    parts.push(/^(số|căn|phòng|nhà)\b/i.test(h) ? h : `Số nhà ${h}`);
+  }
+  if (f) {
+    parts.push(
+      /^(tầng|lầu|chung cư|tòa|block)\b/i.test(f) ? f : `Tầng/Chung cư: ${f}`,
+    );
+  }
+  if (s) {
+    parts.push(
+      /^(đường|phố|ngõ|hẻm|quốc lộ|đại lộ)\b/i.test(s) ? s : `Đường ${s}`,
+    );
+  }
+  if (n) {
+    parts.push(`(${n})`);
+  }
+
+  return parts.join(', ');
+}
+
 export default function CartScreen() {
+  const queryClient = useQueryClient();
   const {
     items,
     restaurantId,
@@ -40,7 +74,21 @@ export default function CartScreen() {
     clearCart,
   } = useCartStore();
 
-  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [houseNumber, setHouseNumber] = useState('');
+  const [floorApartment, setFloorApartment] = useState('');
+  const [streetName, setStreetName] = useState('');
+  const [addressNote, setAddressNote] = useState('');
+
+  const specificAddress = useMemo(
+    () =>
+      buildSpecificAddress(
+        houseNumber,
+        floorApartment,
+        streetName,
+        addressNote,
+      ),
+    [houseNumber, floorApartment, streetName, addressNote],
+  );
 
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -53,7 +101,7 @@ export default function CartScreen() {
     mutationFn: () =>
       api.post('/orders', {
         restaurantId,
-        deliveryAddress: deliveryAddress.trim(),
+        deliveryAddress: specificAddress,
         items: items.map((item) => ({
           menuItemId: item.id,
           quantity: String(item.quantity),
@@ -61,8 +109,16 @@ export default function CartScreen() {
       }),
 
     onSuccess: (res) => {
+      const createdOrder = res.data;
+      if (createdOrder?.id) {
+        queryClient.setQueryData(['order', createdOrder.id], {
+          ...createdOrder,
+          items: createdOrder.items ?? [],
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['my-orders'] });
       clearCart();
-      router.push(`/(customer)/order/${res.data.id}`);
+      router.push(`/(customer)/order/${createdOrder.id}`);
     },
 
     onError: (error: any) => {
@@ -79,8 +135,11 @@ export default function CartScreen() {
       return;
     }
 
-    if (!deliveryAddress.trim()) {
-      Alert.alert('Thiếu địa chỉ', 'Vui lòng nhập địa chỉ giao hàng.');
+    if (!specificAddress) {
+      Alert.alert(
+        'Thiếu địa chỉ cụ thể',
+        'Vui lòng ghi địa chỉ cụ thể như số nhà, số tầng chung cư và tên đường.',
+      );
       return;
     }
 
@@ -275,24 +334,121 @@ export default function CartScreen() {
                 />
               </View>
 
-              <View>
-                <Text style={styles.sectionTitle}>Địa chỉ giao hàng</Text>
+              <View style={styles.sectionHeadingContent}>
+                <View style={styles.sectionTitleRow}>
+                  <Text style={styles.sectionTitle}>Địa chỉ cụ thể</Text>
+                  <View style={styles.gpsBadge}>
+                    <Ionicons
+                      name="navigate"
+                      size={11}
+                      color={COLORS.green}
+                    />
+                    <Text style={styles.gpsBadgeText}>Đã cài GPS</Text>
+                  </View>
+                </View>
                 <Text style={styles.sectionSubtitle}>
-                  Nhập nơi bạn muốn nhận món ăn
+                  Ghi rõ số nhà, số tầng chung cư và tên đường để tài xế giao tận nơi
                 </Text>
               </View>
             </View>
 
-            <TextInput
-              style={styles.addressInput}
-              placeholder="Số nhà, tên đường, phường/xã..."
-              placeholderTextColor="#AAA0A5"
-              value={deliveryAddress}
-              onChangeText={setDeliveryAddress}
-              multiline
-              textAlignVertical="top"
-              editable={!isPending}
-            />
+            <View style={styles.addressFormCard}>
+              <View style={styles.fieldGroup}>
+                <View style={styles.fieldLabelRow}>
+                  <Ionicons
+                    name="home-outline"
+                    size={15}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.fieldLabel}>Số nhà / Mã căn hộ</Text>
+                </View>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="VD: Số 24 hoặc Căn hộ B08-12"
+                  placeholderTextColor="#AAA0A5"
+                  value={houseNumber}
+                  onChangeText={setHouseNumber}
+                  editable={!isPending}
+                />
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <View style={styles.fieldLabelRow}>
+                  <Ionicons
+                    name="business-outline"
+                    size={15}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.fieldLabel}>
+                    Số tầng / Tòa chung cư (nếu có)
+                  </Text>
+                </View>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="VD: Tầng 8, Tòa S1 Chung cư Vinhomes"
+                  placeholderTextColor="#AAA0A5"
+                  value={floorApartment}
+                  onChangeText={setFloorApartment}
+                  editable={!isPending}
+                />
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <View style={styles.fieldLabelRow}>
+                  <Ionicons
+                    name="map-outline"
+                    size={15}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.fieldLabel}>Tên đường / Ngõ, hẻm</Text>
+                </View>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="VD: Đường Nguyễn Huệ, Ngõ 15..."
+                  placeholderTextColor="#AAA0A5"
+                  value={streetName}
+                  onChangeText={setStreetName}
+                  editable={!isPending}
+                />
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <View style={styles.fieldLabelRow}>
+                  <Ionicons
+                    name="document-text-outline"
+                    size={15}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.fieldLabel}>
+                    Ghi chú chi tiết thêm (tùy chọn)
+                  </Text>
+                </View>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="VD: Gọi điện khi tới sảnh, gửi lễ tân..."
+                  placeholderTextColor="#AAA0A5"
+                  value={addressNote}
+                  onChangeText={setAddressNote}
+                  editable={!isPending}
+                />
+              </View>
+
+              {specificAddress ? (
+                <View style={styles.addressPreviewBox}>
+                  <Ionicons
+                    name="pin-outline"
+                    size={16}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.addressPreviewText}>
+                    <Text style={styles.addressPreviewLabel}>
+                      Địa chỉ cụ thể:{' '}
+                    </Text>
+                    {specificAddress}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
 
             <View style={styles.summaryCard}>
               <Text style={styles.summaryHeading}>Tóm tắt đơn hàng</Text>
@@ -369,7 +525,7 @@ export default function CartScreen() {
                 color={COLORS.muted}
               />
               <Text style={styles.secureNoteText}>
-                Vui lòng kiểm tra địa chỉ trước khi đặt hàng
+                Vui lòng kiểm tra địa chỉ cụ thể trước khi đặt hàng
               </Text>
             </View>
 
@@ -561,7 +717,7 @@ const styles = StyleSheet.create({
 
   sectionHeading: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 11,
   },
 
@@ -572,6 +728,18 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 2,
+  },
+
+  sectionHeadingContent: {
+    flex: 1,
+  },
+
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
   },
 
   sectionTitle: {
@@ -580,22 +748,86 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
 
+  gpsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.greenLight,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+
+  gpsBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.green,
+  },
+
   sectionSubtitle: {
     fontSize: 12,
     color: COLORS.muted,
-    marginTop: 3,
+    marginTop: 4,
+    lineHeight: 17,
   },
 
-  addressInput: {
-    minHeight: 92,
+  addressFormCard: {
     backgroundColor: COLORS.white,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 17,
-    paddingHorizontal: 15,
-    paddingVertical: 14,
+    borderRadius: 20,
+    padding: 15,
+    gap: 13,
+  },
+
+  fieldGroup: {
+    gap: 6,
+  },
+
+  fieldLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+
+  fieldInput: {
+    minHeight: 46,
+    backgroundColor: '#FAF6F3',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 13,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
     fontSize: 14,
-    lineHeight: 21,
+    color: COLORS.text,
+  },
+
+  addressPreviewBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 13,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 2,
+  },
+
+  addressPreviewLabel: {
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+
+  addressPreviewText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
     color: COLORS.text,
   },
 

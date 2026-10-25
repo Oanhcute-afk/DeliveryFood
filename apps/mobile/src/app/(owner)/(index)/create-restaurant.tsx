@@ -1,5 +1,5 @@
 import { openSettings } from 'expo-linking';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,14 +16,67 @@ import { router } from 'expo-router';
 import { api } from '@/lib/axios';
 import { useImageUploader } from '@/lib/uploadthing';
 
+function buildSpecificRestaurantAddress(
+  houseNumber: string,
+  floorBuilding: string,
+  streetName: string,
+  addressNote: string,
+): string {
+  const h = houseNumber.trim();
+  const f = floorBuilding.trim();
+  const s = streetName.trim();
+  const n = addressNote.trim();
+
+  const parts: string[] = [];
+
+  if (h) {
+    parts.push(
+      /^(số|căn|ki-ốt|kiot|mặt bằng|phòng|nhà)\b/i.test(h)
+        ? h
+        : `Số nhà ${h}`,
+    );
+  }
+  if (f) {
+    parts.push(
+      /^(tầng|lầu|chung cư|tòa|block|tttm)\b/i.test(f)
+        ? f
+        : `Tầng/Chung cư: ${f}`,
+    );
+  }
+  if (s) {
+    parts.push(
+      /^(đường|phố|ngõ|hẻm|quốc lộ|đại lộ)\b/i.test(s) ? s : `Đường ${s}`,
+    );
+  }
+  if (n) {
+    parts.push(`(${n})`);
+  }
+
+  return parts.join(', ');
+}
+
 export default function CreateRestaurantScreen() {
   const queryClient = useQueryClient();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [address, setAddress] = useState('');
+  const [houseNumber, setHouseNumber] = useState('');
+  const [floorBuilding, setFloorBuilding] = useState('');
+  const [streetName, setStreetName] = useState('');
+  const [addressNote, setAddressNote] = useState('');
   const [cuisineType, setCuisineType] = useState('');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  const specificAddress = useMemo(
+    () =>
+      buildSpecificRestaurantAddress(
+        houseNumber,
+        floorBuilding,
+        streetName,
+        addressNote,
+      ),
+    [houseNumber, floorBuilding, streetName, addressNote],
+  );
 
   const { openImagePicker, isUploading } = useImageUploader('restaurantImage', {
     onClientUploadComplete: (res) => {
@@ -40,12 +93,15 @@ export default function CreateRestaurantScreen() {
       api.post('/restaurants', {
         name: name.trim(),
         description: description.trim(),
-        address: address.trim(),
+        address: specificAddress,
         cuisineType: cuisineType.trim(),
         imageUrl,
       }),
     onSuccess: (response) => {
-      void queryClient.setQueryData(['my-restaurant'], response);
+      const created = response?.data ?? response;
+      queryClient.setQueryData(['my-restaurant'], created);
+      void queryClient.invalidateQueries({ queryKey: ['my-restaurant'] });
+      void queryClient.invalidateQueries({ queryKey: ['restaurants'] });
       router.replace('/(owner)/(index)');
     },
     onError: (e: any) => {
@@ -57,10 +113,10 @@ export default function CreateRestaurantScreen() {
   });
 
   function handleSubmit() {
-    if (!name.trim() || !address.trim() || !cuisineType.trim()) {
+    if (!name.trim() || !specificAddress || !cuisineType.trim()) {
       Alert.alert(
         'Thiếu thông tin',
-        'Vui lòng nhập tên nhà hàng, địa chỉ và loại ẩm thực.',
+        'Vui lòng nhập tên nhà hàng, địa chỉ cụ thể (số nhà, số tầng chung cư, tên đường) và loại ẩm thực.',
       );
       return;
     }
@@ -202,20 +258,86 @@ export default function CreateRestaurantScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={styles.label}>
-            Địa chỉ <Text style={styles.required}>*</Text>
+          <View style={styles.addressHeaderRow}>
+            <Text style={[styles.label, { marginBottom: 0 }]}>
+              Địa chỉ cụ thể <Text style={styles.required}>*</Text>
+            </Text>
+            <View style={styles.gpsBadge}>
+              <Text style={styles.gpsBadgeText}>📍 Đã cài GPS</Text>
+            </View>
+          </View>
+          <Text style={styles.addressSubtitle}>
+            Ghi rõ số nhà/mặt bằng, số tầng chung cư và tên đường để tài xế & khách dễ tìm
           </Text>
-          <View style={styles.inputWithIcon}>
-            <Text style={styles.fieldIcon}>📍</Text>
-            <TextInput
-              style={styles.iconInput}
-              placeholder="Nhập địa chỉ nhà hàng"
-              placeholderTextColor="#B1A6AC"
-              value={address}
-              onChangeText={setAddress}
-              maxLength={250}
-              returnKeyType="next"
-            />
+
+          <View style={styles.addressSubCard}>
+            <View style={styles.subField}>
+              <Text style={styles.subLabel}>🏠 Số nhà / Ki-ốt / Mặt bằng</Text>
+              <TextInput
+                style={styles.subInput}
+                placeholder="VD: Số 18 hoặc Ki-ốt Shophouse A02"
+                placeholderTextColor="#B1A6AC"
+                value={houseNumber}
+                onChangeText={setHouseNumber}
+                maxLength={100}
+                returnKeyType="next"
+              />
+            </View>
+
+            <View style={styles.subField}>
+              <Text style={styles.subLabel}>
+                🏢 Số tầng / Tòa chung cư (nếu có)
+              </Text>
+              <TextInput
+                style={styles.subInput}
+                placeholder="VD: Tầng 1, Tòa S2 Chung cư Vinhomes"
+                placeholderTextColor="#B1A6AC"
+                value={floorBuilding}
+                onChangeText={setFloorBuilding}
+                maxLength={120}
+                returnKeyType="next"
+              />
+            </View>
+
+            <View style={styles.subField}>
+              <Text style={styles.subLabel}>🛣️ Tên đường / Ngõ, hẻm</Text>
+              <TextInput
+                style={styles.subInput}
+                placeholder="VD: Đường Nguyễn Huệ, Ngõ 15..."
+                placeholderTextColor="#B1A6AC"
+                value={streetName}
+                onChangeText={setStreetName}
+                maxLength={150}
+                returnKeyType="next"
+              />
+            </View>
+
+            <View style={styles.subField}>
+              <Text style={styles.subLabel}>
+                📝 Ghi chú vị trí thêm (tùy chọn)
+              </Text>
+              <TextInput
+                style={styles.subInput}
+                placeholder="VD: Ngay mặt tiền cổng chính, cạnh siêu thị..."
+                placeholderTextColor="#B1A6AC"
+                value={addressNote}
+                onChangeText={setAddressNote}
+                maxLength={150}
+                returnKeyType="next"
+              />
+            </View>
+
+            {specificAddress ? (
+              <View style={styles.addressPreviewBox}>
+                <Text style={styles.addressPreviewIcon}>📍</Text>
+                <Text style={styles.addressPreviewText}>
+                  <Text style={styles.addressPreviewLabel}>
+                    Địa chỉ cụ thể:{' '}
+                  </Text>
+                  {specificAddress}
+                </Text>
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -267,7 +389,7 @@ export default function CreateRestaurantScreen() {
         </Pressable>
 
         <Text style={styles.footerText}>
-          Kiểm tra thông tin trước khi tạo nhà hàng.
+          Kiểm tra địa chỉ cụ thể và thông tin trước khi tạo nhà hàng.
         </Text>
       </View>
     </ScrollView>
@@ -443,6 +565,81 @@ const styles = StyleSheet.create({
   },
   required: {
     color: '#FF6B35',
+  },
+  addressHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 5,
+  },
+  gpsBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  gpsBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#16A34A',
+  },
+  addressSubtitle: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: '#8B8289',
+    marginBottom: 11,
+  },
+  addressSubCard: {
+    backgroundColor: '#FFFCFA',
+    borderWidth: 1,
+    borderColor: '#EEE5E0',
+    borderRadius: 16,
+    padding: 13,
+    gap: 11,
+  },
+  subField: {
+    gap: 5,
+  },
+  subLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#39313A',
+  },
+  subInput: {
+    minHeight: 45,
+    borderWidth: 1,
+    borderColor: '#EEE5E0',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    fontSize: 13,
+    color: '#29232A',
+  },
+  addressPreviewBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 7,
+    backgroundColor: '#FFF0E8',
+    borderRadius: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    marginTop: 2,
+  },
+  addressPreviewIcon: {
+    fontSize: 14,
+    marginTop: 1,
+  },
+  addressPreviewLabel: {
+    fontWeight: '800',
+    color: '#FF6B35',
+  },
+  addressPreviewText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#29232A',
   },
   input: {
     minHeight: 49,

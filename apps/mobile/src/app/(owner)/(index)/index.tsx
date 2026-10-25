@@ -77,7 +77,6 @@ export default function OwnerHomeScreen() {
   const {
     data: restaurant,
     isLoading,
-    isFetching,
   } = useQuery<RestaurantType | null>({
     queryKey: ['my-restaurant'],
     queryFn: () =>
@@ -90,6 +89,19 @@ export default function OwnerHomeScreen() {
 
   useEffect(() => {
     if (restaurantUpdate) {
+      if (restaurantUpdate.id) {
+        queryClient.setQueryData<Order[]>(['restaurant-orders'], (old = []) => {
+          const exists = old.some((o) => o.id === restaurantUpdate.id);
+          if (exists) {
+            return old.map((o) =>
+              o.id === restaurantUpdate.id
+                ? ({ ...o, ...restaurantUpdate } as Order)
+                : o,
+            );
+          }
+          return [restaurantUpdate as unknown as Order, ...old];
+        });
+      }
       queryClient.invalidateQueries({
         queryKey: ['restaurant-orders'],
       });
@@ -105,6 +117,7 @@ export default function OwnerHomeScreen() {
     queryFn: () =>
       api.get<Order[]>('/orders/restaurant').then((res) => res.data),
     enabled: !!restaurant,
+    refetchInterval: 4000,
   });
 
   const { mutate: toggleOpen, isPending: isTogglingOpen } = useMutation({
@@ -125,19 +138,43 @@ export default function OwnerHomeScreen() {
     },
   });
 
-  const { mutate: updateStatus, variables: updatingOrder } = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      api.patch(`/orders/${id}/status`, { status }),
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ['restaurant-orders'],
-      }),
-    onError: (error: any) =>
+  const {
+    mutate: updateStatus,
+    isPending: isUpdatingStatus,
+    variables: updatingOrder,
+  } = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: Order['status'] }) =>
+      api.patch<Order>(`/orders/${id}/status`, { status }),
+    onMutate: async ({ id, status }) => {
+      await queryClient.cancelQueries({ queryKey: ['restaurant-orders'] });
+      const previousOrders =
+        queryClient.getQueryData<Order[]>(['restaurant-orders']);
+
+      queryClient.setQueryData<Order[]>(['restaurant-orders'], (old = []) =>
+        old.map((order) =>
+          order.id === id ? { ...order, status } : order,
+        ),
+      );
+
+      return { previousOrders };
+    },
+    onError: (error: any, _variables, context) => {
+      if (context?.previousOrders) {
+        queryClient.setQueryData(
+          ['restaurant-orders'],
+          context.previousOrders,
+        );
+      }
       Alert.alert(
         'Lỗi cập nhật đơn hàng',
         error?.response?.data?.message ??
           'Không thể cập nhật trạng thái đơn hàng.',
-      ),
+      );
+    },
+    onSettled: () =>
+      queryClient.invalidateQueries({
+        queryKey: ['restaurant-orders'],
+      }),
   });
 
   useEffect(() => {
@@ -172,7 +209,7 @@ export default function OwnerHomeScreen() {
   );
 
   function renderActionButton(order: Order) {
-    const isUpdating = updatingOrder?.id === order.id;
+    const isUpdating = isUpdatingStatus && updatingOrder?.id === order.id;
 
     if (order.status === 'CONFIRMED') {
       return (

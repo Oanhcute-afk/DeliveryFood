@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/axios';
 import { saveToken, getToken, deleteToken } from '@/lib/auth';
 import { User } from '@food-delivery/types';
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     checkExistingSession();
@@ -45,17 +47,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function login(email: string, password: string) {
     const res = await api.post('/auth/login', { email, password });
     await saveToken(res.data.token);
+    queryClient.clear();
     setUser(res.data.user);
   }
 
   async function register(data: RegisterData) {
     const res = await api.post('/auth/register', data);
     await saveToken(res.data.token);
+    queryClient.clear();
     setUser(res.data.user);
   }
 
   async function logout() {
     await deleteToken();
+    queryClient.clear();
     setUser(null);
   }
 

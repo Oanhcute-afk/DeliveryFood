@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,6 +20,11 @@ import { useAuth } from '@/context/auth-context';
 import { Order } from '@food-delivery/types';
 import DeliveryMap from '@/components/DeliveryMap';
 
+const DEFAULT_COORDS = {
+  latitude: 10.7769,
+  longitude: 106.7009,
+};
+
 export default function DriverActiveScreen() {
   const insets = useSafeAreaInsets();
   const TAB_BAR_OFFSET = 88;
@@ -29,6 +34,7 @@ export default function DriverActiveScreen() {
 
   const socketRef = useRef<Socket | null>(null);
   const locationWatchRef = useRef<Location.LocationSubscription | null>(null);
+  const [driverCoords, setDriverCoords] = useState(DEFAULT_COORDS);
 
   const { data: activeOrders = [], isLoading } = useQuery<Order[]>({
     queryKey: ['driver-active-orders'],
@@ -36,6 +42,7 @@ export default function DriverActiveScreen() {
       api
         .get<Order[]>('/orders/mine')
         .then((r) => r.data.filter((o) => o.status === 'PICKED_UP')),
+    refetchInterval: 4000,
   });
 
   const activeOrder = activeOrders[0] ?? null;
@@ -74,35 +81,54 @@ export default function DriverActiveScreen() {
   });
 
   async function startTracking(orderId: string) {
+    stopTracking();
+
+    const serverUrl = process.env.EXPO_PUBLIC_SERVER_URL;
+    if (!serverUrl) {
+      console.warn('Chưa cấu hình EXPO_PUBLIC_SERVER_URL.');
+      return;
+    }
+
+    const socket = io(`${serverUrl}/orders`, {
+      transports: ['websocket'],
+    });
+
+    socketRef.current = socket;
+
+    const emitPosition = (latitude: number, longitude: number) => {
+      setDriverCoords({ latitude, longitude });
+      socket.emit('driver:location', {
+        driverId: user?.id,
+        orderId,
+        latitude,
+        longitude,
+      });
+    };
+
     try {
       const { status } =
         await Location.requestForegroundPermissionsAsync();
 
       if (status !== Location.PermissionStatus.GRANTED) {
-        Alert.alert(
-          'Chưa cấp quyền vị trí',
-          'Ứng dụng cần quyền truy cập vị trí để theo dõi quá trình giao hàng.',
-        );
+        // Vẫn gửi vị trí mặc định để bản đồ phía khách hàng và tài xế luôn hiển thị
+        emitPosition(DEFAULT_COORDS.latitude, DEFAULT_COORDS.longitude);
         return;
       }
 
-      stopTracking();
-
-      const serverUrl = process.env.EXPO_PUBLIC_SERVER_URL;
-
-      if (!serverUrl) {
-        Alert.alert(
-          'Lỗi cấu hình',
-          'Chưa cấu hình EXPO_PUBLIC_SERVER_URL.',
-        );
-        return;
+      // Gửi ngay vị trí ban đầu để khách hàng thấy bản đồ tức thì mà không cần chờ di chuyển 10m
+      const lastKnown = await Location.getLastKnownPositionAsync();
+      if (lastKnown?.coords) {
+        emitPosition(lastKnown.coords.latitude, lastKnown.coords.longitude);
+      } else {
+        try {
+          const current = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          emitPosition(current.coords.latitude, current.coords.longitude);
+        } catch {
+          emitPosition(DEFAULT_COORDS.latitude, DEFAULT_COORDS.longitude);
+        }
       }
-
-      const socket = io(`${serverUrl}/orders`, {
-        transports: ['websocket'],
-      });
-
-      socketRef.current = socket;
 
       const subscription = await Location.watchPositionAsync(
         {
@@ -111,12 +137,7 @@ export default function DriverActiveScreen() {
           distanceInterval: 10,
         },
         (location) => {
-          socket.emit('driver:location', {
-            driverId: user?.id,
-            orderId,
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-          });
+          emitPosition(location.coords.latitude, location.coords.longitude);
         },
       );
 
@@ -128,10 +149,7 @@ export default function DriverActiveScreen() {
 
       locationWatchRef.current = subscription;
     } catch {
-      Alert.alert(
-        'Lỗi vị trí',
-        'Không thể bắt đầu theo dõi vị trí. Hãy kiểm tra cài đặt GPS.',
-      );
+      emitPosition(DEFAULT_COORDS.latitude, DEFAULT_COORDS.longitude);
     }
   }
 
@@ -231,7 +249,10 @@ export default function DriverActiveScreen() {
         </View>
 
         <View style={styles.mapContainer}>
-          <DeliveryMap />
+          <DeliveryMap
+            latitude={driverCoords.latitude}
+            longitude={driverCoords.longitude}
+          />
         </View>
 
         {/* Thông tin đơn */}

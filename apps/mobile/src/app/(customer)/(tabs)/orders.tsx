@@ -1,4 +1,3 @@
-
 import {
   ActivityIndicator,
   FlatList,
@@ -166,6 +165,7 @@ export default function CustomerOrdersScreen() {
     queryKey: ['my-orders'],
     queryFn: () =>
       api.get<OrderWithRestaurant[]>('/orders/mine').then((r) => r.data),
+    refetchInterval: 4000,
   });
 
   if (isLoading) {
