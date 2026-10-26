@@ -5,7 +5,7 @@ import {
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { GoogleGenAI, type Content, type Part } from '@google/genai';
+import { ApiError, GoogleGenAI, type Content, type Part } from '@google/genai';
 import {
   ChatToolsService,
   type ChatCard,
@@ -17,8 +17,8 @@ const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 const MAX_TOOL_ROUNDS = 4;
 const MAX_HISTORY = 20;
 const MAX_CARDS = 6;
-// Giới hạn chi phí: mỗi khách tối đa 30 tin nhắn / 10 phút
-const RATE_LIMIT = 30;
+// Chia đều hạn mức miễn phí của Gemini: mỗi khách tối đa 15 tin nhắn / 10 phút
+const RATE_LIMIT = 15;
 const RATE_WINDOW_MS = 10 * 60_000;
 
 const SYSTEM_INSTRUCTION = `Bạn là "Deli", trợ lý tư vấn đặt món của app giao đồ ăn delifood.
@@ -89,6 +89,13 @@ export class ChatService {
             'Gemini request failed',
             error instanceof Error ? error.message : String(error),
           );
+          // Gói miễn phí của Gemini: ~500 request/ngày, 10-15 request/phút
+          if (error instanceof ApiError && error.status === 429) {
+            throw new HttpException(
+              'Deli đang quá tải hoặc đã hết lượt miễn phí hôm nay, bạn thử lại sau ít phút nhé',
+              HttpStatus.TOO_MANY_REQUESTS,
+            );
+          }
           throw new ServiceUnavailableException(
             'Trợ lý AI đang bận, bạn thử lại sau nhé',
           );
