@@ -10,7 +10,7 @@ export default {
 
     ios: {
       icon: './assets/expo.icon',
-      bundleIdentifier: 'com.loopoen.fooddelivery',
+      bundleIdentifier: 'com.oanh.fooddelivery',
     },
 
     android: {
