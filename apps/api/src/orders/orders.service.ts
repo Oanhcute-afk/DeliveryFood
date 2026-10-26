@@ -12,6 +12,7 @@ import { OrderStatus, UserRole } from '@food-delivery/types';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrdersGateway } from '../gateway/orders.gateway';
 import { DriverService } from '../driver/driver.service';
+import { VouchersService } from '../vouchers/vouchers.service';
 
 @Injectable()
 export class OrdersService {
@@ -19,6 +20,7 @@ export class OrdersService {
     @Inject('DB') private db: NeonHttpDatabase<typeof schema>,
     private ordersGateway: OrdersGateway,
     private driverService: DriverService,
+    private vouchersService: VouchersService,
   ) {}
 
   async create(customerId: string, dto: CreateOrderDto) {
@@ -55,6 +57,16 @@ export class OrdersService {
       return sum + parseFloat(menuItem.price) * parseInt(orderItem.quantity);
     }, 0);
 
+    // apply voucher — re-validated server-side, discount never comes from the client
+    const applied = dto.voucherId
+      ? await this.vouchersService.applyToOrder(
+          customerId,
+          dto.voucherId,
+          total,
+        )
+      : null;
+    const discount = applied?.discount ?? 0;
+
     // insert the order
     const [order] = await this.db
       .insert(schema.orders)
@@ -62,7 +74,11 @@ export class OrdersService {
         customerId,
         restaurantId: dto.restaurantId,
         deliveryAddress: dto.deliveryAddress,
-        totalAmount: total.toFixed(2),
+        subtotalAmount: total.toFixed(2),
+        discountAmount: discount.toFixed(2),
+        totalAmount: (total - discount).toFixed(2),
+        voucherId: applied?.voucher.id ?? null,
+        voucherCode: applied?.voucher.code ?? null,
         status: 'PENDING',
       })
       .returning();

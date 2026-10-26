@@ -101,6 +101,10 @@ export interface Order {
   driverId: string | null;
   status: OrderStatus;
   totalAmount: string;
+  subtotalAmount?: string | null;
+  discountAmount?: string;
+  voucherId?: string | null;
+  voucherCode?: string | null;
   deliveryAddress: string;
   stripePaymentIntentId: string | null;
   createdAt: Date;
@@ -114,4 +118,38 @@ export interface OrderItem {
   quantity: string;
   unitPrice: string;
   createdAt: Date;
+}
+export const VoucherDiscountType = {
+  PERCENT: 'PERCENT',
+  FIXED: 'FIXED',
+} as const;
+
+export type VoucherDiscountType =
+  typeof VoucherDiscountType[keyof typeof VoucherDiscountType];
+
+export interface Voucher {
+  id: string;
+  code: string;
+  title: string;
+  description: string | null;
+  discountType: VoucherDiscountType;
+  discountValue: string;
+  maxDiscount: string | null;
+  minOrderAmount: string;
+  startsAt: string;
+  expiresAt: string | null;
+  usageLimit: number | null;
+  perUserLimit: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+/** Voucher kèm trạng thái áp dụng cho giỏ hàng hiện tại của khách */
+export interface CustomerVoucher extends Voucher {
+  eligible: boolean;
+  /** Lý do không dùng được (khi eligible = false) */
+  reason: string | null;
+  /** Số tiền được giảm với tạm tính hiện tại */
+  discount: number;
+  usedByMe: number;
 }

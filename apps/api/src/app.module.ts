@@ -16,6 +16,7 @@ import { CacheModule } from './cache/cache.module';
 import { LegalModule } from './legal/legal.module';
 import { MonitorModule } from './monitor/monitor.module';
 import { AdminModule } from './admin/admin.module';
+import { VouchersModule } from './vouchers/vouchers.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { AdminModule } from './admin/admin.module';
     LegalModule,
     MonitorModule,
     AdminModule,
+    VouchersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

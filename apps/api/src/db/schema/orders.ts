@@ -9,6 +9,7 @@ import {
 import { menuItems } from './menus';
 import { restaurants } from './restaurants';
 import { users } from './users';
+import { vouchers } from './vouchers';
 
 export const orderStatusEnum = pgEnum('order_status', [
   'PENDING', // placed, waiting for payment,
@@ -30,7 +31,14 @@ export const orders = pgTable('orders', {
     .references(() => restaurants.id),
   driverId: uuid('driver_id').references(() => users.id),
   status: orderStatusEnum('status').notNull().default('PENDING'),
+  // Số tiền khách trả (đã trừ voucher) — Stripe thu đúng số này
   totalAmount: numeric('total_amount', { precision: 10, scale: 2 }).notNull(),
+  subtotalAmount: numeric('subtotal_amount', { precision: 10, scale: 2 }),
+  discountAmount: numeric('discount_amount', { precision: 10, scale: 2 })
+    .default('0')
+    .notNull(),
+  voucherId: uuid('voucher_id').references(() => vouchers.id),
+  voucherCode: text('voucher_code'),
   deliveryAddress: text('delivery_address').notNull(),
   stripePaymentIntentId: text('stripe_payment_intent_id'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
