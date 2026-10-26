@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
@@ -24,6 +25,15 @@ function firebaseAuth() {
     initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID });
   return getAuth(app);
 }
+
+// Deep link được phép nhận kết quả: Expo Go (exp/exps) và app đã build (mobile)
+const APP_REDIRECT_PROTOCOLS = ['exp:', 'exps:', 'mobile:'];
+
+// Ký state bằng secret riêng để không dùng được như JWT đăng nhập
+const oauthStateSecret = () => `${process.env.JWT_SECRET}:google-oauth-state`;
+
+const googleRedirectUri = () =>
+  `${process.env.API_PUBLIC_URL}/api/auth/google/callback`;
 
 @Injectable()
 export class AuthService {
@@ -134,6 +144,70 @@ export class AuthService {
       user: this.sanitizeUser(user),
       token: this.generateToken(user),
     };
+  }
+
+  getGoogleAuthUrl(appRedirect: string) {
+    let protocol: string;
+    try {
+      protocol = new URL(appRedirect).protocol;
+    } catch {
+      throw new BadRequestException('Invalid redirect');
+    }
+    if (!APP_REDIRECT_PROTOCOLS.includes(protocol)) {
+      throw new BadRequestException('Invalid redirect');
+    }
+
+    const state = this.jwtService.sign(
+      { redirect: appRedirect },
+      { secret: oauthStateSecret(), expiresIn: '10m' },
+    );
+
+    const params = new URLSearchParams({
+      client_id: process.env.GOOGLE_WEB_CLIENT_ID!,
+      redirect_uri: googleRedirectUri(),
+      response_type: 'code',
+      scope: 'openid email profile',
+      prompt: 'select_account',
+      state,
+    });
+
+    return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+  }
+
+  async handleGoogleCallback(state: string, code?: string, error?: string) {
+    let redirect: string;
+    try {
+      ({ redirect } = this.jwtService.verify<{ redirect: string }>(state, {
+        secret: oauthStateSecret(),
+      }));
+    } catch {
+      throw new BadRequestException('Invalid or expired sign-in session');
+    }
+
+    const backToApp = (params: Record<string, string>) =>
+      `${redirect}${redirect.includes('?') ? '&' : '?'}${new URLSearchParams(params)}`;
+
+    if (error || !code) return backToApp({ error: error ?? 'cancelled' });
+
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_WEB_CLIENT_ID!,
+        client_secret: process.env.GOOGLE_WEB_CLIENT_SECRET!,
+        redirect_uri: googleRedirectUri(),
+        grant_type: 'authorization_code',
+      }),
+    });
+    const data = (await res.json()) as { id_token?: string };
+
+    if (!res.ok || !data.id_token) {
+      return backToApp({ error: 'token_exchange_failed' });
+    }
+
+    // App dùng token này để đăng nhập Firebase, rồi gửi Firebase ID token lên /auth/google
+    return backToApp({ googleIdToken: data.id_token });
   }
 
   private async verifyFirebaseIdToken(idToken: string) {

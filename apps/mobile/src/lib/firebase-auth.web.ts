@@ -1,7 +1,7 @@
-// React Native Firebase không hỗ trợ web → ẩn nút Google trên web
+// Luồng deep link về app không áp dụng cho web → ẩn nút Google trên web
 export const isGoogleSignInAvailable = false;
 
-export function signInWithGoogle(): Promise<string | null> {
+export function signInWithGoogle(_returnPath: string): Promise<string | null> {
   return Promise.reject(new Error('Google sign-in is not supported on web'));
 }
 

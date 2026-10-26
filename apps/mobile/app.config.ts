@@ -11,15 +11,10 @@ export default {
     ios: {
       icon: './assets/expo.icon',
       bundleIdentifier: 'com.loopoen.fooddelivery',
-      // Tải từ Firebase Console. Trên EAS có thể dùng biến môi trường kiểu file.
-      googleServicesFile:
-        process.env.GOOGLE_SERVICES_PLIST ?? './GoogleService-Info.plist',
     },
 
     android: {
       package: 'com.loopoen.fooddelivery',
-      googleServicesFile:
-        process.env.GOOGLE_SERVICES_JSON ?? './google-services.json',
       adaptiveIcon: {
         backgroundColor: '#E6F4FE',
         foregroundImage: './assets/images/android-icon-foreground.png',
@@ -40,17 +35,6 @@ export default {
 
     plugins: [
       'expo-router',
-      // iOS: dùng CocoaPods + static frameworks (SPM bắt buộc dynamic frameworks)
-      ['@react-native-firebase/app', { ios: { disableSPM: true } }],
-      '@react-native-firebase/auth',
-      '@react-native-google-signin/google-signin',
-      [
-        'expo-build-properties',
-        {
-          // React Native Firebase trên iOS cần static frameworks
-          ios: { useFrameworks: 'static' },
-        },
-      ],
       [
         'expo-splash-screen',
         {

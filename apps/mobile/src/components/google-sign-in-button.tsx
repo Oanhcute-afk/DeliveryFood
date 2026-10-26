@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { UserRole } from '@food-delivery/types';
 import { useAuth } from '@/context/auth-context';
@@ -22,6 +22,7 @@ interface Props {
 
 export function GoogleSignInButton({ role }: Props) {
   const { googleLogin } = useAuth();
+  const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(false);
   const [pendingIdToken, setPendingIdToken] = useState<string | null>(null);
 
@@ -32,7 +33,7 @@ export function GoogleSignInButton({ role }: Props) {
 
     let idToken: string | null;
     try {
-      idToken = await signInWithGoogle();
+      idToken = await signInWithGoogle(pathname);
     } catch (error: any) {
       setIsLoading(false);
       Alert.alert('Google sign-in failed', String(error?.message ?? error));
