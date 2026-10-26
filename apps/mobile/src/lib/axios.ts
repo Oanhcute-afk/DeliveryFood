@@ -14,12 +14,7 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
-  console.log(
-    '[API] Request:',
-    config.method?.toUpperCase(),
-    config.baseURL,
-    config.url,
-  );
+  console.log('[API] Request:', config.method?.toUpperCase(), config.baseURL, config.url);
 
   const token = await getToken();
   if (token) {
