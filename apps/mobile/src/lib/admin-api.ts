@@ -1,6 +1,10 @@
 import * as WebBrowser from 'expo-web-browser';
 import { api } from '@/lib/axios';
-import type { SignupRole } from '@food-delivery/types';
+import type {
+  SignupRole,
+  Voucher,
+  VoucherDiscountType,
+} from '@food-delivery/types';
 
 export interface AdminUser {
   id: string;
@@ -61,6 +65,24 @@ export type AdminOverview =
     }
   | { ok: false; error: string };
 
+export interface AdminVoucher extends Voucher {
+  usedCount: number;
+  isExpired: boolean;
+}
+
+export interface CreateVoucherInput {
+  code: string;
+  title: string;
+  description?: string;
+  discountType: VoucherDiscountType;
+  discountValue: number;
+  maxDiscount?: number;
+  minOrderAmount?: number;
+  expiresAt?: string;
+  usageLimit?: number;
+  perUserLimit?: number;
+}
+
 export const adminApi = {
   overview: () => api.get<AdminOverview>('/admin/overview').then((r) => r.data),
   users: (role: SignupRole, search: string) =>
@@ -87,6 +109,14 @@ export const adminApi = {
       .patch<{ id: string; isOpen: boolean }>(`/admin/restaurants/${id}`, {
         isOpen,
       })
+      .then((r) => r.data),
+  vouchers: () =>
+    api.get<AdminVoucher[]>('/admin/vouchers').then((r) => r.data),
+  createVoucher: (input: CreateVoucherInput) =>
+    api.post<AdminVoucher>('/admin/vouchers', input).then((r) => r.data),
+  setVoucherActive: (id: string, isActive: boolean) =>
+    api
+      .patch<Voucher>(`/admin/vouchers/${id}`, { isActive })
       .then((r) => r.data),
 };
 

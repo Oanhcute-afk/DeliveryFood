@@ -24,12 +24,9 @@ export default function AdminLayout() {
         <NativeTabs.Trigger.Icon sf="person.2.fill" md="group" />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="profile">
-        <NativeTabs.Trigger.Label>Tài khoản</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          sf="person.crop.circle.fill"
-          md="account_circle"
-        />
+      <NativeTabs.Trigger name="vouchers">
+        <NativeTabs.Trigger.Label>Voucher</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="ticket.fill" md="confirmation_number" />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -10,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '@/context/auth-context';
 import {
   adminApi,
   errorMessage,
@@ -42,6 +44,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function AdminOverviewScreen() {
+  const { user, logout } = useAuth();
   const { data, isLoading, isRefetching, refetch, error } = useQuery({
     queryKey: ['admin-overview'],
     queryFn: adminApi.overview,
@@ -156,6 +159,38 @@ export default function AdminOverviewScreen() {
             </Card>
           </>
         ) : null}
+
+        <Card style={styles.account}>
+          <View style={styles.accountIcon}>
+            <Ionicons name="shield-checkmark" size={20} color="#FFFFFF" />
+          </View>
+          <View style={styles.accountInfo}>
+            <Text style={styles.accountLabel}>Quản trị viên</Text>
+            <Text style={styles.accountEmail} numberOfLines={1}>
+              {user?.email}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() =>
+              Alert.alert(
+                'Đăng xuất?',
+                'Bạn sẽ cần đăng nhập lại để quản trị.',
+                [
+                  { text: 'Huỷ', style: 'cancel' },
+                  {
+                    text: 'Đăng xuất',
+                    style: 'destructive',
+                    onPress: () => void logout(),
+                  },
+                ],
+              )
+            }
+            style={({ pressed }) => [styles.logout, pressed && styles.pressed]}
+          >
+            <Ionicons name="log-out-outline" size={18} color={COLORS.red} />
+            <Text style={styles.logoutText}>Đăng xuất</Text>
+          </Pressable>
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
@@ -239,6 +274,33 @@ const styles = StyleSheet.create({
     paddingBottom: TAB_BAR_OFFSET + 20,
   },
   loader: { marginTop: 40 },
+  account: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 6,
+  },
+  accountIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accountInfo: { flex: 1, minWidth: 0 },
+  accountLabel: { fontSize: 11, fontWeight: '800', color: COLORS.faint },
+  accountEmail: { fontSize: 13, fontWeight: '700', color: COLORS.text },
+  logout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 36,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: COLORS.redLight,
+  },
+  logoutText: { fontSize: 13, fontWeight: '800', color: COLORS.red },
   pressed: { opacity: 0.85 },
   monitor: {
     flexDirection: 'row',

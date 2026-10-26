@@ -663,6 +663,12 @@ export default function OrderConfirmationScreen() {
               <Text style={styles.amount}>
                 ${Number(order.totalAmount).toFixed(2)}
               </Text>
+              {Number(order.discountAmount ?? 0) > 0 ? (
+                <Text style={styles.discountNote}>
+                  Đã giảm ${Number(order.discountAmount).toFixed(2)}
+                  {order.voucherCode ? ` với voucher ${order.voucherCode}` : ''}
+                </Text>
+              ) : null}
             </View>
           </View>
 
@@ -1242,6 +1248,12 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
+  discountNote: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#16A34A',
+    marginTop: 3,
+  },
   paymentCard: {
     backgroundColor: COLORS.surface,
     borderRadius: 23,
