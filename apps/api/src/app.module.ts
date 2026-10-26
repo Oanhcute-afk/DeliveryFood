@@ -17,6 +17,7 @@ import { LegalModule } from './legal/legal.module';
 import { MonitorModule } from './monitor/monitor.module';
 import { AdminModule } from './admin/admin.module';
 import { VouchersModule } from './vouchers/vouchers.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { VouchersModule } from './vouchers/vouchers.module';
     MonitorModule,
     AdminModule,
     VouchersModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
