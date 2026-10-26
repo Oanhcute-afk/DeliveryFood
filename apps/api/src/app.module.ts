@@ -14,6 +14,7 @@ import { LocationModule } from './location/location.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { CacheModule } from './cache/cache.module';
 import { LegalModule } from './legal/legal.module';
+import { MonitorModule } from './monitor/monitor.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { LegalModule } from './legal/legal.module';
     LocationModule,
     ReviewsModule,
     LegalModule,
+    MonitorModule,
   ],
   controllers: [AppController],
   providers: [AppService],

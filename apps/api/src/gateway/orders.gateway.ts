@@ -9,6 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { LocationService } from '../location/location.service';
+import { MetricsService } from '../monitor/metrics.service';
 
 export interface DriverLocation {
   driverId: string;
@@ -22,16 +23,21 @@ export interface DriverLocation {
   namespace: '/orders',
 })
 export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  constructor(private locationService: LocationService) {}
+  constructor(
+    private locationService: LocationService,
+    private metrics: MetricsService,
+  ) {}
 
   @WebSocketServer()
   server!: Server;
 
   handleConnection(client: Socket) {
+    this.metrics.wsConnected();
     console.log(`Client connected: ${client.id}`);
   }
 
   handleDisconnect(client: Socket) {
+    this.metrics.wsDisconnected();
     console.log(`Client disconnected: ${client.id}`);
   }
 

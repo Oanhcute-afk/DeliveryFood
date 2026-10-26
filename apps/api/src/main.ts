@@ -4,11 +4,16 @@ import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { createRouteHandler } from 'uploadthing/express';
 import { uploadRouter } from './uploadthing/upload-router';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { MetricsService } from './monitor/metrics.service';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
   });
+
+  // Ghi số liệu cho trang /monitor (đặt trước mọi route)
+  app.use(app.get(MetricsService).middleware());
+  app.enableShutdownHooks();
 
   app.enableCors();
   app.setGlobalPrefix('api', {
@@ -17,6 +22,8 @@ async function bootstrap() {
       { path: '/', method: RequestMethod.GET },
       { path: 'privacy', method: RequestMethod.GET },
       { path: 'terms', method: RequestMethod.GET },
+      { path: 'monitor', method: RequestMethod.GET },
+      { path: 'monitor/data', method: RequestMethod.GET },
     ],
   }); // /api/....
   app.useGlobalPipes(

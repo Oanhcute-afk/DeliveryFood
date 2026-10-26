@@ -2,7 +2,7 @@
 const CONTACT_EMAIL = 'oanht487@gmail.com';
 const LAST_UPDATED = 'October 26, 2026';
 
-const LOGO_SVG = `
+export const LOGO_SVG = `
 <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
   <path d="M4 10.5C4 6.9 7.6 4 12 4s8 2.9 8 6.5H4Z" fill="#FFFFFF"/>
   <rect x="3" y="12" width="18" height="2.4" rx="1.2" fill="#FFFFFF"/>
