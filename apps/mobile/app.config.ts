@@ -5,7 +5,8 @@ export default {
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
-    scheme: 'mobile',
+    // com.loopoen.fooddelivery: redirect URI của Google Sign-In (expo-auth-session)
+    scheme: ['mobile', 'com.loopoen.fooddelivery'],
     userInterfaceStyle: 'automatic',
 
     ios: {
