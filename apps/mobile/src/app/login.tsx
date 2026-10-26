@@ -15,6 +15,7 @@ import {
 import { useAuth } from '@/context/auth-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { GoogleSignInButton } from '@/components/google-sign-in-button';
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -135,6 +136,8 @@ export default function LoginScreen() {
               </>
             )}
           </Pressable>
+
+          <GoogleSignInButton />
         </View>
 
         {/* Register */}

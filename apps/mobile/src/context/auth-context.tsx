@@ -2,13 +2,14 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/axios';
 import { saveToken, getToken, deleteToken } from '@/lib/auth';
-import { User } from '@food-delivery/types';
+import { User, UserRole } from '@food-delivery/types';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
+  googleLogin: (idToken: string, role?: UserRole) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -58,6 +59,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(res.data.user);
   }
 
+  async function googleLogin(idToken: string, role?: UserRole) {
+    const res = await api.post('/auth/google', { idToken, role });
+    await saveToken(res.data.token);
+    queryClient.clear();
+    setUser(res.data.user);
+  }
+
   async function logout() {
     await deleteToken();
     queryClient.clear();
@@ -65,7 +73,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, login, register, googleLogin, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

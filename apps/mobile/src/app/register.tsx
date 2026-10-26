@@ -17,27 +17,8 @@ import { useAuth } from '@/context/auth-context';
 import { router } from 'expo-router';
 import { UserRole } from '@food-delivery/types';
 import { Ionicons } from '@expo/vector-icons';
-
-const ROLES = [
-  {
-    label: 'Customer',
-    subtitle: 'Order delicious food',
-    icon: 'fast-food-outline' as const,
-    value: UserRole.CUSTOMER,
-  },
-  {
-    label: 'Restaurant Owner',
-    subtitle: 'Manage your restaurant',
-    icon: 'restaurant-outline' as const,
-    value: UserRole.RESTAURANT_OWNER,
-  },
-  {
-    label: 'Driver',
-    subtitle: 'Deliver and earn',
-    icon: 'bicycle-outline' as const,
-    value: UserRole.DRIVER,
-  },
-];
+import { ROLES } from '@/constants/roles';
+import { GoogleSignInButton } from '@/components/google-sign-in-button';
 
 export default function RegisterScreen() {
   const { register } = useAuth();
@@ -284,6 +265,8 @@ export default function RegisterScreen() {
             </>
           )}
         </Pressable>
+
+        <GoogleSignInButton role={role} />
 
         {/* Login link */}
         <View style={styles.footer}>

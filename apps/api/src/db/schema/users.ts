@@ -12,7 +12,9 @@ export const users = pgTable('users', {
   firstName: text('first_name').notNull(),
   lastName: text('last_name').notNull(),
   email: text('email').notNull().unique(),
-  password: text('password').notNull(),
+  // null cho tài khoản chỉ đăng nhập bằng Google
+  password: text('password'),
+  googleId: text('google_id').unique(),
   role: userRoleEnum('role').notNull().default('CUSTOMER'),
   pushToken: text('push_token'),
   isOnline: boolean('is_online').default(false).notNull(),
