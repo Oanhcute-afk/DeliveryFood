@@ -122,6 +122,11 @@ export default function AdminOverviewScreen() {
                 sub={`${formatUsd(data.orders.revenue7d)} / 7 ngày`}
               />
               <Tile
+                label="App bù voucher 24 giờ"
+                value={formatUsd(data.orders.voucherCost24h)}
+                sub={`${formatUsd(data.orders.voucherCost7d)} / 7 ngày`}
+              />
+              <Tile
                 label="Đăng nhập Google"
                 value={
                   data.users.googleLinked == null

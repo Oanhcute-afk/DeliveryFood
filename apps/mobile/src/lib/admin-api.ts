@@ -60,6 +60,8 @@ export type AdminOverview =
         paid7d: number;
         revenue24h: number;
         revenue7d: number;
+        voucherCost24h: number;
+        voucherCost7d: number;
         perDay: { day: string; count: number }[];
       };
     }

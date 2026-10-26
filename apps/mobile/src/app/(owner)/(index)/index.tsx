@@ -18,6 +18,7 @@ import {
 import { api } from '@/lib/axios';
 import { RestaurantType, Order } from '@food-delivery/types';
 import { useRestaurantSocket } from '@/hooks/use-order-socket';
+import { restaurantAmount, voucherSubsidy } from '@/lib/order-amounts';
 
 const COLORS = {
   background: '#FFF9F5',
@@ -314,10 +315,16 @@ export default function OwnerHomeScreen() {
 
         <View style={styles.orderFooter}>
           <View>
-            <Text style={styles.detailLabel}>Tổng đơn hàng</Text>
+            <Text style={styles.detailLabel}>Nhà hàng nhận</Text>
             <Text style={styles.orderTotal}>
-              ${Number(order.totalAmount).toFixed(2)}
+              ${restaurantAmount(order).toFixed(2)}
             </Text>
+            {voucherSubsidy(order) > 0 ? (
+              <Text style={styles.subsidyNote}>
+                Khách dùng voucher {order.voucherCode ?? ''} · app bù $
+                {voucherSubsidy(order).toFixed(2)}
+              </Text>
+            ) : null}
           </View>
         </View>
 
@@ -903,6 +910,12 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.border,
     marginTop: 14,
     paddingTop: 12,
+  },
+  subsidyNote: {
+    color: COLORS.green,
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 2,
   },
   orderTotal: {
     color: COLORS.primary,

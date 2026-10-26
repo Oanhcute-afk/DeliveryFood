@@ -140,8 +140,9 @@ export class AdminService {
           sql<number>`(select count(*) from "orders" where ${col('orders', 'restaurant_id')} = ${col('restaurants', 'id')})`.mapWith(
             Number,
           ),
+        // Nhà hàng nhận giá gốc (voucher do app bù); đơn cũ chưa có subtotal
         revenue:
-          sql<number>`(select coalesce(sum(${col('orders', 'total_amount')}), 0) from "orders" where ${col('orders', 'restaurant_id')} = ${col('restaurants', 'id')} and ${col('orders', 'status')} in ${PAID})`.mapWith(
+          sql<number>`(select coalesce(sum(coalesce(${col('orders', 'subtotal_amount')}, ${col('orders', 'total_amount')})), 0) from "orders" where ${col('orders', 'restaurant_id')} = ${col('restaurants', 'id')} and ${col('orders', 'status')} in ${PAID})`.mapWith(
             Number,
           ),
       })

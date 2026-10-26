@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '@/lib/axios';
 import { Order, RestaurantType } from '@food-delivery/types';
+import { restaurantAmount, voucherSubsidy } from '@/lib/order-amounts';
 
 type RestaurantOrder = Order & { items: { id: string }[] };
 
@@ -84,7 +85,7 @@ export default function OwnerAnalyticsScreen() {
     () =>
       todayOrders
         .filter((order) => order.status !== 'CANCELLED')
-        .reduce((sum, order) => sum + Number(order.totalAmount), 0),
+        .reduce((sum, order) => sum + restaurantAmount(order), 0),
     [todayOrders],
   );
 
@@ -310,9 +311,17 @@ export default function OwnerAnalyticsScreen() {
               <View style={styles.orderDivider} />
 
               <View style={styles.orderFooter}>
-                <Text style={styles.orderTotalLabel}>Tổng thanh toán</Text>
+                <View>
+                  <Text style={styles.orderTotalLabel}>Nhà hàng nhận</Text>
+                  {voucherSubsidy(item) > 0 ? (
+                    <Text style={styles.subsidyNote}>
+                      Khách dùng voucher {item.voucherCode ?? ''} · app bù{' '}
+                      {formatMoney(voucherSubsidy(item))}
+                    </Text>
+                  ) : null}
+                </View>
                 <Text style={styles.orderTotal}>
-                  {formatMoney(item.totalAmount)}
+                  {formatMoney(restaurantAmount(item))}
                 </Text>
               </View>
             </View>
@@ -618,6 +627,12 @@ const styles = StyleSheet.create({
   orderTotalLabel: {
     color: COLORS.muted,
     fontSize: 12,
+  },
+  subsidyNote: {
+    color: '#16A36A',
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 2,
   },
   orderTotal: {
     color: COLORS.primary,

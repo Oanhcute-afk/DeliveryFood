@@ -62,11 +62,19 @@ export class BusinessStatsService {
           .from(orders)
           .groupBy(orders.status),
         this.db
-          .select({ count: count(), revenue: sum(orders.totalAmount) })
+          .select({
+            count: count(),
+            revenue: sum(orders.totalAmount),
+            voucherCost: sum(orders.discountAmount),
+          })
           .from(orders)
           .where(and(paid, gte(orders.createdAt, dayAgo))),
         this.db
-          .select({ count: count(), revenue: sum(orders.totalAmount) })
+          .select({
+            count: count(),
+            revenue: sum(orders.totalAmount),
+            voucherCost: sum(orders.discountAmount),
+          })
           .from(orders)
           .where(and(paid, gte(orders.createdAt, weekAgo))),
         this.db
@@ -97,6 +105,9 @@ export class BusinessStatsService {
           paid7d: orders7d.count,
           revenue24h: Number(orders24h.revenue ?? 0),
           revenue7d: Number(orders7d.revenue ?? 0),
+          // Tiền voucher app bù cho nhà hàng (khách trả ít hơn, nhà hàng nhận đủ)
+          voucherCost24h: Number(orders24h.voucherCost ?? 0),
+          voucherCost7d: Number(orders7d.voucherCost ?? 0),
           perDay: this.fillDays(ordersPerDay),
         },
       };
