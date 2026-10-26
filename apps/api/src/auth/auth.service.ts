@@ -8,7 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { eq, or } from 'drizzle-orm';
 import { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import * as schema from '../db/schema';
 import { JwtPayload } from '@food-delivery/types';
 import { RegisterDto } from './dto/register.dto';
