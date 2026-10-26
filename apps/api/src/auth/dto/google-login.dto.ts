@@ -2,6 +2,7 @@ import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { UserRole } from '@food-delivery/types';
 
 export class GoogleLoginDto {
+  // Firebase ID token sau khi đăng nhập Google trên app
   @IsString()
   idToken!: string;
 

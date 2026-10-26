@@ -1,36 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { router } from 'expo-router';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@expo/vector-icons';
 import { UserRole } from '@food-delivery/types';
 import { useAuth } from '@/context/auth-context';
 import { ROLES } from '@/constants/roles';
-
-WebBrowser.maybeCompleteAuthSession();
-
-const GOOGLE_CLIENT_IDS = {
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-  androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-};
-
-// expo-auth-session sẽ crash nếu thiếu client ID của platform hiện tại
-const hasClientIdForPlatform = !!Platform.select({
-  ios: GOOGLE_CLIENT_IDS.iosClientId,
-  android: GOOGLE_CLIENT_IDS.androidClientId,
-  default: GOOGLE_CLIENT_IDS.webClientId,
-});
+import { isGoogleSignInAvailable, signInWithGoogle } from '@/lib/firebase-auth';
 
 interface Props {
   // Role dùng khi tạo tài khoản mới. Bỏ trống thì sẽ hỏi người dùng nếu cần.
@@ -38,23 +21,27 @@ interface Props {
 }
 
 export function GoogleSignInButton({ role }: Props) {
-  if (!hasClientIdForPlatform) return null;
-  return <GoogleSignInButtonInner role={role} />;
-}
-
-function GoogleSignInButtonInner({ role }: Props) {
   const { googleLogin } = useAuth();
-  const [request, response, promptAsync] =
-    Google.useIdTokenAuthRequest(GOOGLE_CLIENT_IDS);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingIdToken, setPendingIdToken] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (response?.type !== 'success') return;
+  if (!isGoogleSignInAvailable) return null;
 
-    const idToken = response.params.id_token;
-    if (idToken) void signIn(idToken, role);
-  }, [response]);
+  async function handlePress() {
+    setIsLoading(true);
+
+    let idToken: string | null;
+    try {
+      idToken = await signInWithGoogle();
+    } catch (error: any) {
+      setIsLoading(false);
+      Alert.alert('Google sign-in failed', String(error?.message ?? error));
+      return;
+    }
+
+    if (idToken) await signIn(idToken, role);
+    else setIsLoading(false);
+  }
 
   async function signIn(idToken: string, selectedRole?: UserRole) {
     setIsLoading(true);
@@ -95,12 +82,12 @@ function GoogleSignInButtonInner({ role }: Props) {
         style={({ pressed }) => [
           styles.button,
           pressed && styles.buttonPressed,
-          (!request || isLoading) && styles.buttonDisabled,
+          isLoading && styles.buttonDisabled,
         ]}
         onPress={() => {
-          void promptAsync();
+          void handlePress();
         }}
-        disabled={!request || isLoading}
+        disabled={isLoading}
       >
         {isLoading ? (
           <ActivityIndicator color="#29232A" />

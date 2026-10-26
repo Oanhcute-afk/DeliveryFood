@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/axios';
 import { saveToken, getToken, deleteToken } from '@/lib/auth';
+import { signOutGoogle } from '@/lib/firebase-auth';
 import { User, UserRole } from '@food-delivery/types';
 
 interface AuthContextType {
@@ -68,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function logout() {
     await deleteToken();
+    await signOutGoogle();
     queryClient.clear();
     setUser(null);
   }

@@ -14,19 +14,16 @@ import { JwtPayload } from '@food-delivery/types';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
+import { getApps, initializeApp } from 'firebase-admin/app';
+import { DecodedIdToken, getAuth } from 'firebase-admin/auth';
 
-interface GoogleTokenInfo {
-  aud: string;
-  iss: string;
-  sub: string;
-  email?: string;
-  email_verified?: string | boolean;
-  given_name?: string;
-  family_name?: string;
-  name?: string;
+// Chỉ cần projectId để xác thực Firebase ID token (không cần service account)
+function firebaseAuth() {
+  const app =
+    getApps()[0] ??
+    initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID });
+  return getAuth(app);
 }
-
-const GOOGLE_ISSUERS = ['accounts.google.com', 'https://accounts.google.com'];
 
 @Injectable()
 export class AuthService {
@@ -82,7 +79,7 @@ export class AuthService {
   }
 
   async googleLogin(dto: GoogleLoginDto) {
-    const profile = await this.verifyGoogleIdToken(dto.idToken);
+    const profile = await this.verifyFirebaseIdToken(dto.idToken);
 
     const [existing] = await this.db
       .select()
@@ -90,7 +87,7 @@ export class AuthService {
       .where(
         or(
           eq(schema.users.googleId, profile.sub),
-          eq(schema.users.email, profile.email!),
+          eq(schema.users.email, profile.email),
         ),
       );
 
@@ -120,14 +117,14 @@ export class AuthService {
       });
     }
 
-    const [firstName, ...rest] = (profile.name ?? profile.email!).split(' ');
+    const [firstName, ...rest] = (profile.name ?? profile.email).split(' ');
 
     const [user] = await this.db
       .insert(schema.users)
       .values({
-        firstName: profile.given_name ?? firstName,
-        lastName: profile.family_name ?? rest.join(' '),
-        email: profile.email!,
+        firstName,
+        lastName: rest.join(' '),
+        email: profile.email,
         googleId: profile.sub,
         role: dto.role,
       })
@@ -139,33 +136,33 @@ export class AuthService {
     };
   }
 
-  private async verifyGoogleIdToken(idToken: string) {
-    const allowedClientIds = (process.env.GOOGLE_CLIENT_IDS ?? '')
-      .split(',')
-      .map((id) => id.trim())
-      .filter(Boolean);
+  private async verifyFirebaseIdToken(idToken: string) {
+    let decoded: DecodedIdToken;
+    try {
+      decoded = await firebaseAuth().verifyIdToken(idToken);
+    } catch {
+      throw new UnauthorizedException('Invalid Google token');
+    }
 
-    // tokeninfo kiểm tra chữ ký và thời hạn của token
-    const res = await fetch(
-      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
-    );
-    if (!res.ok) throw new UnauthorizedException('Invalid Google token');
-
-    const info = (await res.json()) as GoogleTokenInfo;
-
-    const emailVerified =
-      info.email_verified === true || info.email_verified === 'true';
+    // Google account ID (sub) — giữ nguyên dù user Firebase bị xoá/tạo lại
+    const googleSub = (
+      decoded.firebase.identities['google.com'] as string[] | undefined
+    )?.[0];
 
     if (
-      !allowedClientIds.includes(info.aud) ||
-      !GOOGLE_ISSUERS.includes(info.iss) ||
-      !info.email ||
-      !emailVerified
+      decoded.firebase.sign_in_provider !== 'google.com' ||
+      !googleSub ||
+      !decoded.email ||
+      !decoded.email_verified
     ) {
       throw new UnauthorizedException('Invalid Google token');
     }
 
-    return info;
+    return {
+      sub: googleSub,
+      email: decoded.email,
+      name: decoded.name as string | undefined,
+    };
   }
 
   private generateToken(user: schema.NewUser) {
