@@ -1,17 +1,31 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { createRouteHandler } from 'uploadthing/express';
 import { uploadRouter } from './uploadthing/upload-router';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { MetricsService } from './monitor/metrics.service';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
   });
 
+  // Ghi số liệu cho trang /monitor (đặt trước mọi route)
+  app.use(app.get(MetricsService).middleware());
+  app.enableShutdownHooks();
+
   app.enableCors();
-  app.setGlobalPrefix('api'); // /api/....
+  app.setGlobalPrefix('api', {
+    // Trang chủ, privacy, terms cho Google OAuth nằm ở gốc domain
+    exclude: [
+      { path: '/', method: RequestMethod.GET },
+      { path: 'privacy', method: RequestMethod.GET },
+      { path: 'terms', method: RequestMethod.GET },
+      { path: 'monitor', method: RequestMethod.GET },
+      { path: 'monitor/data', method: RequestMethod.GET },
+    ],
+  }); // /api/....
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

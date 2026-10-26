@@ -37,6 +37,10 @@ function RootNavigator() {
       <Stack.Protected guard={!!user && user.role === UserRole.DRIVER}>
         <Stack.Screen name="(driver)" />
       </Stack.Protected>
+
+      <Stack.Protected guard={!!user && user.role === UserRole.ADMIN}>
+        <Stack.Screen name="(admin)" />
+      </Stack.Protected>
     </Stack>
   );
 }

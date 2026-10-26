@@ -1,10 +1,15 @@
 export const UserRole = {
     CUSTOMER: "CUSTOMER",
     RESTAURANT_OWNER: 'RESTAURANT_OWNER',
-    DRIVER: 'DRIVER'
+    DRIVER: 'DRIVER',
+    ADMIN: 'ADMIN'
 } as const
 
 export type UserRole = typeof UserRole[keyof typeof UserRole]
+
+// Các role người dùng tự chọn khi đăng ký (ADMIN chỉ được tạo sẵn trên server)
+export const SIGNUP_ROLES = [UserRole.CUSTOMER, UserRole.RESTAURANT_OWNER, UserRole.DRIVER] as const
+export type SignupRole = typeof SIGNUP_ROLES[number]
 
 export interface User {
     id: string;
@@ -12,6 +17,7 @@ export interface User {
     firstName: string;
     lastName: string;
     role: UserRole;
+    isBlocked?: boolean;
     createdAt: Date;
 }
 

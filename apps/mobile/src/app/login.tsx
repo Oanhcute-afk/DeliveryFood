@@ -15,6 +15,7 @@ import {
 import { useAuth } from '@/context/auth-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { GoogleSignInButton } from '@/components/google-sign-in-button';
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -31,8 +32,15 @@ export default function LoginScreen() {
     try {
       await login(email, password);
       router.replace('/');
-    } catch {
-      Alert.alert('Login failed', 'Invalid email or password');
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        Alert.alert(
+          'Account locked',
+          'Your account has been locked by an administrator.',
+        );
+      } else {
+        Alert.alert('Login failed', 'Invalid email or password');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -135,6 +143,8 @@ export default function LoginScreen() {
               </>
             )}
           </Pressable>
+
+          <GoogleSignInButton />
         </View>
 
         {/* Register */}

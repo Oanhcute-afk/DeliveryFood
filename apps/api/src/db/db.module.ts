@@ -2,6 +2,7 @@ import { Module, Global } from '@nestjs/common';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from './schema';
+import { SchemaSyncService } from './schema-sync.service';
 
 @Global()
 @Module({
@@ -13,6 +14,7 @@ import * as schema from './schema';
         return drizzle(sql, { schema });
       },
     },
+    SchemaSyncService,
   ],
   exports: ['DB'],
 })

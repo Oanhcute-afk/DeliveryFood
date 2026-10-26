@@ -1,5 +1,5 @@
-import { IsEmail, IsEnum, IsString, MinLength } from 'class-validator';
-import { UserRole } from '@food-delivery/types';
+import { IsEmail, IsIn, IsString, MinLength } from 'class-validator';
+import { SIGNUP_ROLES, type SignupRole } from '@food-delivery/types';
 
 export class RegisterDto {
   @IsString()
@@ -15,6 +15,7 @@ export class RegisterDto {
   @MinLength(6)
   password!: string;
 
-  @IsEnum(UserRole)
-  role!: UserRole;
+  // Không cho tự đăng ký làm ADMIN
+  @IsIn(SIGNUP_ROLES)
+  role!: SignupRole;
 }
