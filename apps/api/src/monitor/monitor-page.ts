@@ -84,6 +84,28 @@ const STYLES = `
   .sys div span { display: block; font-size: 11px; color: var(--muted); font-weight: 600; }
   .sys div b { font-variant-numeric: tabular-nums; }
   details summary { cursor: pointer; font-size: 12px; color: var(--brand); font-weight: 700; margin-top: 10px; }
+  .login {
+    max-width: 380px; margin: 8vh auto 0; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 28px 24px;
+  }
+  .login .logo { margin: 0 auto 12px; width: 64px; height: 64px; border-radius: 21px; }
+  .login .logo svg { width: 30px; height: 30px; }
+  .login h1 { text-align: center; font-size: 24px; font-weight: 800; letter-spacing: -0.6px; }
+  .login h1 span { color: var(--brand); }
+  .login .caption { text-align: center; font-size: 13px; color: var(--muted); margin: 4px 0 20px; }
+  .login label { display: block; font-size: 12px; font-weight: 700; color: #393039; margin: 12px 0 6px; }
+  .login input {
+    width: 100%; height: 48px; border: 1px solid var(--border); border-radius: 14px; padding: 0 14px;
+    font: inherit; font-size: 14px; color: var(--ink); background: #FFFFFF;
+  }
+  .login input:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .login button[type=submit] {
+    width: 100%; height: 50px; margin-top: 20px; border: 0; border-radius: 15px; background: var(--brand);
+    color: #FFFFFF; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+  .login button[disabled] { opacity: .7; cursor: default; }
+  .login .alert { margin-top: 14px; }
+  [hidden] { display: none !important; }
   footer { text-align: center; font-size: 12px; color: var(--faint); margin-top: 32px; }
   @media (max-width: 520px) {
     .barlist .row { grid-template-columns: 96px 1fr 40px; }
@@ -337,9 +359,61 @@ function render() {
   renderBusiness(lastData.business);
 }
 
+const TOKEN_KEY = 'delifood_monitor_token';
+let refreshTimer = null;
+const getToken = () => { try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; } };
+const setToken = (t) => { try { t ? sessionStorage.setItem(TOKEN_KEY, t) : sessionStorage.removeItem(TOKEN_KEY); } catch {} };
+
+function showLogin(message) {
+  clearInterval(refreshTimer);
+  setToken(null);
+  $('dashboard').hidden = true;
+  $('login').hidden = false;
+  $('login-error').hidden = !message;
+  $('login-error').textContent = message || '';
+}
+
+function showDashboard() {
+  $('login').hidden = true;
+  $('dashboard').hidden = false;
+  load();
+  clearInterval(refreshTimer);
+  refreshTimer = setInterval(load, REFRESH_MS);
+}
+
+$('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('login-submit');
+  btn.disabled = true;
+  $('login-error').hidden = true;
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: $('email').value.trim(), password: $('password').value }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) return showLogin(res.status === 403 ? 'Tài khoản đã bị khoá' : 'Email hoặc mật khẩu không đúng');
+    if (body.user?.role !== 'ADMIN') return showLogin('Tài khoản này không có quyền admin');
+    setToken(body.token);
+    $('password').value = '';
+    showDashboard();
+  } catch {
+    showLogin('Không kết nối được tới server');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$('logout').addEventListener('click', () => showLogin());
+
 async function load() {
   try {
-    const res = await fetch('/monitor/data', { cache: 'no-store' });
+    const res = await fetch('/monitor/data', {
+      cache: 'no-store',
+      headers: { Authorization: 'Bearer ' + getToken() },
+    });
+    if (res.status === 401 || res.status === 403) return showLogin('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     lastData = await res.json();
     render();
@@ -361,8 +435,8 @@ $('refresh').addEventListener('click', load);
 let resizeTimer;
 window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 150); });
 
-load();
-setInterval(load, REFRESH_MS);
+if (getToken()) showDashboard();
+else showLogin();
 `;
 
 export function monitorPage() {
@@ -377,6 +451,21 @@ export function monitorPage() {
 </head>
 <body>
   <div class="container">
+    <section class="login" id="login" hidden>
+      <div class="logo">${LOGO_SVG}</div>
+      <h1>deli<span>food</span> admin</h1>
+      <p class="caption">Đăng nhập bằng tài khoản admin để xem monitor</p>
+      <form id="login-form">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" required placeholder="admin@email.com">
+        <label for="password">Mật khẩu</label>
+        <input id="password" type="password" autocomplete="current-password" required placeholder="Mật khẩu">
+        <button type="submit" id="login-submit">Đăng nhập</button>
+        <div class="alert" id="login-error" hidden></div>
+      </form>
+    </section>
+
+    <div id="dashboard" hidden>
     <header class="top">
       <div class="logo">${LOGO_SVG}</div>
       <div class="title">
@@ -390,6 +479,7 @@ export function monitorPage() {
           <button data-range="day" aria-pressed="false">24 giờ</button>
         </div>
         <button class="btn" id="refresh">Làm mới</button>
+        <button class="btn" id="logout">Đăng xuất</button>
       </div>
     </header>
 
@@ -454,6 +544,7 @@ export function monitorPage() {
     <div class="card"><div class="sys" id="system"></div></div>
 
     <footer>Tự động làm mới mỗi 15 giây · Số liệu truy cập được lưu vào Redis mỗi phút</footer>
+    </div>
   </div>
   <script>${SCRIPT}</script>
 </body>

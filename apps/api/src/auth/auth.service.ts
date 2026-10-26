@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -81,6 +82,7 @@ export class AuthService {
     const passwordMatch = await bcrypt.compare(dto.password, user.password);
 
     if (!passwordMatch) throw new UnauthorizedException('Invalid Credentials');
+    this.assertNotBlocked(user);
 
     return {
       user: this.sanitizeUser(user),
@@ -102,6 +104,7 @@ export class AuthService {
       );
 
     if (existing) {
+      this.assertNotBlocked(existing);
       let user = existing;
 
       // Liên kết tài khoản email/password có sẵn với Google
@@ -237,6 +240,15 @@ export class AuthService {
       email: decoded.email,
       name: decoded.name as string | undefined,
     };
+  }
+
+  private assertNotBlocked(user: schema.User) {
+    if (user.isBlocked) {
+      throw new ForbiddenException({
+        code: 'ACCOUNT_BLOCKED',
+        message: 'Your account has been locked by an administrator',
+      });
+    }
   }
 
   private generateToken(user: schema.NewUser) {
