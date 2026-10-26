@@ -32,8 +32,15 @@ export default function LoginScreen() {
     try {
       await login(email, password);
       router.replace('/');
-    } catch {
-      Alert.alert('Login failed', 'Invalid email or password');
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        Alert.alert(
+          'Account locked',
+          'Your account has been locked by an administrator.',
+        );
+      } else {
+        Alert.alert('Login failed', 'Invalid email or password');
+      }
     } finally {
       setIsLoading(false);
     }
