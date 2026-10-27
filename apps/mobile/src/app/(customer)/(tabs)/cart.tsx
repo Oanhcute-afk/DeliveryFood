@@ -12,10 +12,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { api } from '@/lib/axios';
 import { useCartStore } from '@/store/cart-store';
+import { useDebounce } from '@/hooks/use-debounce';
+import { voucherApi } from '@/lib/vouchers';
+import { VoucherSection } from '@/components/voucher-picker';
 
 const COLORS = {
   background: '#FFF9F5',
@@ -97,6 +100,38 @@ export default function CartScreen() {
     0,
   );
 
+  // undefined = tự chọn voucher tốt nhất, null = khách chọn không dùng voucher
+  const [selectedVoucherId, setSelectedVoucherId] = useState<
+    string | null | undefined
+  >(undefined);
+
+  // Làm tròn theo cent và chờ khách ngừng bấm +/- rồi mới hỏi server
+  const voucherSubtotal = useDebounce(Math.round(cartTotal * 100) / 100, 400);
+  const {
+    data: voucherData,
+    isLoading: vouchersLoading,
+    refetch: refetchVouchers,
+  } = useQuery({
+    queryKey: ['vouchers-available', voucherSubtotal],
+    queryFn: () => voucherApi.available(voucherSubtotal),
+    enabled: items.length > 0 && voucherSubtotal > 0,
+    placeholderData: (previous) => previous,
+  });
+
+  const vouchers = voucherData?.vouchers ?? [];
+  const bestVoucherId = voucherData?.bestVoucherId ?? null;
+  const pickedVoucher =
+    selectedVoucherId === null
+      ? null
+      : vouchers.find((v) => v.id === selectedVoucherId && v.eligible);
+  // Voucher khách tự chọn không còn hợp lệ (VD: giảm số món) → quay về voucher tốt nhất
+  const selectedVoucher =
+    pickedVoucher === null
+      ? null
+      : (pickedVoucher ?? vouchers.find((v) => v.id === bestVoucherId) ?? null);
+  const discount = selectedVoucher?.discount ?? 0;
+  const finalTotal = Math.max(cartTotal - discount, 0);
+
   const { mutate: placeOrder, isPending } = useMutation({
     mutationFn: () =>
       api.post('/orders', {
@@ -106,6 +141,7 @@ export default function CartScreen() {
           menuItemId: item.id,
           quantity: String(item.quantity),
         })),
+        voucherId: selectedVoucher?.id,
       }),
 
     onSuccess: (res) => {
@@ -117,11 +153,15 @@ export default function CartScreen() {
         });
       }
       queryClient.invalidateQueries({ queryKey: ['my-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['vouchers-available'] });
+      setSelectedVoucherId(undefined);
       clearCart();
       router.push(`/(customer)/order/${createdOrder.id}`);
     },
 
     onError: (error: any) => {
+      // Voucher có thể vừa hết lượt/hết hạn → tải lại danh sách
+      void refetchVouchers();
       Alert.alert(
         'Không thể đặt hàng',
         error?.response?.data?.message ?? 'Vui lòng thử lại sau.',
@@ -450,6 +490,15 @@ export default function CartScreen() {
               ) : null}
             </View>
 
+            <VoucherSection
+              vouchers={vouchers}
+              bestVoucherId={bestVoucherId}
+              selected={selectedVoucher}
+              isLoading={vouchersLoading}
+              disabled={isPending}
+              onSelect={setSelectedVoucherId}
+            />
+
             <View style={styles.summaryCard}>
               <Text style={styles.summaryHeading}>Tóm tắt đơn hàng</Text>
 
@@ -469,6 +518,17 @@ export default function CartScreen() {
                 </Text>
               </View>
 
+              {selectedVoucher ? (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>
+                    Voucher {selectedVoucher.code}
+                  </Text>
+                  <Text style={[styles.summaryValue, styles.discountValue]}>
+                    −${discount.toFixed(2)}
+                  </Text>
+                </View>
+              ) : null}
+
               <View style={styles.summaryDivider} />
 
               <View style={styles.totalRow}>
@@ -480,7 +540,7 @@ export default function CartScreen() {
                 </View>
 
                 <Text style={styles.totalAmount}>
-                  ${cartTotal.toFixed(2)}
+                  ${finalTotal.toFixed(2)}
                 </Text>
               </View>
             </View>
@@ -892,6 +952,9 @@ const styles = StyleSheet.create({
     maxWidth: 190,
   },
 
+  discountValue: {
+    color: COLORS.green,
+  },
   totalAmount: {
     fontSize: 23,
     fontWeight: '900',

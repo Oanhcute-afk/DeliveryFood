@@ -342,7 +342,8 @@ function renderBusiness(b) {
     tile('Tài xế đang online', num(b.driversOnline), 'trên ' + num(r.DRIVER || 0) + ' tài xế') +
     tile('Nhà hàng đang mở', num(b.restaurants.open), 'trên ' + num(b.restaurants.total) + ' nhà hàng') +
     tile('Đơn đã thanh toán', num(b.orders.paid24h), num(b.orders.paid7d) + ' đơn trong 7 ngày') +
-    tile('Doanh thu 24 giờ', usd(b.orders.revenue24h), usd(b.orders.revenue7d) + ' trong 7 ngày');
+    tile('Doanh thu 24 giờ', usd(b.orders.revenue24h), usd(b.orders.revenue7d) + ' trong 7 ngày · khách đã trả') +
+    tile('App bù voucher 24 giờ', usd(b.orders.voucherCost24h), usd(b.orders.voucherCost7d) + ' trong 7 ngày');
 
   barChart($('chart-orders'), b.orders.perDay.map((d) => {
     const [y, m, dd] = d.day.split('-');
