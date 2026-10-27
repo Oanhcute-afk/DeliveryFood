@@ -2,10 +2,16 @@ packages:
   - 'apps/*'
   - 'packages/*'
 allowBuilds:
+  # Không cần: chỉ đọc FIREBASE_WEBAPP_CONFIG (app tự initializeApp trong code)
+  '@firebase/util': false
+  # Không cần: preinstall chỉ in "no-op"
+  '@google/genai': false
   '@nestjs/core': true
   '@parcel/watcher': false
   bcrypt: true
   esbuild: true
   msgpackr-extract: true
+  # Không cần: postinstall chỉ in cảnh báo phiên bản
+  protobufjs: false
   unrs-resolver: true
 minimumReleaseAge: 0
