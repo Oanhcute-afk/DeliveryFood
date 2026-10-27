@@ -4,11 +4,12 @@
     "appVersionSource": "remote"
   },
   "build": {
-"preview": {
-  "distribution": "internal",
-  "node": "22.16.0",
-  "environment": "preview",
-  "android": { "buildType": "apk" }
-}
+    "preview": {
+      "distribution": "internal",
+      "node": "22.16.0",
+      "corepack": true,
+      "environment": "preview",
+      "android": { "buildType": "apk" }
+    }
   }
 }
