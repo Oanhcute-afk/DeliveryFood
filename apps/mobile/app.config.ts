@@ -68,7 +68,12 @@ export default {
       reactCompiler: true,
     },
 
-    // Chạy `eas init` bằng tài khoản Expo của bạn rồi dán projectId vào đây:
-    // extra: { eas: { projectId: '<projectId của bạn>' } },
+    // Project EAS: https://expo.dev/accounts/oanhcute-afk/projects/mobile
+    owner: 'oanhcute-afk',
+    extra: {
+      eas: {
+        projectId: 'c1bd7458-407f-4941-9664-37134df9d6af',
+      },
+    },
   },
 };
