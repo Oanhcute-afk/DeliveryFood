@@ -68,10 +68,7 @@ export default {
       reactCompiler: true,
     },
 
-    extra: {
-      eas: {
-        projectId: 'ee2a5212-ca6e-4a18-a1ab-b9c56df0b2f8',
-      },
-    },
+    // Chạy `eas init` bằng tài khoản Expo của bạn rồi dán projectId vào đây:
+    // extra: { eas: { projectId: '<projectId của bạn>' } },
   },
 };
