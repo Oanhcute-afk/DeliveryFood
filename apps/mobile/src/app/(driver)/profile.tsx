@@ -10,9 +10,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/auth-context';
 import { api } from '@/lib/axios';
+import { BURGER_COLORS } from '@/constants/theme';
+import { useLanguage } from '@/context/language-context';
+import { LanguageSwitch } from '@/components/language-switch';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const { tr } = useLanguage();
 
   const { data: ratingData, isLoading } = useQuery<{
     averageRating: number | null;
@@ -29,7 +33,7 @@ export default function ProfileScreen() {
 
   const fullName =
     [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
-    'Tài xế';
+    tr('Tài xế', 'Driver');
 
   const initials =
     `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase() ||
@@ -37,12 +41,12 @@ export default function ProfileScreen() {
 
   const roleLabel =
     user?.role === 'DRIVER'
-      ? 'Tài xế giao hàng'
+      ? tr('Tài xế giao hàng', 'Delivery Driver')
       : user?.role === 'CUSTOMER'
-        ? 'Khách hàng'
+        ? tr('Khách hàng', 'Customer')
         : user?.role === 'RESTAURANT_OWNER'
-          ? 'Chủ nhà hàng'
-          : user?.role ?? 'Thành viên';
+          ? tr('Chủ nhà hàng', 'Restaurant Owner')
+          : user?.role ?? tr('Thành viên', 'Member');
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -52,17 +56,22 @@ export default function ProfileScreen() {
       >
         {/* Tiêu đề */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.eyebrow}>FOOD DELIVERY</Text>
-            <Text style={styles.pageTitle}>Hồ sơ cá nhân</Text>
+          <View style={styles.headerLeft}>
+            <Text style={styles.eyebrow}>
+              {tr('TÀI KHOẢN TÀI XẾ', 'DRIVER ACCOUNT')}
+            </Text>
+            <Text style={styles.pageTitle}>
+              {tr('Hồ sơ cá nhân', 'My Profile')}
+            </Text>
             <Text style={styles.pageSubtitle}>
-              Quản lý thông tin tài khoản của bạn
+              {tr(
+                'Quản lý thông tin tài khoản của bạn',
+                'Manage your driver account details',
+              )}
             </Text>
           </View>
 
-          <View style={styles.headerIcon}>
-            <Text style={styles.headerIconText}>👤</Text>
-          </View>
+          <LanguageSwitch />
         </View>
 
         {/* Thông tin người dùng */}
@@ -90,8 +99,12 @@ export default function ProfileScreen() {
               <Text style={styles.infoEmoji}>✉️</Text>
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>ĐỊA CHỈ EMAIL</Text>
-              <Text style={styles.infoValue}>{user?.email || 'Chưa cập nhật'}</Text>
+              <Text style={styles.infoLabel}>
+                {tr('ĐỊA CHỈ EMAIL', 'EMAIL ADDRESS')}
+              </Text>
+              <Text style={styles.infoValue}>
+                {user?.email || tr('Chưa cập nhật', 'Not provided')}
+              </Text>
             </View>
           </View>
 
@@ -100,15 +113,29 @@ export default function ProfileScreen() {
               <Text style={styles.infoEmoji}>🪪</Text>
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>VAI TRÒ TÀI KHOẢN</Text>
+              <Text style={styles.infoLabel}>
+                {tr('VAI TRÒ TÀI KHOẢN', 'ACCOUNT ROLE')}
+              </Text>
               <Text style={styles.infoValue}>{roleLabel}</Text>
             </View>
           </View>
         </View>
 
+        {/* Tùy chọn ngôn ngữ */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>
+            {tr('Tùy chọn hiển thị', 'Display Preferences')}
+          </Text>
+        </View>
+        <View style={styles.langWrap}>
+          <LanguageSwitch variant="card" />
+        </View>
+
         {/* Đánh giá tài xế */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Đánh giá của bạn</Text>
+          <Text style={styles.sectionTitle}>
+            {tr('Đánh giá của bạn', 'Your Rating')}
+          </Text>
           <Text style={styles.sectionEmoji}>⭐</Text>
         </View>
 
@@ -118,13 +145,15 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.ratingContent}>
-            <Text style={styles.ratingTitle}>Điểm đánh giá tài xế</Text>
+            <Text style={styles.ratingTitle}>
+              {tr('Điểm đánh giá tài xế', 'Driver Rating')}
+            </Text>
 
             {isLoading ? (
               <View style={styles.ratingLoading}>
-                <ActivityIndicator size="small" color="#FF6B35" />
+                <ActivityIndicator size="small" color={BURGER_COLORS.primary} />
                 <Text style={styles.ratingDescription}>
-                  Đang tải đánh giá...
+                  {tr('Đang tải đánh giá...', 'Loading rating...')}
                 </Text>
               </View>
             ) : ratingData?.averageRating != null ? (
@@ -137,14 +166,22 @@ export default function ProfileScreen() {
                   <Text style={styles.ratingStar}>★</Text>
                 </View>
                 <Text style={styles.ratingDescription}>
-                  Điểm trung bình từ khách hàng
+                  {tr(
+                    'Điểm trung bình từ khách hàng',
+                    'Average rating from customers',
+                  )}
                 </Text>
               </>
             ) : (
               <>
-                <Text style={styles.noRating}>Chưa có đánh giá</Text>
+                <Text style={styles.noRating}>
+                  {tr('Chưa có đánh giá', 'No ratings yet')}
+                </Text>
                 <Text style={styles.ratingDescription}>
-                  Điểm số sẽ xuất hiện sau khi bạn nhận được đánh giá.
+                  {tr(
+                    'Điểm số sẽ xuất hiện sau khi bạn nhận được đánh giá.',
+                    'Ratings will appear after customers review your deliveries.',
+                  )}
                 </Text>
               </>
             )}
@@ -153,7 +190,9 @@ export default function ProfileScreen() {
 
         {/* Đăng xuất */}
         <View style={styles.logoutSection}>
-          <Text style={styles.sectionTitle}>Tài khoản</Text>
+          <Text style={styles.sectionTitle}>
+            {tr('Tài khoản', 'Account Actions')}
+          </Text>
 
           <Pressable
             style={({ pressed }) => [
@@ -164,24 +203,27 @@ export default function ProfileScreen() {
               void logout();
             }}
             accessibilityRole="button"
-            accessibilityLabel="Đăng xuất tài khoản"
+            accessibilityLabel={tr('Đăng xuất tài khoản', 'Log out')}
           >
             <View style={styles.logoutIcon}>
               <Text style={styles.logoutIconText}>↪</Text>
             </View>
 
             <View style={styles.logoutContent}>
-              <Text style={styles.logoutText}>Đăng xuất</Text>
+              <Text style={styles.logoutText}>
+                {tr('Đăng xuất', 'Log Out')}
+              </Text>
               <Text style={styles.logoutDescription}>
-                Đăng xuất khỏi tài khoản hiện tại
+                {tr(
+                  'Đăng xuất khỏi tài khoản hiện tại',
+                  'Sign out of your current account',
+                )}
               </Text>
             </View>
 
             <Text style={styles.logoutArrow}>›</Text>
           </Pressable>
         </View>
-
-        <Text style={styles.footerText}>FoodDelivery · Đồng hành cùng bạn</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -190,61 +232,48 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF9F5',
+    backgroundColor: BURGER_COLORS.background,
   },
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: 18,
+    paddingTop: 14,
     paddingBottom: 36,
   },
-
-  // Header
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 12,
-    marginBottom: 25,
+    marginBottom: 20,
+  },
+  headerLeft: {
+    flex: 1,
   },
   eyebrow: {
     fontSize: 10,
     fontWeight: '900',
-    letterSpacing: 1.7,
-    color: '#FF6B35',
-    marginBottom: 7,
+    letterSpacing: 1.4,
+    color: BURGER_COLORS.primary,
+    marginBottom: 4,
   },
   pageTitle: {
-    fontSize: 27,
-    lineHeight: 34,
+    fontSize: 26,
     fontWeight: '900',
-    color: '#29232A',
+    color: BURGER_COLORS.text,
     letterSpacing: -0.6,
   },
   pageSubtitle: {
     fontSize: 12,
-    color: '#8B8289',
-    marginTop: 5,
+    color: BURGER_COLORS.muted,
+    marginTop: 4,
   },
-  headerIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    backgroundColor: '#FFF0E8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerIconText: {
-    fontSize: 26,
-  },
-
-  // Thẻ hồ sơ
   profileCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    padding: 19,
+    backgroundColor: BURGER_COLORS.surface,
+    borderRadius: 20,
+    padding: 18,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
-    marginBottom: 28,
+    borderColor: BURGER_COLORS.border,
+    marginBottom: 22,
   },
   profileTop: {
     flexDirection: 'row',
@@ -252,15 +281,15 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   avatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 23,
-    backgroundColor: '#FF6B35',
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: BURGER_COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 25,
+    fontSize: 23,
     fontWeight: '900',
     color: '#FFFFFF',
   },
@@ -268,113 +297,113 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   name: {
-    fontSize: 19,
-    lineHeight: 25,
-    fontWeight: '900',
-    color: '#29232A',
+    fontSize: 18,
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
   },
   email: {
     fontSize: 12,
-    color: '#8B8289',
-    marginTop: 4,
+    color: BURGER_COLORS.muted,
+    marginTop: 3,
   },
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: '#FFF0E8',
-    paddingHorizontal: 9,
+    backgroundColor: BURGER_COLORS.primaryLight,
+    paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 8,
-    marginTop: 9,
+    borderRadius: 999,
+    marginTop: 8,
     gap: 6,
   },
   roleDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#FF6B35',
+    backgroundColor: BURGER_COLORS.primary,
   },
   roleText: {
-    fontSize: 10,
-    color: '#D94D20',
+    fontSize: 11,
+    color: BURGER_COLORS.primaryDark,
     fontWeight: '800',
   },
   divider: {
     height: 1,
-    backgroundColor: '#F3ECE7',
-    marginVertical: 19,
+    backgroundColor: BURGER_COLORS.border,
+    marginVertical: 16,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   infoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 13,
-    backgroundColor: '#FFF9F5',
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: BURGER_COLORS.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
   infoEmoji: {
-    fontSize: 17,
+    fontSize: 16,
   },
   infoContent: {
     flex: 1,
   },
   infoLabel: {
     fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    color: '#A1989E',
-    marginBottom: 5,
+    fontWeight: '800',
+    letterSpacing: 0.7,
+    color: BURGER_COLORS.muted,
+    marginBottom: 3,
   },
   infoValue: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#39313A',
+    color: BURGER_COLORS.text,
   },
-
-  // Đánh giá
+  langWrap: {
+    marginBottom: 22,
+  },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 13,
+    marginBottom: 10,
   },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: '#29232A',
+    fontSize: 16,
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
   },
   sectionEmoji: {
-    fontSize: 20,
+    fontSize: 18,
   },
   ratingCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BURGER_COLORS.surface,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 28,
+    borderColor: BURGER_COLORS.border,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 22,
   },
   ratingIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#FFF4D9',
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    backgroundColor: BURGER_COLORS.cheeseLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ratingIconText: {
-    fontSize: 29,
-    color: '#F5A623',
+    fontSize: 26,
+    color: BURGER_COLORS.cheese,
   },
   ratingContent: {
     flex: 1,
@@ -383,8 +412,8 @@ const styles = StyleSheet.create({
   ratingTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#39313A',
-    marginBottom: 7,
+    color: BURGER_COLORS.text,
+    marginBottom: 5,
   },
   ratingValueRow: {
     flexDirection: 'row',
@@ -392,91 +421,82 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   ratingValue: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '900',
-    color: '#29232A',
+    color: BURGER_COLORS.text,
   },
   ratingOutOf: {
     fontSize: 12,
-    color: '#8B8289',
-    marginTop: 7,
+    color: BURGER_COLORS.muted,
+    marginTop: 6,
   },
   ratingStar: {
-    fontSize: 18,
-    color: '#F5A623',
+    fontSize: 17,
+    color: BURGER_COLORS.cheese,
     marginLeft: 2,
   },
   ratingDescription: {
     fontSize: 11,
     lineHeight: 17,
-    color: '#8B8289',
-    marginTop: 5,
+    color: BURGER_COLORS.muted,
+    marginTop: 4,
   },
   ratingLoading: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
-    paddingVertical: 5,
+    gap: 8,
+    paddingVertical: 4,
   },
   noRating: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#514850',
+    color: BURGER_COLORS.textSoft,
   },
-
-  // Đăng xuất
   logoutSection: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BURGER_COLORS.surface,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
+    borderColor: BURGER_COLORS.border,
     borderRadius: 18,
-    padding: 15,
-    marginTop: 13,
+    padding: 14,
+    marginTop: 10,
     gap: 12,
   },
   logoutButtonPressed: {
-    opacity: 0.75,
-    backgroundColor: '#FFF3EF',
+    opacity: 0.88,
   },
   logoutIcon: {
-    width: 43,
-    height: 43,
-    borderRadius: 14,
-    backgroundColor: '#FEF0EF',
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    backgroundColor: BURGER_COLORS.dangerLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoutIconText: {
-    fontSize: 25,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#DC4545',
+    color: BURGER_COLORS.danger,
   },
   logoutContent: {
     flex: 1,
   },
   logoutText: {
     fontSize: 14,
-    fontWeight: '900',
-    color: '#D63E3E',
+    fontWeight: '800',
+    color: BURGER_COLORS.danger,
   },
   logoutDescription: {
     fontSize: 11,
-    color: '#8B8289',
-    marginTop: 4,
+    color: BURGER_COLORS.muted,
+    marginTop: 2,
   },
   logoutArrow: {
-    fontSize: 27,
-    color: '#B5AAB0',
-  },
-  footerText: {
-    fontSize: 10,
-    color: '#B1A6AC',
-    textAlign: 'center',
-    fontWeight: '600',
+    fontSize: 24,
+    color: BURGER_COLORS.faint,
   },
 });

@@ -5,6 +5,7 @@ import { StripeProvider } from '@stripe/stripe-react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AuthProvider, useAuth } from '@/context/auth-context';
+import { LanguageProvider } from '@/context/language-context';
 import { UserRole } from '@food-delivery/types';
 
 const queryClient = new QueryClient();
@@ -51,10 +52,12 @@ export default function TabLayout() {
       <StripeProvider
         publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!}
       >
-        <AuthProvider>
-          <AnimatedSplashOverlay />
-          <RootNavigator />
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <AnimatedSplashOverlay />
+            <RootNavigator />
+          </AuthProvider>
+        </LanguageProvider>
       </StripeProvider>
     </QueryClientProvider>
   );

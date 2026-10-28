@@ -8,6 +8,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { BURGER_COLORS } from '@/constants/theme';
+import { useLanguage } from '@/context/language-context';
 
 interface StarRatingProps {
   rating: number;
@@ -15,13 +17,26 @@ interface StarRatingProps {
   size?: number;
 }
 
-function StarRating({ rating, onRate, size = 36 }: StarRatingProps) {
+function StarRating({ rating, onRate, size = 34 }: StarRatingProps) {
   return (
     <View style={styles.stars}>
       {[1, 2, 3, 4, 5].map((star) => (
-        <Pressable key={star} onPress={() => onRate(star)}>
-          <Text style={[styles.star, { fontSize: size }]}>
-            {star <= rating ? '★' : '☆'}
+        <Pressable
+          key={star}
+          onPress={() => onRate(star)}
+          style={({ pressed }) => pressed && { opacity: 0.85 }}
+        >
+          <Text
+            style={[
+              styles.star,
+              {
+                fontSize: size,
+                color:
+                  star <= rating ? BURGER_COLORS.cheese : BURGER_COLORS.border,
+              },
+            ]}
+          >
+            ★
           </Text>
         </Pressable>
       ))}
@@ -48,6 +63,7 @@ export function RatingModal({
   onDismiss,
   isSubmitting,
 }: RatingModalProps) {
+  const { tr } = useLanguage();
   const [restaurantRating, setRestaurantRating] = useState(0);
   const [driverRating, setDriverRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -71,11 +87,21 @@ export function RatingModal({
     >
       <View style={styles.overlay}>
         <View style={styles.sheet}>
-          <Text style={styles.title}>🎉 Order Delivered!</Text>
-          <Text style={styles.subtitle}>How was your experience?</Text>
+          <View style={styles.handle} />
+          <Text style={styles.title}>
+            {tr('🍔 Đã giao hàng thành công!', '🍔 Order Delivered!')}
+          </Text>
+          <Text style={styles.subtitle}>
+            {tr(
+              'Trải nghiệm bữa ăn của bạn thế nào?',
+              'How was your meal and delivery experience?',
+            )}
+          </Text>
 
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Restaurant</Text>
+            <Text style={styles.sectionLabel}>
+              {tr('Đánh giá nhà hàng', 'Restaurant')}
+            </Text>
             <StarRating
               rating={restaurantRating}
               onRate={setRestaurantRating}
@@ -84,38 +110,54 @@ export function RatingModal({
 
           {hasDriver && (
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Driver</Text>
+              <Text style={styles.sectionLabel}>
+                {tr('Đánh giá tài xế', 'Driver')}
+              </Text>
               <StarRating rating={driverRating} onRate={setDriverRating} />
             </View>
           )}
 
           <TextInput
             style={styles.input}
-            placeholder="Leave a comment (optional)"
-            placeholderTextColor="#aaa"
+            placeholder={tr(
+              'Nhận xét thêm về món ăn (không bắt buộc)...',
+              'Leave a comment (optional)...',
+            )}
+            placeholderTextColor={BURGER_COLORS.faint}
             value={comment}
             onChangeText={setComment}
             multiline
-            numberOfLines={2}
+            numberOfLines={3}
           />
 
           <Pressable
-            style={[
+            style={({ pressed }) => [
               styles.submitButton,
               !canSubmit && styles.submitButtonDisabled,
+              pressed && canSubmit && { opacity: 0.88 },
             ]}
             onPress={handleSubmit}
             disabled={!canSubmit || isSubmitting}
           >
             {isSubmitting ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.submitButtonText}>Submit Review</Text>
+              <Text style={styles.submitButtonText}>
+                {tr('Gửi đánh giá', 'Submit Review')}
+              </Text>
             )}
           </Pressable>
 
-          <Pressable style={styles.skipButton} onPress={onDismiss}>
-            <Text style={styles.skipText}>Skip for now</Text>
+          <Pressable
+            style={({ pressed }) => [
+              styles.skipButton,
+              pressed && { opacity: 0.8 },
+            ]}
+            onPress={onDismiss}
+          >
+            <Text style={styles.skipText}>
+              {tr('Để sau', 'Skip for now')}
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -126,75 +168,94 @@ export function RatingModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(44, 26, 17, 0.45)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: '#fff',
+    backgroundColor: BURGER_COLORS.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 28,
-    paddingBottom: 40,
+    padding: 24,
+    paddingBottom: 36,
+    borderTopWidth: 1,
+    borderColor: BURGER_COLORS.border,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: BURGER_COLORS.border,
+    alignSelf: 'center',
+    marginBottom: 16,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#999',
+    fontSize: 13,
+    color: BURGER_COLORS.muted,
     textAlign: 'center',
-    marginBottom: 24,
-  },
-  section: {
     marginBottom: 20,
   },
+  section: {
+    marginBottom: 16,
+    backgroundColor: BURGER_COLORS.surface,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: BURGER_COLORS.border,
+  },
   sectionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 10,
+    fontSize: 13,
+    fontWeight: '700',
+    color: BURGER_COLORS.text,
+    marginBottom: 8,
   },
   stars: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
   },
   star: {
-    color: '#FF6B35',
+    lineHeight: 38,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 10,
+    borderColor: BURGER_COLORS.border,
+    backgroundColor: BURGER_COLORS.surface,
+    borderRadius: 14,
     padding: 12,
     fontSize: 14,
-    color: '#333',
+    color: BURGER_COLORS.text,
     textAlignVertical: 'top',
-    marginBottom: 20,
+    minHeight: 76,
+    marginBottom: 16,
   },
   submitButton: {
-    backgroundColor: '#FF6B35',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: BURGER_COLORS.primary,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   submitButtonDisabled: {
-    backgroundColor: '#f0c4b0',
+    opacity: 0.45,
   },
   submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
   },
   skipButton: {
     alignItems: 'center',
     padding: 8,
   },
   skipText: {
-    fontSize: 14,
-    color: '#aaa',
+    fontSize: 13,
+    fontWeight: '600',
+    color: BURGER_COLORS.muted,
   },
 });

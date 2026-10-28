@@ -1,4 +1,3 @@
-
 import {
   Pressable,
   ScrollView,
@@ -7,29 +6,34 @@ import {
   View,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/auth-context';
+import { BURGER_COLORS } from '@/constants/theme';
+import { useLanguage } from '@/context/language-context';
+import { LanguageSwitch } from '@/components/language-switch';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const { tr } = useLanguage();
 
   const fullName =
     `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() ||
-    'Food Lover';
+    tr('Tín đồ ẩm thực', 'Food Lover');
 
   const roleLabel: Record<string, string> = {
-    CUSTOMER: 'Customer',
-    RESTAURANT_OWNER: 'Restaurant Owner',
-    DRIVER: 'Driver',
+    CUSTOMER: tr('Khách hàng', 'Customer'),
+    RESTAURANT_OWNER: tr('Chủ nhà hàng', 'Restaurant Owner'),
+    DRIVER: tr('Tài xế', 'Driver'),
   };
 
   const displayRole = user?.role
     ? roleLabel[user.role] ?? user.role
-    : 'Member';
+    : tr('Thành viên', 'Member');
 
   return (
-    <View style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFF9F5" />
+    <SafeAreaView style={styles.screen} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={BURGER_COLORS.background} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -37,18 +41,16 @@ export default function ProfileScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.headerCaption}>YOUR ACCOUNT</Text>
-            <Text style={styles.headerTitle}>My Profile</Text>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerCaption}>
+              {tr('TÀI KHOẢN CỦA BẠN', 'YOUR ACCOUNT')}
+            </Text>
+            <Text style={styles.headerTitle}>
+              {tr('Hồ sơ cá nhân', 'My Profile')}
+            </Text>
           </View>
 
-          <View style={styles.headerIcon}>
-            <Ionicons
-              name="person-outline"
-              size={24}
-              color="#FF6B35"
-            />
-          </View>
+          <LanguageSwitch />
         </View>
 
         {/* Profile card */}
@@ -57,8 +59,8 @@ export default function ProfileScreen() {
             <View style={styles.avatar}>
               <Ionicons
                 name="person"
-                size={42}
-                color="#FF6B35"
+                size={40}
+                color={BURGER_COLORS.primary}
               />
             </View>
 
@@ -67,46 +69,31 @@ export default function ProfileScreen() {
 
           <Text style={styles.name}>{fullName}</Text>
           <Text style={styles.email}>
-            {user?.email ?? 'No email available'}
+            {user?.email ?? tr('Chưa có email', 'No email available')}
           </Text>
 
           <View style={styles.roleBadge}>
             <Ionicons
               name="shield-checkmark"
               size={15}
-              color="#FF6B35"
+              color={BURGER_COLORS.primary}
             />
             <Text style={styles.roleText}>{displayRole}</Text>
           </View>
+        </View>
 
-          <View style={styles.profileDivider} />
-
-          <View style={styles.memberInfo}>
-            <View style={styles.memberIcon}>
-              <Ionicons
-                name="heart"
-                size={19}
-                color="#FF6B35"
-              />
-            </View>
-
-            <View style={styles.memberTextContainer}>
-              <Text style={styles.memberTitle}>Welcome to DeliFood</Text>
-              <Text style={styles.memberSubtitle}>
-                Good food, good mood.
-              </Text>
-            </View>
-
-            <Ionicons
-              name="checkmark-circle"
-              size={21}
-              color="#37A66B"
-            />
-          </View>
+        {/* Language Setting */}
+        <Text style={styles.sectionTitle}>
+          {tr('Tùy chọn hiển thị', 'Display Preferences')}
+        </Text>
+        <View style={styles.langSection}>
+          <LanguageSwitch variant="card" />
         </View>
 
         {/* Account details */}
-        <Text style={styles.sectionTitle}>Account information</Text>
+        <Text style={styles.sectionTitle}>
+          {tr('Thông tin tài khoản', 'Account Information')}
+        </Text>
 
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
@@ -114,20 +101,16 @@ export default function ProfileScreen() {
               <Ionicons
                 name="person-outline"
                 size={20}
-                color="#FF6B35"
+                color={BURGER_COLORS.primary}
               />
             </View>
 
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Full name</Text>
+              <Text style={styles.infoLabel}>
+                {tr('Họ và tên', 'Full name')}
+              </Text>
               <Text style={styles.infoValue}>{fullName}</Text>
             </View>
-
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color="#C4BAB4"
-            />
           </View>
 
           <View style={styles.rowDivider} />
@@ -137,22 +120,18 @@ export default function ProfileScreen() {
               <Ionicons
                 name="mail-outline"
                 size={20}
-                color="#FF6B35"
+                color={BURGER_COLORS.primary}
               />
             </View>
 
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Email address</Text>
+              <Text style={styles.infoLabel}>
+                {tr('Địa chỉ Email', 'Email address')}
+              </Text>
               <Text style={styles.infoValue}>
-                {user?.email ?? 'Not provided'}
+                {user?.email ?? tr('Chưa cung cấp', 'Not provided')}
               </Text>
             </View>
-
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color="#C4BAB4"
-            />
           </View>
 
           <View style={styles.rowDivider} />
@@ -162,25 +141,23 @@ export default function ProfileScreen() {
               <Ionicons
                 name="ribbon-outline"
                 size={20}
-                color="#FF6B35"
+                color={BURGER_COLORS.primary}
               />
             </View>
 
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Account role</Text>
+              <Text style={styles.infoLabel}>
+                {tr('Vai trò tài khoản', 'Account role')}
+              </Text>
               <Text style={styles.infoValue}>{displayRole}</Text>
             </View>
-
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color="#C4BAB4"
-            />
           </View>
         </View>
 
         {/* Logout */}
-        <Text style={styles.sectionTitle}>Account actions</Text>
+        <Text style={styles.sectionTitle}>
+          {tr('Tác vụ tài khoản', 'Account Actions')}
+        </Text>
 
         <Pressable
           style={({ pressed }) => [
@@ -195,91 +172,81 @@ export default function ProfileScreen() {
             <Ionicons
               name="log-out-outline"
               size={22}
-              color="#E34D4D"
+              color={BURGER_COLORS.danger}
             />
           </View>
 
-          <Text style={styles.logoutText}>Log Out</Text>
+          <Text style={styles.logoutText}>
+            {tr('Đăng xuất', 'Log Out')}
+          </Text>
 
           <View style={styles.logoutArrow}>
             <Ionicons
               name="arrow-forward"
               size={18}
-              color="#E34D4D"
+              color={BURGER_COLORS.danger}
             />
           </View>
         </Pressable>
-
-        <View style={styles.footer}>
-          <Ionicons name="heart" size={13} color="#FF6B35" />
-          <Text style={styles.footerText}>
-            Made with love for food lovers
-          </Text>
-        </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#FFF9F5',
+    backgroundColor: BURGER_COLORS.background,
   },
   container: {
-    paddingHorizontal: 22,
-    paddingTop: 25,
+    paddingHorizontal: 18,
+    paddingTop: 14,
     paddingBottom: 35,
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 25,
+    marginBottom: 20,
+    gap: 12,
+  },
+  headerLeft: {
+    flex: 1,
   },
   headerCaption: {
-    color: '#FF6B35',
+    color: BURGER_COLORS.primary,
     fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1.5,
-    marginBottom: 7,
+    letterSpacing: 1.2,
+    marginBottom: 4,
   },
   headerTitle: {
-    fontSize: 29,
-    fontWeight: '800',
-    color: '#29232A',
-    letterSpacing: -0.7,
-  },
-  headerIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 17,
-    backgroundColor: '#FFEEE5',
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontSize: 26,
+    fontWeight: '900',
+    color: BURGER_COLORS.text,
+    letterSpacing: -0.6,
   },
   profileCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    backgroundColor: BURGER_COLORS.surface,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
+    borderColor: BURGER_COLORS.border,
     paddingHorizontal: 20,
-    paddingTop: 27,
-    paddingBottom: 18,
+    paddingVertical: 22,
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 22,
   },
   avatarWrapper: {
     position: 'relative',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   avatar: {
-    width: 92,
-    height: 92,
-    borderRadius: 32,
-    backgroundColor: '#FFF0E7',
-    borderWidth: 3,
-    borderColor: '#FFE0D0',
+    width: 84,
+    height: 84,
+    borderRadius: 28,
+    backgroundColor: BURGER_COLORS.primaryLight,
+    borderWidth: 2,
+    borderColor: BURGER_COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -287,99 +254,68 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 1,
     bottom: 2,
-    width: 19,
-    height: 19,
-    borderRadius: 10,
-    backgroundColor: '#37A66B',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: BURGER_COLORS.success,
     borderWidth: 3,
-    borderColor: '#FFFFFF',
+    borderColor: BURGER_COLORS.surface,
   },
   name: {
-    fontSize: 23,
+    fontSize: 21,
     fontWeight: '800',
-    color: '#29232A',
+    color: BURGER_COLORS.text,
     textAlign: 'center',
-    marginBottom: 7,
+    marginBottom: 5,
   },
   email: {
     fontSize: 13,
-    color: '#8B8289',
+    color: BURGER_COLORS.muted,
     textAlign: 'center',
   },
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
-    backgroundColor: '#FFF0E7',
-    borderRadius: 20,
+    gap: 6,
+    backgroundColor: BURGER_COLORS.primaryLight,
+    borderRadius: 999,
     paddingHorizontal: 13,
-    paddingVertical: 8,
-    marginTop: 15,
+    paddingVertical: 7,
+    marginTop: 12,
   },
   roleText: {
-    color: '#E85B28',
+    color: BURGER_COLORS.primary,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  profileDivider: {
-    height: 1,
-    backgroundColor: '#F2ECE8',
-    width: '100%',
-    marginTop: 22,
-    marginBottom: 17,
-  },
-  memberInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    gap: 12,
-  },
-  memberIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#FFF0E7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  memberTextContainer: {
-    flex: 1,
-  },
-  memberTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#393039',
-    marginBottom: 4,
-  },
-  memberSubtitle: {
-    fontSize: 11,
-    color: '#A49AA0',
+  langSection: {
+    marginBottom: 22,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '800',
-    color: '#29232A',
-    marginBottom: 15,
+    color: BURGER_COLORS.text,
+    marginBottom: 10,
   },
   infoCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 21,
+    backgroundColor: BURGER_COLORS.surface,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
-    paddingHorizontal: 15,
-    marginBottom: 29,
+    borderColor: BURGER_COLORS.border,
+    paddingHorizontal: 14,
+    marginBottom: 22,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 14,
     gap: 12,
   },
   infoIcon: {
-    width: 43,
-    height: 43,
-    borderRadius: 14,
-    backgroundColor: '#FFF3EC',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: BURGER_COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -388,64 +324,53 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 11,
-    color: '#A49AA0',
-    marginBottom: 5,
+    color: BURGER_COLORS.muted,
+    marginBottom: 3,
   },
   infoValue: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#393039',
+    color: BURGER_COLORS.text,
   },
   rowDivider: {
     height: 1,
-    backgroundColor: '#F4EFEB',
-    marginLeft: 55,
+    backgroundColor: BURGER_COLORS.border,
+    marginLeft: 52,
   },
   logoutButton: {
-    minHeight: 67,
+    minHeight: 60,
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#F6DADA',
-    backgroundColor: '#FFFFFF',
-    gap: 13,
+    borderColor: BURGER_COLORS.dangerLight,
+    backgroundColor: BURGER_COLORS.surface,
+    gap: 12,
   },
   logoutPressed: {
-    opacity: 0.75,
+    opacity: 0.88,
   },
   logoutIcon: {
-    width: 43,
-    height: 43,
-    borderRadius: 14,
-    backgroundColor: '#FFF0F0',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: BURGER_COLORS.dangerLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoutText: {
     flex: 1,
     fontSize: 14,
-    fontWeight: '700',
-    color: '#E34D4D',
+    fontWeight: '800',
+    color: BURGER_COLORS.danger,
   },
   logoutArrow: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    backgroundColor: '#FFF0F0',
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: BURGER_COLORS.dangerLight,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 28,
-  },
-  footerText: {
-    fontSize: 10,
-    color: '#A49AA0',
   },
 });

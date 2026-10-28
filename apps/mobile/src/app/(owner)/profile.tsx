@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -11,26 +10,30 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/auth-context';
+import { BURGER_COLORS } from '@/constants/theme';
+import { useLanguage } from '@/context/language-context';
+import { LanguageSwitch } from '@/components/language-switch';
 
 const COLORS = {
-  background: '#FFF9F5',
-  surface: '#FFFFFF',
-  primary: '#FF6B35',
-  primaryLight: '#FFF0E8',
-  text: '#29232A',
-  muted: '#8B8289',
-  border: '#F0E8E3',
-  red: '#E5484D',
-  redLight: '#FDEBEC',
+  background: BURGER_COLORS.background,
+  surface: BURGER_COLORS.surface,
+  primary: BURGER_COLORS.primary,
+  primaryLight: BURGER_COLORS.primaryLight,
+  text: BURGER_COLORS.text,
+  muted: BURGER_COLORS.muted,
+  border: BURGER_COLORS.border,
+  red: BURGER_COLORS.danger,
+  redLight: BURGER_COLORS.dangerLight,
 };
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const { tr } = useLanguage();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const fullName =
     `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() ||
-    'Người dùng';
+    tr('Người dùng', 'User');
 
   const initials =
     `${user?.firstName?.charAt(0) ?? ''}${user?.lastName?.charAt(0) ?? ''}`
@@ -38,9 +41,9 @@ export default function ProfileScreen() {
       .toUpperCase() || 'U';
 
   const roleLabels: Record<string, string> = {
-    CUSTOMER: 'Khách hàng',
-    RESTAURANT_OWNER: 'Chủ nhà hàng',
-    DRIVER: 'Tài xế giao hàng',
+    CUSTOMER: tr('Khách hàng', 'Customer'),
+    RESTAURANT_OWNER: tr('Chủ nhà hàng', 'Restaurant Owner'),
+    DRIVER: tr('Tài xế giao hàng', 'Delivery Driver'),
   };
 
   async function handleLogout() {
@@ -52,8 +55,11 @@ export default function ProfileScreen() {
       await logout();
     } catch {
       Alert.alert(
-        'Đăng xuất thất bại',
-        'Đã xảy ra lỗi khi đăng xuất. Vui lòng thử lại.',
+        tr('Đăng xuất thất bại', 'Logout failed'),
+        tr(
+          'Đã xảy ra lỗi khi đăng xuất. Vui lòng thử lại.',
+          'An error occurred while logging out. Please try again.',
+        ),
       );
     } finally {
       setIsLoggingOut(false);
@@ -62,15 +68,18 @@ export default function ProfileScreen() {
 
   function confirmLogout() {
     Alert.alert(
-      'Đăng xuất',
-      'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản?',
+      tr('Đăng xuất', 'Log Out'),
+      tr(
+        'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản?',
+        'Are you sure you want to log out of your account?',
+      ),
       [
         {
-          text: 'Ở lại',
+          text: tr('Ở lại', 'Stay'),
           style: 'cancel',
         },
         {
-          text: 'Đăng xuất',
+          text: tr('Đăng xuất', 'Log Out'),
           style: 'destructive',
           onPress: () => {
             void handleLogout();
@@ -87,17 +96,20 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <View>
-            <Text style={styles.eyebrow}>FOODDELIVERY</Text>
-            <Text style={styles.title}>Tài khoản</Text>
+          <View style={styles.headerLeft}>
+            <Text style={styles.eyebrow}>
+              {tr('KÊNH NHÀ HÀNG', 'MERCHANT ACCOUNT')}
+            </Text>
+            <Text style={styles.title}>{tr('Tài khoản', 'My Profile')}</Text>
             <Text style={styles.subtitle}>
-              Quản lý thông tin cá nhân của bạn
+              {tr(
+                'Quản lý thông tin cá nhân của bạn',
+                'Manage your personal & merchant account',
+              )}
             </Text>
           </View>
 
-          <View style={styles.headerIcon}>
-            <Text style={styles.headerEmoji}>👤</Text>
-          </View>
+          <LanguageSwitch />
         </View>
 
         <View style={styles.profileCard}>
@@ -107,18 +119,29 @@ export default function ProfileScreen() {
 
           <Text style={styles.name}>{fullName}</Text>
           <Text style={styles.email}>
-            {user?.email || 'Chưa có email'}
+            {user?.email || tr('Chưa có email', 'No email')}
           </Text>
 
           <View style={styles.roleBadge}>
             <View style={styles.roleDot} />
             <Text style={styles.roleText}>
-              {roleLabels[user?.role ?? ''] ?? user?.role ?? 'Thành viên'}
+              {roleLabels[user?.role ?? ''] ??
+                user?.role ??
+                tr('Thành viên', 'Member')}
             </Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
+        <Text style={styles.sectionTitle}>
+          {tr('Tùy chọn hiển thị', 'Display Preferences')}
+        </Text>
+        <View style={styles.langWrap}>
+          <LanguageSwitch variant="card" />
+        </View>
+
+        <Text style={styles.sectionTitle}>
+          {tr('Thông tin cá nhân', 'Personal Information')}
+        </Text>
 
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
@@ -127,7 +150,9 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Họ và tên</Text>
+              <Text style={styles.infoLabel}>
+                {tr('Họ và tên', 'Full name')}
+              </Text>
               <Text style={styles.infoValue}>{fullName}</Text>
             </View>
           </View>
@@ -140,9 +165,11 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Địa chỉ email</Text>
+              <Text style={styles.infoLabel}>
+                {tr('Địa chỉ email', 'Email address')}
+              </Text>
               <Text style={styles.infoValue}>
-                {user?.email || 'Chưa cập nhật'}
+                {user?.email || tr('Chưa cập nhật', 'Not provided')}
               </Text>
             </View>
           </View>
@@ -155,22 +182,15 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Vai trò tài khoản</Text>
+              <Text style={styles.infoLabel}>
+                {tr('Vai trò tài khoản', 'Account role')}
+              </Text>
               <Text style={styles.infoValue}>
-                {roleLabels[user?.role ?? ''] ?? user?.role ?? 'Thành viên'}
+                {roleLabels[user?.role ?? ''] ??
+                  user?.role ??
+                  tr('Thành viên', 'Member')}
               </Text>
             </View>
-          </View>
-        </View>
-
-        <View style={styles.tipCard}>
-          <Text style={styles.tipEmoji}>🍊</Text>
-          <View style={styles.tipContent}>
-            <Text style={styles.tipTitle}>Chào mừng bạn!</Text>
-            <Text style={styles.tipDescription}>
-              Cảm ơn bạn đã sử dụng FoodDelivery. Chúc bạn có trải nghiệm
-              thật tuyệt vời.
-            </Text>
           </View>
         </View>
 
@@ -189,13 +209,13 @@ export default function ProfileScreen() {
           ) : (
             <>
               <Text style={styles.logoutIcon}>↪</Text>
-              <Text style={styles.logoutText}>Đăng xuất</Text>
+              <Text style={styles.logoutText}>
+                {tr('Đăng xuất', 'Log Out')}
+              </Text>
               <Text style={styles.logoutArrow}>›</Text>
             </>
           )}
         </Pressable>
-
-        <Text style={styles.footer}>FoodDelivery · Đặt món thật dễ dàng</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -207,95 +227,88 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     paddingTop: 14,
     paddingBottom: 35,
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 23,
+    marginBottom: 20,
+    gap: 12,
+  },
+  headerLeft: {
+    flex: 1,
   },
   eyebrow: {
     color: COLORS.primary,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-    marginBottom: 6,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+    marginBottom: 4,
   },
   title: {
     color: COLORS.text,
-    fontSize: 27,
-    fontWeight: '800',
+    fontSize: 26,
+    fontWeight: '900',
     letterSpacing: -0.5,
   },
   subtitle: {
     color: COLORS.muted,
-    fontSize: 13,
-    marginTop: 5,
-  },
-  headerIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 17,
-    backgroundColor: COLORS.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerEmoji: {
-    fontSize: 25,
+    fontSize: 12,
+    marginTop: 4,
   },
   profileCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 24,
+    borderRadius: 22,
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 26,
+    paddingVertical: 22,
     borderWidth: 1,
     borderColor: COLORS.border,
-    marginBottom: 27,
+    marginBottom: 22,
   },
   avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 30,
+    width: 80,
+    height: 80,
+    borderRadius: 26,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 15,
+    marginBottom: 12,
   },
   avatarText: {
     color: '#FFFFFF',
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 28,
+    fontWeight: '900',
   },
   name: {
     color: COLORS.text,
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     textAlign: 'center',
   },
   email: {
     color: COLORS.muted,
     fontSize: 13,
-    marginTop: 7,
+    marginTop: 5,
     textAlign: 'center',
   },
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 6,
     backgroundColor: COLORS.primaryLight,
     paddingHorizontal: 13,
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginTop: 15,
+    paddingVertical: 7,
+    borderRadius: 999,
+    marginTop: 12,
   },
   roleDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: COLORS.primary,
   },
   roleText: {
@@ -303,35 +316,38 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
   },
+  langWrap: {
+    marginBottom: 22,
+  },
   sectionTitle: {
     color: COLORS.text,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
-    marginBottom: 13,
+    marginBottom: 10,
   },
   infoCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 20,
-    paddingHorizontal: 16,
+    borderRadius: 18,
+    paddingHorizontal: 15,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 14,
     gap: 12,
   },
   infoIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 13,
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   infoEmoji: {
-    fontSize: 19,
+    fontSize: 18,
   },
   infoContent: {
     flex: 1,
@@ -339,7 +355,7 @@ const styles = StyleSheet.create({
   infoLabel: {
     color: COLORS.muted,
     fontSize: 11,
-    marginBottom: 5,
+    marginBottom: 3,
   },
   infoValue: {
     color: COLORS.text,
@@ -350,47 +366,21 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: COLORS.border,
   },
-  tipCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: 18,
-    padding: 16,
-    marginTop: 20,
-    gap: 12,
-  },
-  tipEmoji: {
-    fontSize: 25,
-  },
-  tipContent: {
-    flex: 1,
-  },
-  tipTitle: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '800',
-    marginBottom: 5,
-  },
-  tipDescription: {
-    color: COLORS.muted,
-    fontSize: 12,
-    lineHeight: 19,
-  },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: '#F5D8D8',
+    borderColor: COLORS.redLight,
     borderRadius: 16,
-    paddingHorizontal: 17,
-    paddingVertical: 16,
-    marginTop: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+    marginTop: 22,
     gap: 12,
   },
   logoutIcon: {
     color: COLORS.red,
-    fontSize: 23,
+    fontSize: 22,
     fontWeight: '700',
   },
   logoutText: {
@@ -401,18 +391,12 @@ const styles = StyleSheet.create({
   },
   logoutArrow: {
     color: COLORS.red,
-    fontSize: 25,
+    fontSize: 24,
   },
   pressed: {
-    opacity: 0.75,
+    opacity: 0.88,
   },
   disabledButton: {
     opacity: 0.55,
-  },
-  footer: {
-    color: COLORS.muted,
-    fontSize: 11,
-    textAlign: 'center',
-    marginTop: 22,
   },
 });

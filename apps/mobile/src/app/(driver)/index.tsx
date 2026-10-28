@@ -18,6 +18,9 @@ import { io, Socket } from 'socket.io-client';
 import { api } from '@/lib/axios';
 import { useAuth } from '@/context/auth-context';
 import { Order } from '@food-delivery/types';
+import { BURGER_COLORS } from '@/constants/theme';
+import { useLanguage } from '@/context/language-context';
+import { LanguageSwitch } from '@/components/language-switch';
 
 type DriverOrder = Order & {
   restaurant?: { id: string; name: string };
@@ -27,6 +30,7 @@ let socket: Socket | null = null;
 
 export default function DriverHomeScreen() {
   const { user } = useAuth();
+  const { tr } = useLanguage();
   const queryClient = useQueryClient();
   const [incomingOrder, setIncomingOrder] = useState<DriverOrder | null>(null);
 
@@ -36,7 +40,6 @@ export default function DriverHomeScreen() {
       api.get<{ isOnline: boolean }>('/driver/status').then((r) => r.data),
   });
 
-  // Lấy danh sách đơn hàng của tài xế từ server để giữ lại thông báo không bị mất khi tải lại / chuyển tab
   const {
     data: driverOrders = [],
     isRefetching: isRefetchingOrders,
@@ -57,8 +60,8 @@ export default function DriverHomeScreen() {
     },
     onError: (e: any) =>
       Alert.alert(
-        'Không thể cập nhật trạng thái',
-        e?.response?.data?.message ?? 'Vui lòng thử lại.',
+        tr('Không thể cập nhật trạng thái', 'Unable to update status'),
+        e?.response?.data?.message ?? tr('Vui lòng thử lại.', 'Please try again.'),
       ),
   });
 
@@ -79,8 +82,8 @@ export default function DriverHomeScreen() {
     },
     onError: (e: any) =>
       Alert.alert(
-        'Không thể từ chối đơn',
-        e?.response?.data?.message ?? 'Vui lòng thử lại.',
+        tr('Không thể từ chối đơn', 'Unable to decline order'),
+        e?.response?.data?.message ?? tr('Vui lòng thử lại.', 'Please try again.'),
       ),
   });
 
@@ -95,7 +98,6 @@ export default function DriverHomeScreen() {
       }),
     onSuccess: (response, orderId) => {
       const updatedOrder = response?.data;
-      // Cập nhật đơn sang trạng thái PICKED_UP trong bộ nhớ đệm để thông báo đơn đã nhận luôn được giữ lại trên màn hình
       queryClient.setQueryData<DriverOrder[]>(['driver-orders'], (old = []) => {
         const exists = old.some((o) => o.id === orderId);
         if (exists) {
@@ -119,8 +121,8 @@ export default function DriverHomeScreen() {
     },
     onError: (e: any) =>
       Alert.alert(
-        'Không thể nhận đơn',
-        e?.response?.data?.message ?? 'Vui lòng thử lại.',
+        tr('Không thể nhận đơn', 'Unable to accept order'),
+        e?.response?.data?.message ?? tr('Vui lòng thử lại.', 'Please try again.'),
       ),
   });
 
@@ -171,7 +173,6 @@ export default function DriverHomeScreen() {
     };
   }, [user?.id, queryClient]);
 
-  // Hợp nhất thông báo từ socket và danh sách đơn từ server để không bao giờ bị mất thông báo
   const notificationOrders = useMemo(() => {
     const map = new Map<string, DriverOrder>();
     if (incomingOrder) {
@@ -205,7 +206,6 @@ export default function DriverHomeScreen() {
     [notificationOrders],
   );
 
-  // Đơn hàng hiển thị trong Modal: ưu tiên đơn vừa nhận qua socket hoặc đơn READY đang chờ xác nhận từ server
   const activeModalOrder = useMemo(() => {
     if (incomingOrder) {
       const synced = notificationOrders.find((o) => o.id === incomingOrder.id);
@@ -220,8 +220,10 @@ export default function DriverHomeScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#FF6B35" />
-          <Text style={styles.loadingText}>Đang tải thông tin tài xế...</Text>
+          <ActivityIndicator size="large" color={BURGER_COLORS.primary} />
+          <Text style={styles.loadingText}>
+            {tr('Đang tải thông tin tài xế...', 'Loading driver dashboard...')}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -241,29 +243,29 @@ export default function DriverHomeScreen() {
             onRefresh={() => {
               void refetchDriverOrders();
             }}
-            tintColor="#FF6B35"
-            colors={['#FF6B35']}
+            tintColor={BURGER_COLORS.primary}
+            colors={[BURGER_COLORS.primary]}
           />
         }
       >
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerTextContainer}>
-            <Text style={styles.eyebrow}>FOOD DELIVERY</Text>
-            <Text style={styles.title}>Xin chào,</Text>
+            <Text style={styles.eyebrow}>
+              {tr('ĐỐI TÁC GIAO HÀNG', 'DELIVERY PARTNER')}
+            </Text>
             <Text style={styles.driverName}>
-              {user?.firstName || 'Tài xế'} 👋
+              {tr('Xin chào,', 'Hello,')} {user?.firstName || tr('Tài xế', 'Driver')} 👋
             </Text>
             <Text style={styles.subtitle}>
-              Sẵn sàng cho chuyến giao hàng tiếp theo?
+              {tr(
+                'Sẵn sàng cho chuyến giao hàng tiếp theo?',
+                'Ready for your next delivery trip?',
+              )}
             </Text>
           </View>
 
-          <View style={styles.headerAvatar}>
-            <Text style={styles.headerAvatarText}>
-              {user?.firstName?.[0]?.toUpperCase() ?? 'D'}
-            </Text>
-          </View>
+          <LanguageSwitch />
         </View>
 
         {/* Trạng thái trực tuyến */}
@@ -276,7 +278,9 @@ export default function DriverHomeScreen() {
             </View>
 
             <View style={styles.statusInfo}>
-              <Text style={styles.statusCaption}>TRẠNG THÁI HOẠT ĐỘNG</Text>
+              <Text style={styles.statusCaption}>
+                {tr('TRẠNG THÁI HOẠT ĐỘNG', 'WORKING STATUS')}
+              </Text>
               <View style={styles.statusTitleRow}>
                 <View
                   style={[
@@ -287,10 +291,12 @@ export default function DriverHomeScreen() {
                 <Text
                   style={[
                     styles.statusTitle,
-                    { color: isOnline ? '#218653' : '#827780' },
+                    { color: isOnline ? BURGER_COLORS.success : BURGER_COLORS.muted },
                   ]}
                 >
-                  {isOnline ? 'Đang trực tuyến' : 'Đang ngoại tuyến'}
+                  {isOnline
+                    ? tr('Đang trực tuyến', 'Online & Active')
+                    : tr('Đang ngoại tuyến', 'Offline')}
                 </Text>
               </View>
             </View>
@@ -299,9 +305,15 @@ export default function DriverHomeScreen() {
               value={isOnline}
               onValueChange={() => toggleOnline()}
               disabled={toggling}
-              trackColor={{ false: '#E9DFDA', true: '#A8E5C2' }}
-              thumbColor={isOnline ? '#22A566' : '#B7ACB2'}
-              accessibilityLabel="Bật hoặc tắt trạng thái trực tuyến"
+              trackColor={{
+                false: BURGER_COLORS.border,
+                true: BURGER_COLORS.successLight,
+              }}
+              thumbColor={isOnline ? BURGER_COLORS.success : BURGER_COLORS.faint}
+              accessibilityLabel={tr(
+                'Bật hoặc tắt trạng thái trực tuyến',
+                'Toggle online status',
+              )}
             />
           </View>
 
@@ -310,22 +322,30 @@ export default function DriverHomeScreen() {
           <View style={styles.statusBottomRow}>
             <Text style={styles.statusDescription}>
               {toggling
-                ? 'Đang cập nhật trạng thái...'
+                ? tr('Đang cập nhật trạng thái...', 'Updating status...')
                 : isOnline
-                  ? 'Bạn có thể nhận yêu cầu giao hàng mới.'
-                  : 'Bật trực tuyến để bắt đầu nhận đơn hàng.'}
+                  ? tr(
+                      'Bạn có thể nhận yêu cầu giao hàng mới.',
+                      'You are ready to receive new delivery requests.',
+                    )
+                  : tr(
+                      'Bật trực tuyến để bắt đầu nhận đơn hàng.',
+                      'Go online to start receiving delivery orders.',
+                    )}
             </Text>
 
             {toggling && (
-              <ActivityIndicator size="small" color="#FF6B35" />
+              <ActivityIndicator size="small" color={BURGER_COLORS.primary} />
             )}
           </View>
         </View>
 
-        {/* Thông báo nhận đơn (Giữ lại cố định trên màn hình tài xế) */}
+        {/* Thông báo nhận đơn */}
         <View style={styles.sectionHeader}>
           <View style={styles.notificationTitleRow}>
-            <Text style={styles.sectionTitle}>Thông báo nhận đơn</Text>
+            <Text style={styles.sectionTitle}>
+              {tr('Thông báo nhận đơn', 'Order Notifications')}
+            </Text>
             {notificationOrders.length > 0 && (
               <View style={styles.notificationCountBadge}>
                 <Text style={styles.notificationCountText}>
@@ -344,11 +364,13 @@ export default function DriverHomeScreen() {
             </View>
             <View style={styles.emptyNotificationContent}>
               <Text style={styles.emptyNotificationTitle}>
-                Chưa có thông báo đơn hàng
+                {tr('Chưa có thông báo đơn hàng', 'No order notifications yet')}
               </Text>
               <Text style={styles.emptyNotificationDesc}>
-                Khi có đơn hàng mới được phân công hoặc đã nhận, thông báo sẽ
-                được lưu giữ tại đây để bạn tiện theo dõi.
+                {tr(
+                  'Khi có đơn hàng mới được phân công hoặc đã nhận, thông báo sẽ được lưu giữ tại đây để bạn tiện theo dõi.',
+                  'Assigned and accepted delivery orders will stay pinned here for easy tracking.',
+                )}
               </Text>
             </View>
           </View>
@@ -385,10 +407,8 @@ export default function DriverHomeScreen() {
                           styles.badgeDot,
                           {
                             backgroundColor: isReady
-                              ? '#FF6B35'
-                              : isPickedUp
-                                ? '#22A566'
-                                : '#168653',
+                              ? BURGER_COLORS.primary
+                              : BURGER_COLORS.success,
                           },
                         ]}
                       />
@@ -397,18 +417,16 @@ export default function DriverHomeScreen() {
                           styles.notificationBadgeText,
                           {
                             color: isReady
-                              ? '#D94D20'
-                              : isPickedUp
-                                ? '#168653'
-                                : '#168653',
+                              ? BURGER_COLORS.primaryDark
+                              : BURGER_COLORS.success,
                           },
                         ]}
                       >
                         {isReady
-                          ? 'ĐƠN HÀNG MỚI • CHỜ NHẬN'
+                          ? tr('ĐƠN HÀNG MỚI • CHỜ NHẬN', 'NEW ORDER • AWAITING ACCEPT')
                           : isPickedUp
-                            ? 'ĐÃ NHẬN ĐƠN • ĐANG GIAO'
-                            : 'ĐÃ NHẬN & GIAO THÀNH CÔNG'}
+                            ? tr('ĐÃ NHẬN ĐƠN • ĐANG GIAO', 'ACCEPTED • DELIVERING')
+                            : tr('ĐÃ GIAO THÀNH CÔNG', 'DELIVERED')}
                       </Text>
                     </View>
 
@@ -422,7 +440,7 @@ export default function DriverHomeScreen() {
                   {order.restaurant?.name ? (
                     <View style={styles.notificationRestaurantRow}>
                       <Text style={styles.notificationRestaurantLabel}>
-                        NHÀ HÀNG:{' '}
+                        {tr('NHÀ HÀNG: ', 'RESTAURANT: ')}
                       </Text>
                       <Text
                         style={styles.notificationRestaurantName}
@@ -439,10 +457,10 @@ export default function DriverHomeScreen() {
                     </View>
                     <View style={styles.notificationAddressContent}>
                       <Text style={styles.notificationAddressLabel}>
-                        ĐỊA CHỈ GIAO HÀNG
+                        {tr('ĐỊA CHỈ GIAO HÀNG', 'DELIVERY ADDRESS')}
                       </Text>
                       <Text style={styles.addressText}>
-                        {order.deliveryAddress || 'Chưa có địa chỉ'}
+                        {order.deliveryAddress || tr('Chưa có địa chỉ', 'No address')}
                       </Text>
                     </View>
                   </View>
@@ -450,7 +468,7 @@ export default function DriverHomeScreen() {
                   <View style={styles.notificationFooter}>
                     <View>
                       <Text style={styles.notificationTotalLabel}>
-                        TỔNG GIÁ TRỊ ĐƠN
+                        {tr('TỔNG GIÁ TRỊ ĐƠN', 'ORDER TOTAL')}
                       </Text>
                       <Text style={styles.notificationTotalValue}>
                         ${Number(order.totalAmount ?? 0).toFixed(2)}
@@ -469,10 +487,10 @@ export default function DriverHomeScreen() {
                           onPress={() => declineOrder(order.id)}
                         >
                           {isThisDeclining ? (
-                            <ActivityIndicator size="small" color="#D94343" />
+                            <ActivityIndicator size="small" color={BURGER_COLORS.danger} />
                           ) : (
                             <Text style={styles.inlineDeclineText}>
-                              Từ chối
+                              {tr('Từ chối', 'Decline')}
                             </Text>
                           )}
                         </Pressable>
@@ -490,7 +508,7 @@ export default function DriverHomeScreen() {
                             <ActivityIndicator size="small" color="#FFFFFF" />
                           ) : (
                             <Text style={styles.inlineAcceptText}>
-                              ✓ Nhận đơn
+                              {tr('✓ Nhận đơn', '✓ Accept')}
                             </Text>
                           )}
                         </Pressable>
@@ -504,12 +522,14 @@ export default function DriverHomeScreen() {
                         onPress={() => router.push('/(driver)/active')}
                       >
                         <Text style={styles.goActiveBtnText}>
-                          Theo dõi giao hàng →
+                          {tr('Theo dõi giao hàng →', 'Track Delivery →')}
                         </Text>
                       </Pressable>
                     ) : (
                       <View style={styles.completedTag}>
-                        <Text style={styles.completedTagText}>✓ Đã hoàn tất</Text>
+                        <Text style={styles.completedTagText}>
+                          {tr('✓ Đã hoàn tất', '✓ Completed')}
+                        </Text>
                       </View>
                     )}
                   </View>
@@ -521,8 +541,10 @@ export default function DriverHomeScreen() {
 
         {/* Hướng dẫn */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Bắt đầu giao hàng</Text>
-          <Text style={styles.sectionEmoji}>✨</Text>
+          <Text style={styles.sectionTitle}>
+            {tr('Bắt đầu giao hàng', 'Quick Guide')}
+          </Text>
+          <Text style={styles.sectionEmoji}>🍔</Text>
         </View>
 
         <View style={styles.tipCard}>
@@ -530,10 +552,14 @@ export default function DriverHomeScreen() {
             <Text style={styles.tipEmoji}>📦</Text>
           </View>
           <View style={styles.tipContent}>
-            <Text style={styles.tipTitle}>Nhận đơn hàng mới</Text>
+            <Text style={styles.tipTitle}>
+              {tr('Nhận đơn hàng mới', 'Accept New Orders')}
+            </Text>
             <Text style={styles.tipDescription}>
-              Khi nhà hàng phân công đơn cho bạn, thông báo sẽ xuất hiện ngay
-              trên màn hình. Hãy kiểm tra địa chỉ và tổng tiền trước khi nhận.
+              {tr(
+                'Khi nhà hàng phân công đơn cho bạn, thông báo sẽ xuất hiện ngay trên màn hình. Hãy kiểm tra địa chỉ và tổng tiền trước khi nhận.',
+                'When a restaurant assigns an order to you, a notification pops up immediately. Review the address and total before accepting.',
+              )}
             </Text>
           </View>
         </View>
@@ -543,32 +569,14 @@ export default function DriverHomeScreen() {
             <Text style={styles.tipEmoji}>📍</Text>
           </View>
           <View style={styles.tipContent}>
-            <Text style={styles.tipTitle}>Theo dõi chuyến giao</Text>
+            <Text style={styles.tipTitle}>
+              {tr('Theo dõi chuyến giao', 'Track Active Trip')}
+            </Text>
             <Text style={styles.tipDescription}>
-              Sau khi nhận đơn, mở mục đơn đang giao để theo dõi và hoàn tất
-              chuyến giao hàng.
-            </Text>
-          </View>
-        </View>
-
-        {/* Lời nhắc trạng thái */}
-        <View
-          style={[
-            styles.noticeCard,
-            isOnline ? styles.noticeOnline : styles.noticeOffline,
-          ]}
-        >
-          <Text style={styles.noticeEmoji}>
-            {isOnline ? '🎯' : '💡'}
-          </Text>
-          <View style={styles.noticeContent}>
-            <Text style={styles.noticeTitle}>
-              {isOnline ? 'Bạn đã sẵn sàng!' : 'Đừng bỏ lỡ đơn hàng'}
-            </Text>
-            <Text style={styles.noticeText}>
-              {isOnline
-                ? 'Giữ kết nối mạng để nhận yêu cầu giao hàng kịp thời.'
-                : 'Chuyển sang trạng thái trực tuyến khi bạn sẵn sàng làm việc.'}
+              {tr(
+                'Sau khi nhận đơn, mở mục Đang giao để theo dõi bản đồ và hoàn tất chuyến giao hàng.',
+                'After accepting an order, open the Active tab to view the live map and complete the delivery.',
+              )}
             </Text>
           </View>
         </View>
@@ -579,9 +587,7 @@ export default function DriverHomeScreen() {
         visible={!!activeModalOrder}
         transparent
         animationType="slide"
-        onRequestClose={() => {
-          // Chỉ đóng modal qua thao tác nhận hoặc từ chối đơn.
-        }}
+        onRequestClose={() => {}}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
@@ -591,15 +597,24 @@ export default function DriverHomeScreen() {
               <Text style={styles.modalEmoji}>🛵</Text>
             </View>
 
-            <Text style={styles.modalEyebrow}>CÓ ĐƠN HÀNG MỚI</Text>
-            <Text style={styles.modalTitle}>Yêu cầu giao hàng</Text>
+            <Text style={styles.modalEyebrow}>
+              {tr('CÓ ĐƠN HÀNG MỚI', 'NEW DELIVERY REQUEST')}
+            </Text>
+            <Text style={styles.modalTitle}>
+              {tr('Yêu cầu giao hàng', 'Incoming Delivery')}
+            </Text>
             <Text style={styles.modalSubtitle}>
-              Kiểm tra thông tin trước khi xác nhận
+              {tr(
+                'Kiểm tra thông tin trước khi xác nhận',
+                'Review the order details before confirming',
+              )}
             </Text>
 
             <View style={styles.orderDetails}>
               <View style={styles.orderIdRow}>
-                <Text style={styles.orderLabel}>Mã đơn hàng</Text>
+                <Text style={styles.orderLabel}>
+                  {tr('Mã đơn hàng', 'Order ID')}
+                </Text>
                 <View style={styles.orderIdBadge}>
                   <Text style={styles.orderIdText}>
                     #{activeModalOrder?.id.slice(0, 8).toUpperCase()}
@@ -609,19 +624,24 @@ export default function DriverHomeScreen() {
 
               <View style={styles.orderDivider} />
 
-              <Text style={styles.orderLabel}>ĐỊA CHỈ GIAO HÀNG</Text>
+              <Text style={styles.orderLabel}>
+                {tr('ĐỊA CHỈ GIAO HÀNG', 'DELIVERY ADDRESS')}
+              </Text>
               <View style={styles.addressRow}>
                 <View style={styles.addressIcon}>
                   <Text style={styles.addressEmoji}>📍</Text>
                 </View>
                 <Text style={styles.addressText}>
-                  {activeModalOrder?.deliveryAddress || 'Chưa có địa chỉ'}
+                  {activeModalOrder?.deliveryAddress ||
+                    tr('Chưa có địa chỉ', 'No address')}
                 </Text>
               </View>
 
               <View style={styles.orderDivider} />
 
-              <Text style={styles.orderLabel}>TỔNG GIÁ TRỊ ĐƠN HÀNG</Text>
+              <Text style={styles.orderLabel}>
+                {tr('TỔNG GIÁ TRỊ ĐƠN HÀNG', 'ORDER TOTAL')}
+              </Text>
               <Text style={styles.orderTotal}>
                 ${Number(activeModalOrder?.totalAmount ?? 0).toFixed(2)}
               </Text>
@@ -643,7 +663,9 @@ export default function DriverHomeScreen() {
               ) : (
                 <>
                   <Text style={styles.acceptButtonText}>✓</Text>
-                  <Text style={styles.acceptButtonText}>Nhận đơn hàng</Text>
+                  <Text style={styles.acceptButtonText}>
+                    {tr('Nhận đơn hàng', 'Accept Order')}
+                  </Text>
                 </>
               )}
             </Pressable>
@@ -660,15 +682,13 @@ export default function DriverHomeScreen() {
               }}
             >
               {declining ? (
-                <ActivityIndicator color="#D94343" />
+                <ActivityIndicator color={BURGER_COLORS.danger} />
               ) : (
-                <Text style={styles.declineButtonText}>Từ chối đơn</Text>
+                <Text style={styles.declineButtonText}>
+                  {tr('Từ chối đơn', 'Decline Order')}
+                </Text>
               )}
             </Pressable>
-
-            <Text style={styles.modalFooter}>
-              Cảm ơn bạn đã đồng hành cùng FoodDelivery
-            </Text>
           </View>
         </View>
       </Modal>
@@ -679,31 +699,29 @@ export default function DriverHomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF9F5',
+    backgroundColor: BURGER_COLORS.background,
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
-    backgroundColor: '#FFF9F5',
+    backgroundColor: BURGER_COLORS.background,
   },
   loadingText: {
     fontSize: 13,
-    color: '#8B8289',
+    color: BURGER_COLORS.muted,
   },
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: 18,
+    paddingTop: 14,
     paddingBottom: 35,
   },
-
-  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 25,
+    alignItems: 'flex-start',
+    marginBottom: 20,
     gap: 12,
   },
   headerTextContainer: {
@@ -712,49 +730,29 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 10,
     fontWeight: '900',
-    letterSpacing: 1.8,
-    color: '#FF6B35',
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 25,
-    fontWeight: '800',
-    color: '#29232A',
+    letterSpacing: 1.4,
+    color: BURGER_COLORS.primary,
+    marginBottom: 4,
   },
   driverName: {
-    fontSize: 28,
+    fontSize: 25,
     fontWeight: '900',
-    color: '#29232A',
-    marginTop: 1,
+    color: BURGER_COLORS.text,
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#8B8289',
-    marginTop: 7,
+    color: BURGER_COLORS.muted,
+    marginTop: 4,
   },
-  headerAvatar: {
-    width: 58,
-    height: 58,
-    borderRadius: 20,
-    backgroundColor: '#FF6B35',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 25,
-    fontWeight: '900',
-  },
-
-  // Trạng thái online
   statusCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BURGER_COLORS.surface,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
-    borderRadius: 22,
-    padding: 18,
-    marginBottom: 28,
+    borderColor: BURGER_COLORS.border,
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 22,
   },
   statusTopRow: {
     flexDirection: 'row',
@@ -762,25 +760,25 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   statusIcon: {
-    width: 49,
-    height: 49,
-    borderRadius: 16,
-    backgroundColor: '#FFF0E8',
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: BURGER_COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   statusIconText: {
-    fontSize: 24,
+    fontSize: 22,
   },
   statusInfo: {
     flex: 1,
   },
   statusCaption: {
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    color: '#A1989E',
-    marginBottom: 7,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    color: BURGER_COLORS.muted,
+    marginBottom: 5,
   },
   statusTitleRow: {
     flexDirection: 'row',
@@ -793,19 +791,19 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   onlineDot: {
-    backgroundColor: '#22A566',
+    backgroundColor: BURGER_COLORS.success,
   },
   offlineDot: {
-    backgroundColor: '#B7ACB2',
+    backgroundColor: BURGER_COLORS.faint,
   },
   statusTitle: {
-    fontSize: 14,
-    fontWeight: '900',
+    fontSize: 15,
+    fontWeight: '800',
   },
   statusDivider: {
     height: 1,
-    backgroundColor: '#F3ECE7',
-    marginVertical: 16,
+    backgroundColor: BURGER_COLORS.border,
+    marginVertical: 14,
   },
   statusBottomRow: {
     flexDirection: 'row',
@@ -817,10 +815,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     lineHeight: 18,
-    color: '#8B8289',
+    color: BURGER_COLORS.muted,
   },
-
-  // Thông báo nhận đơn
   notificationTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -831,7 +827,7 @@ const styles = StyleSheet.create({
     height: 24,
     paddingHorizontal: 7,
     borderRadius: 12,
-    backgroundColor: '#FF6B35',
+    backgroundColor: BURGER_COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -843,57 +839,56 @@ const styles = StyleSheet.create({
   emptyNotificationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 13,
-    backgroundColor: '#FFFFFF',
+    gap: 12,
+    backgroundColor: BURGER_COLORS.surface,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
+    borderColor: BURGER_COLORS.border,
     borderRadius: 18,
     padding: 15,
-    marginBottom: 24,
+    marginBottom: 22,
   },
   emptyNotificationIcon: {
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: '#FFF4E9',
+    backgroundColor: BURGER_COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyNotificationEmoji: {
-    fontSize: 21,
+    fontSize: 20,
   },
   emptyNotificationContent: {
     flex: 1,
   },
   emptyNotificationTitle: {
     fontSize: 13,
-    fontWeight: '900',
-    color: '#39313A',
-    marginBottom: 4,
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
+    marginBottom: 3,
   },
   emptyNotificationDesc: {
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: 17,
-    color: '#8B8289',
+    color: BURGER_COLORS.muted,
   },
   notificationList: {
     gap: 12,
-    marginBottom: 26,
+    marginBottom: 24,
   },
   notificationCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BURGER_COLORS.surface,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
-    borderRadius: 20,
-    padding: 16,
+    borderColor: BURGER_COLORS.border,
+    borderRadius: 18,
+    padding: 15,
   },
   notificationCardReady: {
-    borderColor: '#FF6B35',
+    borderColor: BURGER_COLORS.primary,
     borderWidth: 1.5,
-    backgroundColor: '#FFFCFA',
   },
   notificationCardActive: {
-    borderColor: '#A8E5C2',
+    borderColor: BURGER_COLORS.success,
     borderWidth: 1.5,
   },
   notificationTopRow: {
@@ -909,16 +904,16 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 9,
+    borderRadius: 999,
   },
   badgeReady: {
-    backgroundColor: '#FFF0E8',
+    backgroundColor: BURGER_COLORS.primaryLight,
   },
   badgePickedUp: {
-    backgroundColor: '#EAF8EF',
+    backgroundColor: BURGER_COLORS.successLight,
   },
   badgeDelivered: {
-    backgroundColor: '#EAF8EF',
+    backgroundColor: BURGER_COLORS.successLight,
   },
   badgeDot: {
     width: 7,
@@ -927,8 +922,7 @@ const styles = StyleSheet.create({
   },
   notificationBadgeText: {
     fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.4,
+    fontWeight: '800',
   },
   notificationRestaurantRow: {
     flexDirection: 'row',
@@ -938,32 +932,32 @@ const styles = StyleSheet.create({
   notificationRestaurantLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#A1989E',
+    color: BURGER_COLORS.muted,
   },
   notificationRestaurantName: {
     flex: 1,
     fontSize: 13,
-    fontWeight: '900',
-    color: '#29232A',
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
   },
   notificationAddressBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    backgroundColor: '#FFF9F5',
-    borderRadius: 14,
+    backgroundColor: BURGER_COLORS.surfaceMuted,
+    borderRadius: 13,
     padding: 12,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   notificationAddressContent: {
     flex: 1,
   },
   notificationAddressLabel: {
     fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 0.7,
-    color: '#A1989E',
-    marginBottom: 4,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    color: BURGER_COLORS.muted,
+    marginBottom: 3,
   },
   notificationFooter: {
     flexDirection: 'row',
@@ -972,19 +966,18 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F3ECE7',
+    borderTopColor: BURGER_COLORS.border,
   },
   notificationTotalLabel: {
     fontSize: 9,
-    fontWeight: '900',
-    color: '#A1989E',
-    letterSpacing: 0.6,
-    marginBottom: 3,
+    fontWeight: '800',
+    color: BURGER_COLORS.muted,
+    marginBottom: 2,
   },
   notificationTotalValue: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '900',
-    color: '#FF6B35',
+    color: BURGER_COLORS.primary,
   },
   notificationActionRow: {
     flexDirection: 'row',
@@ -996,202 +989,165 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
-    backgroundColor: '#FFFFFF',
+    borderColor: BURGER_COLORS.border,
+    backgroundColor: BURGER_COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   inlineDeclineText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#D94343',
+    color: BURGER_COLORS.danger,
   },
   inlineAcceptBtn: {
     paddingHorizontal: 15,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: '#FF6B35',
+    backgroundColor: BURGER_COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   inlineAcceptText: {
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
     color: '#FFFFFF',
   },
   goActiveBtn: {
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: '#22A566',
+    backgroundColor: BURGER_COLORS.success,
     alignItems: 'center',
     justifyContent: 'center',
   },
   goActiveBtnText: {
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
     color: '#FFFFFF',
   },
   completedTag: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: '#EAF8EF',
+    backgroundColor: BURGER_COLORS.successLight,
   },
   completedTagText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#168653',
+    color: BURGER_COLORS.success,
   },
-
-  // Hướng dẫn
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 13,
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: '#29232A',
+    fontSize: 16,
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
   },
   sectionEmoji: {
-    fontSize: 20,
+    fontSize: 18,
   },
   tipCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 13,
-    backgroundColor: '#FFFFFF',
+    gap: 12,
+    backgroundColor: BURGER_COLORS.surface,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
+    borderColor: BURGER_COLORS.border,
     borderRadius: 18,
-    padding: 15,
-    marginBottom: 12,
+    padding: 14,
+    marginBottom: 10,
   },
   tipIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#FFF4E9',
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    backgroundColor: BURGER_COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tipEmoji: {
-    fontSize: 21,
+    fontSize: 20,
   },
   tipContent: {
     flex: 1,
   },
   tipTitle: {
     fontSize: 13,
-    fontWeight: '900',
-    color: '#39313A',
-    marginBottom: 6,
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
+    marginBottom: 4,
   },
   tipDescription: {
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: 18,
-    color: '#8B8289',
+    color: BURGER_COLORS.muted,
   },
-
-  // Lời nhắc
-  noticeCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 11,
-    padding: 15,
-    borderRadius: 18,
-    marginTop: 12,
-  },
-  noticeOnline: {
-    backgroundColor: '#EAF8EF',
-  },
-  noticeOffline: {
-    backgroundColor: '#FFF0E8',
-  },
-  noticeEmoji: {
-    fontSize: 22,
-  },
-  noticeContent: {
-    flex: 1,
-  },
-  noticeTitle: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#39313A',
-    marginBottom: 5,
-  },
-  noticeText: {
-    fontSize: 11,
-    lineHeight: 17,
-    color: '#756B72',
-  },
-
-  // Modal
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(35, 26, 31, 0.55)',
+    backgroundColor: 'rgba(44, 26, 17, 0.5)',
   },
   modal: {
-    backgroundColor: '#FFF9F5',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 22,
+    backgroundColor: BURGER_COLORS.background,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 30,
+    paddingBottom: 28,
   },
   modalHandle: {
-    width: 42,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#E2D8D2',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: BURGER_COLORS.border,
     alignSelf: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
   },
   modalHeaderIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 20,
-    backgroundColor: '#FFF0E8',
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: BURGER_COLORS.primaryLight,
     alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 13,
+    marginBottom: 12,
   },
   modalEmoji: {
-    fontSize: 29,
+    fontSize: 28,
   },
   modalEyebrow: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '900',
-    letterSpacing: 1.6,
-    color: '#FF6B35',
+    letterSpacing: 1.4,
+    color: BURGER_COLORS.primary,
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 5,
   },
   modalTitle: {
-    fontSize: 23,
+    fontSize: 22,
     fontWeight: '900',
-    color: '#29232A',
+    color: BURGER_COLORS.text,
     textAlign: 'center',
   },
   modalSubtitle: {
     fontSize: 12,
-    color: '#8B8289',
+    color: BURGER_COLORS.muted,
     textAlign: 'center',
-    marginTop: 6,
-    marginBottom: 20,
+    marginTop: 4,
+    marginBottom: 18,
   },
   orderDetails: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BURGER_COLORS.surface,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
+    borderColor: BURGER_COLORS.border,
     borderRadius: 18,
-    padding: 16,
-    marginBottom: 18,
+    padding: 15,
+    marginBottom: 16,
   },
   orderIdRow: {
     flexDirection: 'row',
@@ -1200,27 +1156,27 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   orderLabel: {
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    color: '#A1989E',
-    marginBottom: 8,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    color: BURGER_COLORS.muted,
+    marginBottom: 6,
   },
   orderIdBadge: {
-    backgroundColor: '#FFF0E8',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: BURGER_COLORS.primaryLight,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
     borderRadius: 8,
   },
   orderIdText: {
     fontSize: 11,
-    fontWeight: '900',
-    color: '#D94D20',
+    fontWeight: '800',
+    color: BURGER_COLORS.primaryDark,
   },
   orderDivider: {
     height: 1,
-    backgroundColor: '#F3ECE7',
-    marginVertical: 14,
+    backgroundColor: BURGER_COLORS.border,
+    marginVertical: 12,
   },
   addressRow: {
     flexDirection: 'row',
@@ -1228,73 +1184,67 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   addressIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
-    backgroundColor: '#FFF4E9',
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: BURGER_COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   addressEmoji: {
-    fontSize: 16,
+    fontSize: 15,
   },
   addressText: {
     flex: 1,
     fontSize: 13,
     lineHeight: 19,
     fontWeight: '700',
-    color: '#39313A',
+    color: BURGER_COLORS.text,
     paddingTop: 2,
   },
   orderTotal: {
-    fontSize: 25,
+    fontSize: 24,
     fontWeight: '900',
-    color: '#FF6B35',
+    color: BURGER_COLORS.primary,
   },
   acceptButton: {
-    minHeight: 53,
+    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 9,
-    backgroundColor: '#FF6B35',
+    gap: 8,
+    backgroundColor: BURGER_COLORS.primary,
     borderRadius: 15,
-    padding: 15,
+    padding: 14,
   },
   acceptButtonText: {
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '800',
     color: '#FFFFFF',
   },
   buttonPressed: {
-    opacity: 0.8,
+    opacity: 0.88,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   declineButton: {
-    minHeight: 49,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BURGER_COLORS.surface,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
+    borderColor: BURGER_COLORS.border,
     borderRadius: 15,
-    padding: 14,
+    padding: 13,
     marginTop: 10,
   },
   declinePressed: {
-    backgroundColor: '#FEF0EF',
+    opacity: 0.88,
   },
   declineButtonText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#D94343',
-  },
-  modalFooter: {
-    fontSize: 10,
-    color: '#A1989E',
-    textAlign: 'center',
-    marginTop: 17,
+    color: BURGER_COLORS.danger,
   },
 });

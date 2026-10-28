@@ -19,6 +19,9 @@ import { api } from '@/lib/axios';
 import { useAuth } from '@/context/auth-context';
 import { Order } from '@food-delivery/types';
 import DeliveryMap from '@/components/DeliveryMap';
+import { BURGER_COLORS } from '@/constants/theme';
+import { useLanguage } from '@/context/language-context';
+import { LanguageSwitch } from '@/components/language-switch';
 
 const DEFAULT_COORDS = {
   latitude: 10.7769,
@@ -26,6 +29,7 @@ const DEFAULT_COORDS = {
 };
 
 export default function DriverActiveScreen() {
+  const { tr } = useLanguage();
   const insets = useSafeAreaInsets();
   const TAB_BAR_OFFSET = 88;
 
@@ -71,12 +75,19 @@ export default function DriverActiveScreen() {
         queryKey: ['driver-orders'],
       });
 
-      Alert.alert('Thành công', 'Đơn hàng đã được xác nhận giao thành công.');
+      Alert.alert(
+        tr('Thành công', 'Success'),
+        tr(
+          'Đơn hàng đã được xác nhận giao thành công.',
+          'Order has been marked as delivered.',
+        ),
+      );
     },
     onError: (e: any) =>
       Alert.alert(
-        'Không thể cập nhật',
-        e?.response?.data?.message ?? 'Đã xảy ra lỗi. Vui lòng thử lại.',
+        tr('Không thể cập nhật', 'Unable to update'),
+        e?.response?.data?.message ??
+          tr('Đã xảy ra lỗi. Vui lòng thử lại.', 'An error occurred. Please try again.'),
       ),
   });
 
@@ -110,12 +121,10 @@ export default function DriverActiveScreen() {
         await Location.requestForegroundPermissionsAsync();
 
       if (status !== Location.PermissionStatus.GRANTED) {
-        // Vẫn gửi vị trí mặc định để bản đồ phía khách hàng và tài xế luôn hiển thị
         emitPosition(DEFAULT_COORDS.latitude, DEFAULT_COORDS.longitude);
         return;
       }
 
-      // Gửi ngay vị trí ban đầu để khách hàng thấy bản đồ tức thì mà không cần chờ di chuyển 10m
       const lastKnown = await Location.getLastKnownPositionAsync();
       if (lastKnown?.coords) {
         emitPosition(lastKnown.coords.latitude, lastKnown.coords.longitude);
@@ -171,9 +180,11 @@ export default function DriverActiveScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centered}>
           <View style={styles.loadingIcon}>
-            <ActivityIndicator size="large" color="#FF6B35" />
+            <ActivityIndicator size="large" color={BURGER_COLORS.primary} />
           </View>
-          <Text style={styles.loadingText}>Đang tải đơn giao hàng...</Text>
+          <Text style={styles.loadingText}>
+            {tr('Đang tải đơn giao hàng...', 'Loading active delivery...')}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -182,14 +193,21 @@ export default function DriverActiveScreen() {
   if (!activeOrder) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.emptyTopBar}>
+          <LanguageSwitch />
+        </View>
         <View style={styles.centered}>
           <View style={styles.emptyIcon}>
             <Text style={styles.emptyEmoji}>🛵</Text>
           </View>
-          <Text style={styles.emptyTitle}>Chưa có đơn giao hàng</Text>
+          <Text style={styles.emptyTitle}>
+            {tr('Chưa có đơn giao hàng', 'No Active Delivery')}
+          </Text>
           <Text style={styles.emptyText}>
-            Khi nhận và lấy hàng từ nhà hàng, đơn hàng đang giao sẽ xuất hiện
-            tại đây.
+            {tr(
+              'Khi nhận và lấy hàng từ nhà hàng, đơn hàng đang giao sẽ xuất hiện tại đây.',
+              'When you accept and pick up an order, your active delivery trip will appear here.',
+            )}
           </Text>
         </View>
       </SafeAreaView>
@@ -210,16 +228,21 @@ export default function DriverActiveScreen() {
         {/* Tiêu đề */}
         <View style={styles.header}>
           <View style={styles.headerText}>
-            <Text style={styles.eyebrow}>TÀI XẾ ĐANG HOẠT ĐỘNG</Text>
-            <Text style={styles.title}>Đơn giao hàng</Text>
+            <Text style={styles.eyebrow}>
+              {tr('TÀI XẾ ĐANG HOẠT ĐỘNG', 'ACTIVE DELIVERY')}
+            </Text>
+            <Text style={styles.title}>
+              {tr('Đơn giao hàng', 'Current Trip')}
+            </Text>
             <Text style={styles.subtitle}>
-              Theo dõi hành trình và hoàn tất giao hàng.
+              {tr(
+                'Theo dõi hành trình và hoàn tất giao hàng.',
+                'Follow the route and complete the delivery.',
+              )}
             </Text>
           </View>
 
-          <View style={styles.headerIcon}>
-            <Text style={styles.headerEmoji}>🛵</Text>
-          </View>
+          <LanguageSwitch />
         </View>
 
         {/* Trạng thái giao hàng */}
@@ -228,20 +251,29 @@ export default function DriverActiveScreen() {
             <Text style={styles.statusEmoji}>📦</Text>
           </View>
           <View style={styles.statusContent}>
-            <Text style={styles.statusTitle}>Đang giao hàng</Text>
+            <Text style={styles.statusTitle}>
+              {tr('Đang giao hàng', 'Out for Delivery')}
+            </Text>
             <Text style={styles.statusSubtitle}>
-              Đơn hàng đã được lấy từ nhà hàng.
+              {tr(
+                'Đơn hàng đã được lấy từ nhà hàng.',
+                'Order picked up from the restaurant.',
+              )}
             </Text>
           </View>
           <View style={styles.statusPill}>
             <View style={styles.statusDot} />
-            <Text style={styles.statusPillText}>ĐANG GIAO</Text>
+            <Text style={styles.statusPillText}>
+              {tr('ĐANG GIAO', 'ACTIVE')}
+            </Text>
           </View>
         </View>
 
         {/* Bản đồ */}
         <View style={styles.sectionHeading}>
-          <Text style={styles.sectionTitle}>Vị trí giao hàng</Text>
+          <Text style={styles.sectionTitle}>
+            {tr('Vị trí giao hàng', 'Live Location')}
+          </Text>
           <View style={styles.liveBadge}>
             <View style={styles.liveDot} />
             <Text style={styles.liveText}>LIVE</Text>
@@ -259,8 +291,12 @@ export default function DriverActiveScreen() {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View>
-              <Text style={styles.cardEyebrow}>THÔNG TIN ĐƠN HÀNG</Text>
-              <Text style={styles.cardTitle}>Chi tiết giao hàng</Text>
+              <Text style={styles.cardEyebrow}>
+                {tr('THÔNG TIN ĐƠN HÀNG', 'ORDER INFO')}
+              </Text>
+              <Text style={styles.cardTitle}>
+                {tr('Chi tiết giao hàng', 'Delivery Details')}
+              </Text>
             </View>
             <View style={styles.packageIcon}>
               <Text style={styles.packageEmoji}>🧾</Text>
@@ -274,7 +310,9 @@ export default function DriverActiveScreen() {
               <Text style={styles.infoEmoji}>#</Text>
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.label}>Mã đơn hàng</Text>
+              <Text style={styles.label}>
+                {tr('Mã đơn hàng', 'Order ID')}
+              </Text>
               <Text style={styles.value}>
                 #{activeOrder.id.slice(0, 8).toUpperCase()}
               </Text>
@@ -286,7 +324,9 @@ export default function DriverActiveScreen() {
               <Text style={styles.infoEmoji}>📍</Text>
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.label}>Địa chỉ giao hàng</Text>
+              <Text style={styles.label}>
+                {tr('Địa chỉ giao hàng', 'Delivery address')}
+              </Text>
               <Text style={styles.value}>
                 {activeOrder.deliveryAddress}
               </Text>
@@ -298,8 +338,12 @@ export default function DriverActiveScreen() {
               <Text style={styles.infoEmoji}>🚚</Text>
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.label}>Trạng thái đơn</Text>
-              <Text style={styles.statusValue}>Đã lấy hàng</Text>
+              <Text style={styles.label}>
+                {tr('Trạng thái đơn', 'Order status')}
+              </Text>
+              <Text style={styles.statusValue}>
+                {tr('Đã lấy hàng', 'Picked up')}
+              </Text>
             </View>
           </View>
         </View>
@@ -310,9 +354,14 @@ export default function DriverActiveScreen() {
             <Text style={styles.trackingEmoji}>📡</Text>
           </View>
           <View style={styles.trackingContent}>
-            <Text style={styles.trackingTitle}>Theo dõi vị trí</Text>
+            <Text style={styles.trackingTitle}>
+              {tr('Theo dõi vị trí', 'GPS Location Sharing')}
+            </Text>
             <Text style={styles.trackingDescription}>
-              Ứng dụng đang gửi cập nhật vị trí khi GPS hoạt động.
+              {tr(
+                'Ứng dụng đang gửi cập nhật vị trí trực tiếp cho khách hàng.',
+                'Sharing real-time location updates with the customer.',
+              )}
             </Text>
           </View>
           <View style={styles.trackingIndicator} />
@@ -320,9 +369,14 @@ export default function DriverActiveScreen() {
 
         {/* Xác nhận giao hàng */}
         <View style={styles.actionSection}>
-          <Text style={styles.actionTitle}>Đã giao hàng thành công?</Text>
+          <Text style={styles.actionTitle}>
+            {tr('Đã giao hàng thành công?', 'Completed the delivery?')}
+          </Text>
           <Text style={styles.actionDescription}>
-            Chỉ xác nhận sau khi khách hàng đã nhận được đơn hàng.
+            {tr(
+              'Chỉ xác nhận sau khi khách hàng đã nhận được đơn hàng.',
+              'Only confirm after the customer has received their order.',
+            )}
           </Text>
 
           <Pressable
@@ -333,15 +387,18 @@ export default function DriverActiveScreen() {
             ]}
             onPress={() => {
               Alert.alert(
-                'Xác nhận giao hàng',
-                'Bạn có chắc chắn đơn hàng đã được giao cho khách hàng không?',
+                tr('Xác nhận giao hàng', 'Confirm Delivery'),
+                tr(
+                  'Bạn có chắc chắn đơn hàng đã được giao cho khách hàng không?',
+                  'Are you sure this order has been delivered to the customer?',
+                ),
                 [
                   {
-                    text: 'Chưa',
+                    text: tr('Chưa', 'Not yet'),
                     style: 'cancel',
                   },
                   {
-                    text: 'Đã giao hàng',
+                    text: tr('Đã giao hàng', 'Mark Delivered'),
                     onPress: () => markDelivered(activeOrder.id),
                   },
                 ],
@@ -352,11 +409,9 @@ export default function DriverActiveScreen() {
             {isPending ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <>
-                <Text style={styles.deliveredButtonText}>
-                  ✓  Xác nhận đã giao hàng
-                </Text>
-              </>
+              <Text style={styles.deliveredButtonText}>
+                {tr('✓  Xác nhận đã giao hàng', '✓  Mark as Delivered')}
+              </Text>
             )}
           </Pressable>
         </View>
@@ -368,7 +423,13 @@ export default function DriverActiveScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF9F5',
+    backgroundColor: BURGER_COLORS.background,
+  },
+  emptyTopBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 18,
+    paddingTop: 12,
   },
   scrollView: {
     flex: 1,
@@ -376,14 +437,12 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     paddingHorizontal: 18,
-    paddingTop: 20,
-    gap: 18,
+    paddingTop: 14,
+    gap: 16,
   },
-
-  // Header
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 12,
   },
@@ -393,43 +452,29 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 10,
     fontWeight: '900',
-    color: '#FF6B35',
-    letterSpacing: 1.5,
-    marginBottom: 7,
+    color: BURGER_COLORS.primary,
+    letterSpacing: 1.4,
+    marginBottom: 4,
   },
   title: {
-    fontSize: 28,
-    lineHeight: 35,
+    fontSize: 26,
     fontWeight: '900',
-    color: '#29232A',
-    letterSpacing: -0.7,
+    color: BURGER_COLORS.text,
+    letterSpacing: -0.6,
   },
   subtitle: {
-    marginTop: 6,
-    fontSize: 13,
-    lineHeight: 20,
-    color: '#8B8289',
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 18,
+    color: BURGER_COLORS.muted,
   },
-  headerIcon: {
-    width: 68,
-    height: 68,
-    borderRadius: 23,
-    backgroundColor: '#FFF0E8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerEmoji: {
-    fontSize: 35,
-  },
-
-  // Trạng thái đơn hàng
   statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BURGER_COLORS.surface,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
+    borderColor: BURGER_COLORS.border,
     borderRadius: 18,
     padding: 14,
   },
@@ -437,7 +482,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: '#FFF0E8',
+    backgroundColor: BURGER_COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -449,86 +494,82 @@ const styles = StyleSheet.create({
   },
   statusTitle: {
     fontSize: 14,
-    fontWeight: '900',
-    color: '#29232A',
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
   },
   statusSubtitle: {
     fontSize: 11,
-    color: '#8B8289',
-    marginTop: 4,
+    color: BURGER_COLORS.muted,
+    marginTop: 3,
     lineHeight: 16,
   },
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#FFF0E8',
-    borderRadius: 9,
-    paddingHorizontal: 8,
-    paddingVertical: 7,
+    backgroundColor: BURGER_COLORS.primaryLight,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   statusDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#FF6B35',
+    backgroundColor: BURGER_COLORS.primary,
   },
   statusPillText: {
-    color: '#FF6B35',
-    fontSize: 9,
-    fontWeight: '900',
+    color: BURGER_COLORS.primary,
+    fontSize: 10,
+    fontWeight: '800',
   },
-
-  // Bản đồ
   sectionHeading: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: -8,
+    marginBottom: -4,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#29232A',
+    fontSize: 16,
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
   },
   liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#E9F8EF',
-    borderRadius: 8,
+    backgroundColor: BURGER_COLORS.successLight,
+    borderRadius: 999,
     paddingHorizontal: 9,
-    paddingVertical: 6,
+    paddingVertical: 5,
   },
   liveDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#22A06B',
+    backgroundColor: BURGER_COLORS.success,
   },
   liveText: {
     fontSize: 10,
     fontWeight: '900',
-    color: '#168653',
+    color: BURGER_COLORS.success,
   },
   mapContainer: {
     width: '100%',
     minHeight: 240,
     overflow: 'hidden',
-    borderRadius: 20,
-    backgroundColor: '#F0E8E3',
+    borderRadius: 18,
+    backgroundColor: BURGER_COLORS.surfaceMuted,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
+    borderColor: BURGER_COLORS.border,
   },
-
-  // Thông tin đơn hàng
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 18,
+    backgroundColor: BURGER_COLORS.surface,
+    borderRadius: 18,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
-    gap: 16,
+    borderColor: BURGER_COLORS.border,
+    gap: 14,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -537,30 +578,30 @@ const styles = StyleSheet.create({
   },
   cardEyebrow: {
     fontSize: 9,
-    fontWeight: '900',
-    color: '#FF6B35',
-    letterSpacing: 1.2,
-    marginBottom: 5,
+    fontWeight: '800',
+    color: BURGER_COLORS.primary,
+    letterSpacing: 1,
+    marginBottom: 4,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#29232A',
+    fontSize: 16,
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
   },
   packageIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#FFF0E8',
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: BURGER_COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   packageEmoji: {
-    fontSize: 20,
+    fontSize: 19,
   },
   divider: {
     height: 1,
-    backgroundColor: '#F0E8E3',
+    backgroundColor: BURGER_COLORS.border,
   },
   infoRow: {
     flexDirection: 'row',
@@ -568,126 +609,117 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   infoIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: '#FFF9F5',
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    backgroundColor: BURGER_COLORS.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
   infoEmoji: {
-    fontSize: 17,
-    color: '#FF6B35',
+    fontSize: 16,
+    color: BURGER_COLORS.primary,
     fontWeight: '900',
   },
   infoContent: {
     flex: 1,
-    paddingTop: 2,
+    paddingTop: 1,
   },
   label: {
     fontSize: 11,
-    color: '#9B9097',
+    color: BURGER_COLORS.muted,
     fontWeight: '600',
-    marginBottom: 5,
+    marginBottom: 3,
   },
   value: {
     fontSize: 14,
-    lineHeight: 21,
+    lineHeight: 20,
     fontWeight: '800',
-    color: '#29232A',
+    color: BURGER_COLORS.text,
   },
   statusValue: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#168653',
+    color: BURGER_COLORS.success,
   },
-
-  // Theo dõi GPS
   trackingCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 15,
-    borderRadius: 17,
-    backgroundColor: '#E9F8EF',
-    borderWidth: 1,
-    borderColor: '#D4F0DF',
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: BURGER_COLORS.successLight,
   },
   trackingIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
-    backgroundColor: '#FFFFFF',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: BURGER_COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   trackingEmoji: {
-    fontSize: 20,
+    fontSize: 19,
   },
   trackingContent: {
     flex: 1,
   },
   trackingTitle: {
     fontSize: 13,
-    fontWeight: '900',
-    color: '#166534',
+    fontWeight: '800',
+    color: BURGER_COLORS.success,
   },
   trackingDescription: {
     fontSize: 11,
-    lineHeight: 17,
-    color: '#43805B',
-    marginTop: 4,
+    lineHeight: 16,
+    color: BURGER_COLORS.textSoft,
+    marginTop: 2,
   },
   trackingIndicator: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: '#22A06B',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: BURGER_COLORS.success,
   },
-
-  // Nút xác nhận
   actionSection: {
-    padding: 18,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: BURGER_COLORS.surface,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
-    gap: 10,
+    borderColor: BURGER_COLORS.border,
+    gap: 8,
   },
   actionTitle: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: '#29232A',
+    fontSize: 16,
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
   },
   actionDescription: {
     fontSize: 12,
-    lineHeight: 19,
-    color: '#8B8289',
+    lineHeight: 18,
+    color: BURGER_COLORS.muted,
   },
   deliveredButton: {
-    backgroundColor: '#FF6B35',
-    borderRadius: 15,
+    backgroundColor: BURGER_COLORS.primary,
+    borderRadius: 14,
     paddingHorizontal: 16,
-    paddingVertical: 17,
+    paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 56,
-    marginTop: 5,
+    minHeight: 52,
+    marginTop: 4,
   },
   disabledButton: {
     opacity: 0.6,
   },
   buttonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.99 }],
+    opacity: 0.88,
   },
   deliveredButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
-
-  // Loading và chưa có đơn
   centered: {
     flex: 1,
     alignItems: 'center',
@@ -695,42 +727,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
   },
   loadingIcon: {
-    width: 76,
-    height: 76,
-    borderRadius: 25,
-    backgroundColor: '#FFF0E8',
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    backgroundColor: BURGER_COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  loadingText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: BURGER_COLORS.muted,
+  },
+  emptyIcon: {
+    width: 92,
+    height: 92,
+    borderRadius: 30,
+    backgroundColor: BURGER_COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 18,
   },
-  loadingText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#8B8289',
-  },
-  emptyIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 32,
-    backgroundColor: '#FFF0E8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 22,
-  },
   emptyEmoji: {
-    fontSize: 49,
+    fontSize: 44,
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: '900',
-    color: '#29232A',
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
     textAlign: 'center',
   },
   emptyText: {
     fontSize: 13,
-    lineHeight: 21,
-    color: '#8B8289',
+    lineHeight: 20,
+    color: BURGER_COLORS.muted,
     textAlign: 'center',
-    marginTop: 10,
+    marginTop: 8,
   },
 });

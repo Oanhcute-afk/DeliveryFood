@@ -18,9 +18,12 @@ import {
   MenuItem,
   RestaurantType,
 } from '@food-delivery/types';
+import { BURGER_COLORS } from '@/constants/theme';
+import { useLanguage } from '@/context/language-context';
 
 export default function RestaurantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { tr } = useLanguage();
   const { addItem, restaurantId, clearCart, items } = useCartStore();
 
   const { data: restaurant, isLoading: loadingRestaurant } =
@@ -47,17 +50,21 @@ export default function RestaurantDetailScreen() {
   function handleAddItem(item: MenuItem) {
     if (!restaurant) return;
 
-    // Giỏ hàng đang có món từ nhà hàng khác: xác nhận trước khi xóa.
     if (restaurantId && restaurantId !== item.restaurantId) {
       Alert.alert(
-        'Bắt đầu giỏ hàng mới?',
-        `Giỏ hàng hiện có món từ ${
-          useCartStore.getState().restaurantName
-        }. Bạn có muốn xóa giỏ hàng và thêm món từ ${restaurant.name} không?`,
+        tr('Bắt đầu giỏ hàng mới?', 'Start a new cart?'),
+        tr(
+          `Giỏ hàng hiện có món từ ${
+            useCartStore.getState().restaurantName
+          }. Bạn có muốn xóa giỏ hàng và thêm món từ ${restaurant.name} không?`,
+          `Your cart currently has items from ${
+            useCartStore.getState().restaurantName
+          }. Clear cart and add items from ${restaurant.name}?`,
+        ),
         [
-          { text: 'Hủy', style: 'cancel' },
+          { text: tr('Hủy', 'Cancel'), style: 'cancel' },
           {
-            text: 'Xóa và thêm',
+            text: tr('Xóa và thêm', 'Clear & Add'),
             style: 'destructive',
             onPress: () => {
               clearCart();
@@ -92,14 +99,16 @@ export default function RestaurantDetailScreen() {
 
   if (loadingRestaurant) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.centered}>
           <View style={styles.loadingIcon}>
-            <ActivityIndicator size="large" color="#FF6B35" />
+            <ActivityIndicator size="large" color={BURGER_COLORS.primary} />
           </View>
-          <Text style={styles.loadingTitle}>Đang mở nhà hàng</Text>
+          <Text style={styles.loadingTitle}>
+            {tr('Đang mở thực đơn', 'Loading menu')}
+          </Text>
           <Text style={styles.loadingSubtitle}>
-            Vui lòng chờ một chút nhé...
+            {tr('Vui lòng chờ một chút nhé...', 'Please wait a moment...')}
           </Text>
         </View>
       </SafeAreaView>
@@ -112,7 +121,7 @@ export default function RestaurantDetailScreen() {
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -127,16 +136,12 @@ export default function RestaurantDetailScreen() {
             />
           ) : (
             <View style={styles.heroPlaceholder}>
-              <Text style={styles.heroPlaceholderEmoji}>🍽️</Text>
-              <Text style={styles.heroPlaceholderText}>Nhà hàng</Text>
+              <Text style={styles.heroPlaceholderEmoji}>🍔</Text>
+              <Text style={styles.heroPlaceholderText}>
+                {tr('Nhà hàng', 'Restaurant')}
+              </Text>
             </View>
           )}
-
-          <View style={styles.heroOverlay} />
-
-          <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeText}>🍴 ĐẶT MÓN NGAY</Text>
-          </View>
         </View>
 
         {/* Thông tin nhà hàng */}
@@ -145,7 +150,8 @@ export default function RestaurantDetailScreen() {
             <View style={styles.nameContainer}>
               <Text style={styles.name}>{restaurant.name}</Text>
               <Text style={styles.cuisine}>
-                {restaurant.cuisineType || 'Ẩm thực đa dạng'}
+                {restaurant.cuisineType ||
+                  tr('Burger & Món ngon', 'Burgers & Comfort Food')}
               </Text>
             </View>
 
@@ -158,50 +164,29 @@ export default function RestaurantDetailScreen() {
           </View>
 
           {restaurant.description ? (
-            <Text style={styles.description}>
-              {restaurant.description}
-            </Text>
+            <Text style={styles.description}>{restaurant.description}</Text>
           ) : null}
 
           <View style={styles.infoDivider} />
 
           <View style={styles.addressRow}>
-            <View style={styles.addressIcon}>
-              <Text style={styles.addressEmoji}>📍</Text>
-            </View>
-            <View style={styles.addressContent}>
-              <Text style={styles.addressLabel}>ĐỊA CHỈ NHÀ HÀNG</Text>
-              <Text style={styles.address}>
-                {restaurant.address || 'Chưa cập nhật địa chỉ'}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.quickInfoRow}>
-            <View style={styles.quickInfoItem}>
-              <Text style={styles.quickInfoEmoji}>🍽️</Text>
-              <Text style={styles.quickInfoText}>
-                {availableItems.length} món đang bán
-              </Text>
-            </View>
-            <View style={styles.quickInfoItem}>
-              <Text style={styles.quickInfoEmoji}>✨</Text>
-              <Text style={styles.quickInfoText}>Chọn món yêu thích</Text>
-            </View>
+            <Text style={styles.addressEmoji}>📍</Text>
+            <Text style={styles.address} numberOfLines={2}>
+              {restaurant.address ||
+                tr('Chưa cập nhật địa chỉ', 'Address not provided')}
+            </Text>
           </View>
         </View>
 
         {/* Thực đơn */}
         <View style={styles.menuSection}>
           <View style={styles.menuHeader}>
-            <View>
-              <Text style={styles.sectionEyebrow}>KHÁM PHÁ HƯƠNG VỊ</Text>
-              <Text style={styles.menuHeading}>Thực đơn</Text>
-            </View>
-
+            <Text style={styles.menuHeading}>
+              {tr('Thực đơn', 'Menu')}
+            </Text>
             <View style={styles.menuCountBadge}>
               <Text style={styles.menuCountText}>
-                {availableItems.length} món
+                {availableItems.length} {tr('món', 'items')}
               </Text>
             </View>
           </View>
@@ -219,7 +204,7 @@ export default function RestaurantDetailScreen() {
                   <View style={styles.categoryAccent} />
                   <Text style={styles.categoryName}>{category.name}</Text>
                   <Text style={styles.categoryCount}>
-                    {categoryItems.length} món
+                    {categoryItems.length} {tr('món', 'items')}
                   </Text>
                 </View>
 
@@ -240,7 +225,10 @@ export default function RestaurantDetailScreen() {
                           </Text>
                         ) : (
                           <Text style={styles.itemDescriptionFallback}>
-                            Được chuẩn bị tươi ngon mỗi ngày
+                            {tr(
+                              'Chế biến nóng hổi mỗi ngày',
+                              'Freshly prepared daily',
+                            )}
                           </Text>
                         )}
 
@@ -258,7 +246,7 @@ export default function RestaurantDetailScreen() {
                                   pressed && styles.buttonPressed,
                                 ]}
                                 accessibilityRole="button"
-                                accessibilityLabel={`Giảm số lượng ${item.name}`}
+                                accessibilityLabel={`${tr('Giảm', 'Decrease')} ${item.name}`}
                                 onPress={() =>
                                   useCartStore
                                     .getState()
@@ -277,7 +265,7 @@ export default function RestaurantDetailScreen() {
                                   pressed && styles.buttonPressed,
                                 ]}
                                 accessibilityRole="button"
-                                accessibilityLabel={`Tăng số lượng ${item.name}`}
+                                accessibilityLabel={`${tr('Tăng', 'Increase')} ${item.name}`}
                                 onPress={() => handleAddItem(item)}
                               >
                                 <Text style={styles.qtyPlusText}>+</Text>
@@ -293,7 +281,9 @@ export default function RestaurantDetailScreen() {
                               onPress={() => handleAddItem(item)}
                             >
                               <Text style={styles.addButtonPlus}>+</Text>
-                              <Text style={styles.addButtonText}>Thêm</Text>
+                              <Text style={styles.addButtonText}>
+                                {tr('Thêm', 'Add')}
+                              </Text>
                             </Pressable>
                           )}
                         </View>
@@ -308,7 +298,7 @@ export default function RestaurantDetailScreen() {
                           />
                         ) : (
                           <View style={styles.itemImagePlaceholder}>
-                            <Text style={styles.itemPlaceholderEmoji}>🍲</Text>
+                            <Text style={styles.itemPlaceholderEmoji}>🍔</Text>
                           </View>
                         )}
 
@@ -329,26 +319,21 @@ export default function RestaurantDetailScreen() {
 
           {availableItems.length === 0 ? (
             <View style={styles.emptyMenu}>
-              <Text style={styles.emptyMenuEmoji}>🍽️</Text>
+              <Text style={styles.emptyMenuEmoji}>🍔</Text>
               <Text style={styles.emptyMenuTitle}>
-                Thực đơn đang được cập nhật
+                {tr('Thực đơn đang cập nhật', 'Menu is being updated')}
               </Text>
               <Text style={styles.emptyMenuText}>
-                Nhà hàng chưa có món ăn nào sẵn sàng. Bạn hãy quay lại sau nhé!
+                {tr(
+                  'Nhà hàng chưa có món ăn nào sẵn sàng. Bạn hãy quay lại sau nhé!',
+                  'No items are available right now. Please check back soon!',
+                )}
               </Text>
             </View>
           ) : null}
         </View>
-
-        <View style={styles.footerNote}>
-          <Text style={styles.footerEmoji}>🧡</Text>
-          <Text style={styles.footerText}>
-            Cảm ơn bạn đã lựa chọn nhà hàng. Chúc bạn ngon miệng!
-          </Text>
-        </View>
       </ScrollView>
 
-      {/* Tóm tắt giỏ hàng — chỉ hiển thị, không thay đổi luồng điều hướng */}
       {totalQuantity > 0 ? (
         <View style={styles.cartSummary}>
           <View style={styles.cartSummaryInfo}>
@@ -356,14 +341,18 @@ export default function RestaurantDetailScreen() {
               <Text style={styles.cartCountText}>{totalQuantity}</Text>
             </View>
             <View style={styles.cartTextContainer}>
-              <Text style={styles.cartTitle}>Giỏ hàng của bạn</Text>
+              <Text style={styles.cartTitle}>
+                {tr('Giỏ hàng của bạn', 'Your Cart')}
+              </Text>
               <Text style={styles.cartSubtitle}>
-                {totalQuantity} món đã chọn
+                {totalQuantity} {tr('món đã chọn', 'items selected')}
               </Text>
             </View>
           </View>
 
-          <Text style={styles.cartSummaryHint}>Sẵn sàng đặt món ✓</Text>
+          <Text style={styles.cartSummaryHint}>
+            {tr('Sẵn sàng đặt ✓', 'Ready ✓')}
+          </Text>
         </View>
       ) : null}
     </SafeAreaView>
@@ -373,10 +362,10 @@ export default function RestaurantDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF9F5',
+    backgroundColor: BURGER_COLORS.background,
   },
   scrollContent: {
-    paddingBottom: 30,
+    paddingBottom: 28,
   },
   centered: {
     flex: 1,
@@ -385,32 +374,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   loadingIcon: {
-    width: 76,
-    height: 76,
-    borderRadius: 24,
-    backgroundColor: '#FFF0E8',
+    width: 68,
+    height: 68,
+    borderRadius: 20,
+    backgroundColor: BURGER_COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   loadingTitle: {
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: '800',
-    color: '#29232A',
+    color: BURGER_COLORS.text,
   },
   loadingSubtitle: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#8B8289',
+    marginTop: 6,
+    fontSize: 13,
+    color: BURGER_COLORS.muted,
   },
-
-  // Ảnh bìa
   heroContainer: {
-    height: 245,
+    height: 200,
     width: '100%',
-    backgroundColor: '#F5E6DC',
-    position: 'relative',
-    overflow: 'hidden',
+    backgroundColor: BURGER_COLORS.surfaceMuted,
   },
   heroImage: {
     width: '100%',
@@ -420,228 +405,152 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F9E8DC',
+    backgroundColor: BURGER_COLORS.surfaceMuted,
   },
   heroPlaceholderEmoji: {
-    fontSize: 54,
-    marginBottom: 8,
+    fontSize: 48,
+    marginBottom: 6,
   },
   heroPlaceholderText: {
-    color: '#9C7160',
-    fontSize: 14,
+    color: BURGER_COLORS.muted,
+    fontSize: 13,
     fontWeight: '700',
   },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(41, 35, 42, 0.08)',
-  },
-  heroBadge: {
-    position: 'absolute',
-    left: 20,
-    bottom: 18,
-    paddingHorizontal: 13,
-    paddingVertical: 9,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F0E8E3',
-  },
-  heroBadgeText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#FF6B35',
-    letterSpacing: 0.8,
-  },
-
-  // Thông tin nhà hàng
   infoSection: {
     marginHorizontal: 16,
-    marginTop: -1,
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    marginTop: -18,
+    padding: 16,
+    backgroundColor: BURGER_COLORS.surface,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
+    borderColor: BURGER_COLORS.border,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: 10,
   },
   nameContainer: {
     flex: 1,
   },
   name: {
-    fontSize: 25,
-    lineHeight: 32,
+    fontSize: 22,
+    lineHeight: 28,
     fontWeight: '900',
-    color: '#29232A',
-    letterSpacing: -0.6,
+    color: BURGER_COLORS.text,
+    letterSpacing: -0.4,
   },
   cuisine: {
-    marginTop: 5,
-    fontSize: 14,
+    marginTop: 4,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#8B8289',
+    color: BURGER_COLORS.muted,
   },
   ratingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#FFF4D9',
-    borderRadius: 12,
-    paddingHorizontal: 11,
-    paddingVertical: 9,
+    gap: 4,
+    backgroundColor: BURGER_COLORS.cheeseLight,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   ratingStar: {
-    fontSize: 16,
-    color: '#E9A323',
+    fontSize: 14,
+    color: BURGER_COLORS.cheese,
   },
   ratingValue: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#75511C',
+    fontSize: 13,
+    fontWeight: '800',
+    color: BURGER_COLORS.cheeseDark,
   },
   description: {
-    fontSize: 14,
-    color: '#756B72',
-    lineHeight: 22,
-    marginTop: 14,
+    fontSize: 13,
+    color: BURGER_COLORS.textSoft,
+    lineHeight: 20,
+    marginTop: 10,
   },
   infoDivider: {
     height: 1,
-    backgroundColor: '#F0E8E3',
-    marginVertical: 18,
+    backgroundColor: BURGER_COLORS.border,
+    marginVertical: 12,
   },
   addressRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  addressIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#FFF0E8',
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
   },
   addressEmoji: {
-    fontSize: 18,
-  },
-  addressContent: {
-    flex: 1,
-  },
-  addressLabel: {
-    fontSize: 10,
-    color: '#A1989E',
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    marginBottom: 5,
+    fontSize: 15,
   },
   address: {
+    flex: 1,
     fontSize: 13,
-    color: '#443C43',
+    color: BURGER_COLORS.textSoft,
     fontWeight: '600',
-    lineHeight: 19,
   },
-  quickInfoRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 18,
-  },
-  quickInfoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#FFF9F5',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  quickInfoEmoji: {
-    fontSize: 13,
-  },
-  quickInfoText: {
-    fontSize: 11,
-    color: '#756B72',
-    fontWeight: '700',
-  },
-
-  // Thực đơn
   menuSection: {
     paddingHorizontal: 16,
-    paddingTop: 30,
+    paddingTop: 22,
   },
   menuHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  sectionEyebrow: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-    color: '#FF6B35',
-    marginBottom: 6,
+    marginBottom: 16,
   },
   menuHeading: {
-    fontSize: 29,
+    fontSize: 22,
     fontWeight: '900',
-    color: '#29232A',
-    letterSpacing: -0.8,
+    color: BURGER_COLORS.text,
   },
   menuCountBadge: {
-    backgroundColor: '#FFF0E8',
-    borderRadius: 12,
-    paddingHorizontal: 13,
-    paddingVertical: 9,
+    backgroundColor: BURGER_COLORS.cheeseLight,
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
   },
   menuCountText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#FF6B35',
+    color: BURGER_COLORS.cheeseDark,
   },
   categoryBlock: {
-    marginBottom: 26,
+    marginBottom: 20,
   },
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    gap: 9,
+    marginBottom: 10,
+    gap: 8,
   },
   categoryAccent: {
     width: 4,
-    height: 22,
-    borderRadius: 4,
-    backgroundColor: '#FF6B35',
+    height: 18,
+    borderRadius: 2,
+    backgroundColor: BURGER_COLORS.primary,
   },
   categoryName: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#29232A',
+    fontSize: 17,
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
   },
   categoryCount: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#9B9097',
+    color: BURGER_COLORS.muted,
   },
-
-  // Thẻ món ăn
   itemCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 14,
-    marginBottom: 12,
+    gap: 12,
+    backgroundColor: BURGER_COLORS.surface,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
+    borderColor: BURGER_COLORS.border,
   },
   itemInfo: {
     flex: 1,
@@ -650,92 +559,87 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#29232A',
-    lineHeight: 21,
+    color: BURGER_COLORS.text,
   },
   itemDescription: {
     fontSize: 12,
-    color: '#8B8289',
-    marginTop: 5,
-    lineHeight: 18,
+    color: BURGER_COLORS.muted,
+    marginTop: 4,
+    lineHeight: 17,
   },
   itemDescriptionFallback: {
     fontSize: 12,
-    color: '#A1989E',
-    marginTop: 5,
-    lineHeight: 18,
+    color: BURGER_COLORS.faint,
+    marginTop: 4,
   },
   itemBottom: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 13,
+    gap: 8,
+    marginTop: 10,
   },
   itemPrice: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '900',
-    color: '#FF6B35',
+    color: BURGER_COLORS.primary,
   },
   itemImageContainer: {
-    width: 108,
-    height: 112,
-    borderRadius: 15,
+    width: 92,
+    height: 92,
+    borderRadius: 14,
     position: 'relative',
-    overflow: 'visible',
   },
   itemImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 15,
-    backgroundColor: '#F5EDE7',
+    borderRadius: 14,
+    backgroundColor: BURGER_COLORS.surfaceMuted,
   },
   itemImagePlaceholder: {
     width: '100%',
     height: '100%',
-    borderRadius: 15,
-    backgroundColor: '#FFF0E8',
+    borderRadius: 14,
+    backgroundColor: BURGER_COLORS.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
   itemPlaceholderEmoji: {
-    fontSize: 34,
+    fontSize: 30,
   },
   itemSelectedBadge: {
     position: 'absolute',
-    top: -7,
-    right: -7,
-    width: 25,
-    height: 25,
-    borderRadius: 13,
+    top: -6,
+    right: -6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#22A06B',
+    backgroundColor: BURGER_COLORS.lettuce,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: BURGER_COLORS.surface,
   },
   itemSelectedBadgeText: {
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '800',
     color: '#FFFFFF',
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
-    minWidth: 79,
+    gap: 4,
     paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 11,
-    backgroundColor: '#FF6B35',
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: BURGER_COLORS.primary,
   },
   addButtonPlus: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     color: '#FFFFFF',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   addButtonText: {
     fontSize: 12,
@@ -745,32 +649,32 @@ const styles = StyleSheet.create({
   qtyControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
+    gap: 8,
   },
   qtyButton: {
-    width: 29,
-    height: 29,
-    borderRadius: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
   },
   qtyMinusButton: {
-    backgroundColor: '#FFF0E8',
+    backgroundColor: BURGER_COLORS.primaryLight,
     borderWidth: 1,
-    borderColor: '#FFD7C5',
+    borderColor: BURGER_COLORS.border,
   },
   qtyPlusButton: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: BURGER_COLORS.primary,
   },
   qtyMinusText: {
-    fontSize: 19,
-    lineHeight: 22,
-    color: '#FF6B35',
+    fontSize: 17,
+    lineHeight: 20,
+    color: BURGER_COLORS.primary,
     fontWeight: '800',
   },
   qtyPlusText: {
-    fontSize: 19,
-    lineHeight: 22,
+    fontSize: 17,
+    lineHeight: 20,
     color: '#FFFFFF',
     fontWeight: '800',
   },
@@ -778,111 +682,85 @@ const styles = StyleSheet.create({
     minWidth: 16,
     textAlign: 'center',
     fontSize: 14,
-    fontWeight: '900',
-    color: '#29232A',
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
   },
   buttonPressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.96 }],
+    opacity: 0.85,
   },
-
-  // Trạng thái thực đơn trống
   emptyMenu: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    backgroundColor: BURGER_COLORS.surface,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
-    paddingHorizontal: 24,
-    paddingVertical: 32,
+    borderColor: BURGER_COLORS.border,
+    paddingHorizontal: 22,
+    paddingVertical: 28,
   },
   emptyMenuEmoji: {
-    fontSize: 42,
-    marginBottom: 14,
+    fontSize: 38,
+    marginBottom: 10,
   },
   emptyMenuTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#29232A',
+    color: BURGER_COLORS.text,
     textAlign: 'center',
   },
   emptyMenuText: {
     fontSize: 13,
-    color: '#8B8289',
-    lineHeight: 20,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-
-  // Cuối trang
-  footerNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginHorizontal: 16,
-    marginTop: 4,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: '#FFF0E8',
-  },
-  footerEmoji: {
-    fontSize: 21,
-  },
-  footerText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#9A6046',
-    fontWeight: '600',
     lineHeight: 19,
+    color: BURGER_COLORS.muted,
+    textAlign: 'center',
+    marginTop: 6,
   },
-
-  // Tóm tắt giỏ hàng
   cartSummary: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: BURGER_COLORS.text,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F0E8E3',
+    gap: 10,
   },
   cartSummaryInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 11,
-    flex: 1,
+    gap: 10,
   },
   cartCountBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#FF6B35',
+    minWidth: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: BURGER_COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 6,
   },
   cartCountText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '800',
+    fontSize: 13,
   },
   cartTextContainer: {
-    flex: 1,
+    justifyContent: 'center',
   },
   cartTitle: {
+    color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '900',
-    color: '#29232A',
+    fontWeight: '800',
   },
   cartSubtitle: {
+    color: '#D7C4B6',
     fontSize: 11,
-    color: '#8B8289',
-    marginTop: 3,
+    marginTop: 2,
   },
   cartSummaryHint: {
-    fontSize: 11,
+    color: BURGER_COLORS.cheese,
+    fontSize: 12,
     fontWeight: '800',
-    color: '#168653',
   },
 });

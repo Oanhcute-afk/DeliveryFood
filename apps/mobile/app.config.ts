@@ -14,7 +14,7 @@ export default {
     },
 
     android: {
-      package: 'com.loopoen.fooddelivery',
+      package: 'com.oanh.fooddelivery',
       adaptiveIcon: {
         backgroundColor: '#E6F4FE',
         foregroundImage: './assets/images/android-icon-foreground.png',
@@ -63,14 +63,15 @@ export default {
       ],
     ],
 
-    experiments: {
+        experiments: {
       typedRoutes: true,
       reactCompiler: true,
     },
 
+    owner: 'oanhcute-afk',
     extra: {
       eas: {
-        projectId: 'ee2a5212-ca6e-4a18-a1ab-b9c56df0b2f8',
+        projectId: 'c1bd7458-407f-4941-9664-37134df9d6af',
       },
     },
   },

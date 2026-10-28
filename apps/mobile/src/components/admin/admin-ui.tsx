@@ -7,29 +7,32 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import { BURGER_COLORS } from '@/constants/theme';
+import { LanguageSwitch } from '@/components/language-switch';
+import { useLanguage } from '@/context/language-context';
 
-// Bảng màu dùng chung với các màn hình owner/driver
 export const COLORS = {
-  background: '#FFF9F5',
-  surface: '#FFFFFF',
-  primary: '#FF6B35',
-  primaryDark: '#D94D20',
-  primaryLight: '#FFF0E8',
-  text: '#29232A',
-  textSoft: '#4A4249',
-  muted: '#8B8289',
-  faint: '#A49AA0',
-  border: '#F0E8E3',
-  green: '#16A36A',
-  greenLight: '#E8F8F0',
-  red: '#E5484D',
-  redLight: '#FDEBEC',
-  blue: '#3478F6',
-  blueLight: '#EAF1FF',
+  background: BURGER_COLORS.background,
+  surface: BURGER_COLORS.surface,
+  surfaceAlt: BURGER_COLORS.surfaceMuted,
+  primary: BURGER_COLORS.primary,
+  primaryDark: BURGER_COLORS.primaryDark,
+  primaryLight: BURGER_COLORS.primaryLight,
+  text: BURGER_COLORS.text,
+  textSoft: BURGER_COLORS.textSoft,
+  muted: BURGER_COLORS.muted,
+  faint: BURGER_COLORS.faint,
+  border: BURGER_COLORS.border,
+  green: BURGER_COLORS.lettuce,
+  greenLight: BURGER_COLORS.lettuceLight,
+  red: BURGER_COLORS.tomato,
+  redLight: BURGER_COLORS.tomatoLight,
+  blue: BURGER_COLORS.blue,
+  blueLight: BURGER_COLORS.blueLight,
 };
 
 export function ScreenHeader({
-  eyebrow = 'QUẢN TRỊ',
+  eyebrow,
   title,
   subtitle,
   emoji,
@@ -39,16 +42,21 @@ export function ScreenHeader({
   subtitle?: string;
   emoji: string;
 }) {
+  const { tr } = useLanguage();
+  const displayEyebrow = eyebrow ?? tr('QUẢN TRỊ HỆ THỐNG', 'ADMIN CONSOLE');
+
   return (
     <View style={styles.header}>
-      <View style={styles.headerText}>
-        <Text style={styles.eyebrow}>{eyebrow}</Text>
-        <Text style={styles.title}>{title}</Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      <View style={styles.headerTopRow}>
+        <View style={styles.badgeRow}>
+          <Text style={styles.headerEmoji}>{emoji}</Text>
+          <Text style={styles.eyebrow}>{displayEyebrow}</Text>
+        </View>
+        <LanguageSwitch />
       </View>
-      <View style={styles.headerIcon}>
-        <Text style={styles.headerEmoji}>{emoji}</Text>
-      </View>
+
+      <Text style={styles.title}>{title}</Text>
+      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
     </View>
   );
 }
@@ -109,7 +117,7 @@ export function Card({
 export function EmptyState({ text }: { text: string }) {
   return (
     <View style={styles.empty}>
-      <Text style={styles.emptyEmoji}>🔍</Text>
+      <Text style={styles.emptyEmoji}>🍔</Text>
       <Text style={styles.emptyText}>{text}</Text>
     </View>
   );
@@ -117,37 +125,38 @@ export function EmptyState({ text }: { text: string }) {
 
 const styles = StyleSheet.create({
   header: {
+    marginBottom: 16,
+  },
+  headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 18,
+    marginBottom: 8,
   },
-  headerText: { flex: 1 },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: BURGER_COLORS.cheeseLight,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  headerEmoji: { fontSize: 13 },
   eyebrow: {
     fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.7,
-    color: COLORS.primary,
-    marginBottom: 6,
+    fontWeight: '800',
+    letterSpacing: 1,
+    color: BURGER_COLORS.cheeseDark,
   },
   title: {
-    fontSize: 27,
-    lineHeight: 34,
-    fontWeight: '900',
+    fontSize: 25,
+    lineHeight: 32,
+    fontWeight: '800',
     color: COLORS.text,
-    letterSpacing: -0.6,
+    letterSpacing: -0.5,
   },
-  subtitle: { fontSize: 12, color: COLORS.muted, marginTop: 4 },
-  headerIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    backgroundColor: COLORS.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerEmoji: { fontSize: 26 },
+  subtitle: { fontSize: 13, color: COLORS.muted, marginTop: 3 },
   search: {
     height: 48,
     flexDirection: 'row',
@@ -156,9 +165,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 15,
+    borderRadius: 14,
     paddingHorizontal: 14,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   searchInput: { flex: 1, height: '100%', fontSize: 14, color: COLORS.text },
   badge: {
@@ -173,12 +182,12 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 10, fontWeight: '800' },
   card: {
     backgroundColor: COLORS.surface,
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 16,
+    padding: 15,
   },
-  empty: { alignItems: 'center', paddingVertical: 48, gap: 8 },
-  emptyEmoji: { fontSize: 30 },
-  emptyText: { fontSize: 13, color: COLORS.muted },
+  empty: { alignItems: 'center', paddingVertical: 44, gap: 8 },
+  emptyEmoji: { fontSize: 32 },
+  emptyText: { fontSize: 13, color: COLORS.muted, textAlign: 'center' },
 });

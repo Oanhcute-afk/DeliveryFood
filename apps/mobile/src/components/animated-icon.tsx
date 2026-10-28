@@ -1,11 +1,11 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+import { BURGER_COLORS } from '@/constants/theme';
 
-const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
-const DURATION = 600;
+const DURATION = 350;
 
 export function AnimatedSplashOverlay() {
   const [visible, setVisible] = useState(true);
@@ -14,20 +14,11 @@ export function AnimatedSplashOverlay() {
 
   const splashKeyframe = new Keyframe({
     0: {
-      transform: [{ scale: INITIAL_SCALE_FACTOR }],
       opacity: 1,
-    },
-    20: {
-      opacity: 1,
-    },
-    70: {
-      opacity: 0,
-      easing: Easing.elastic(0.7),
     },
     100: {
       opacity: 0,
-      transform: [{ scale: 1 }],
-      easing: Easing.elastic(0.7),
+      easing: Easing.out(Easing.quad),
     },
   });
 
@@ -46,53 +37,31 @@ export function AnimatedSplashOverlay() {
 
 const keyframe = new Keyframe({
   0: {
-    transform: [{ scale: INITIAL_SCALE_FACTOR }],
+    transform: [{ scale: 0.94 }],
+    opacity: 0,
   },
   100: {
     transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
+    opacity: 1,
+    easing: Easing.out(Easing.quad),
   },
 });
 
 const logoKeyframe = new Keyframe({
   0: {
-    transform: [{ scale: 1.3 }],
+    transform: [{ scale: 0.96 }],
     opacity: 0,
-  },
-  40: {
-    transform: [{ scale: 1.3 }],
-    opacity: 0,
-    easing: Easing.elastic(0.7),
   },
   100: {
     opacity: 1,
     transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
-
-const glowKeyframe = new Keyframe({
-  0: {
-    transform: [{ rotateZ: '0deg' }],
-  },
-  100: {
-    transform: [{ rotateZ: '7200deg' }],
+    easing: Easing.out(Easing.quad),
   },
 });
 
 export function AnimatedIcon() {
   return (
     <View style={styles.iconContainer}>
-      <Animated.View
-        entering={glowKeyframe.duration(60 * 1000 * 4)}
-        style={styles.glow}
-      >
-        <Image
-          style={styles.glow}
-          source={require('@/assets/images/logo-glow.png')}
-        />
-      </Animated.View>
-
       <Animated.View
         entering={keyframe.duration(DURATION)}
         style={styles.background}
@@ -115,11 +84,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  glow: {
-    width: 201,
-    height: 201,
-    position: 'absolute',
-  },
   iconContainer: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -133,15 +97,15 @@ const styles = StyleSheet.create({
     height: 71,
   },
   background: {
-    borderRadius: 40,
-    experimental_backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
+    borderRadius: 36,
+    backgroundColor: BURGER_COLORS.primary,
     width: 128,
     height: 128,
     position: 'absolute',
   },
   backgroundSolidColor: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#208AEF',
+    backgroundColor: BURGER_COLORS.background,
     zIndex: 1000,
   },
 });

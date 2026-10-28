@@ -6,6 +6,8 @@ import {
   View,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { BURGER_COLORS } from '@/constants/theme';
+import { useLanguage } from '@/context/language-context';
 
 type Props = {
   latitude?: number;
@@ -25,7 +27,7 @@ function createGoogleMapHtml(latitude: number, longitude: number) {
       width: 100%;
       margin: 0;
       padding: 0;
-      background: #e8eef0;
+      background: #f7ecde;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     .driver-marker {
@@ -35,14 +37,14 @@ function createGoogleMapHtml(latitude: number, longitude: number) {
       width: 42px;
       height: 42px;
       border-radius: 21px;
-      background: #FF6B35;
-      border: 3px solid #FFFFFF;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.28);
+      background: #D94E1F;
+      border: 3px solid #FFFDF9;
+      box-shadow: 0 3px 10px rgba(44,26,17,0.28);
       font-size: 22px;
     }
     .leaflet-control-attribution {
       font-size: 9px !important;
-      background: rgba(255,255,255,0.85) !important;
+      background: rgba(255,253,249,0.88) !important;
       padding: 2px 6px !important;
       border-radius: 4px;
     }
@@ -84,7 +86,6 @@ function createGoogleMapHtml(latitude: number, longitude: number) {
           attributionControl: true
         }).setView(currentCoords, 16);
 
-        // Sử dụng Google Maps रोड tiles (hỗ trợ tiếng Việt) với fallback sang OpenStreetMap
         var googleTiles = L.tileLayer(
           'https://{s}.google.com/vt/lyrs=m&hl=vi&x={x}&y={y}&z={z}',
           {
@@ -122,7 +123,7 @@ function createGoogleMapHtml(latitude: number, longitude: number) {
 
         marker = L.marker(currentCoords, { icon: icon })
           .addTo(map)
-          .bindPopup('Vị trí giao hàng hiện tại');
+          .bindPopup('Delivery location');
 
         setTimeout(function () {
           map.invalidateSize();
@@ -160,11 +161,11 @@ export default function DeliveryMap({
 }: Props) {
   const webViewRef = useRef<WebView | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const { tr } = useLanguage();
 
   const safeLat = Number.isFinite(latitude) ? latitude : 10.7769;
   const safeLng = Number.isFinite(longitude) ? longitude : 106.7009;
 
-  // Khởi tạo HTML một lần, các cập nhật tọa độ tiếp theo được đẩy qua postMessage
   const mapHtml = useMemo(() => createGoogleMapHtml(safeLat, safeLng), []);
 
   useEffect(() => {
@@ -196,8 +197,10 @@ export default function DeliveryMap({
 
       {!mapReady && (
         <View style={styles.loading}>
-          <ActivityIndicator size="large" color="#FF6B35" />
-          <Text style={styles.loadingText}>Đang tải bản đồ Google Maps...</Text>
+          <ActivityIndicator size="large" color={BURGER_COLORS.primary} />
+          <Text style={styles.loadingText}>
+            {tr('Đang tải bản đồ...', 'Loading map...')}
+          </Text>
         </View>
       )}
     </View>
@@ -206,26 +209,26 @@ export default function DeliveryMap({
 
 const styles = StyleSheet.create({
   container: {
-    height: 280,
+    height: 260,
     width: '100%',
     overflow: 'hidden',
-    borderRadius: 12,
-    backgroundColor: '#E8EEF0',
+    borderRadius: 16,
+    backgroundColor: BURGER_COLORS.surfaceMuted,
   },
   map: {
     flex: 1,
-    backgroundColor: '#E8EEF0',
+    backgroundColor: BURGER_COLORS.surfaceMuted,
   },
   loading: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E8EEF0',
+    backgroundColor: BURGER_COLORS.surfaceMuted,
   },
   loadingText: {
     marginTop: 8,
     fontSize: 13,
     fontWeight: '600',
-    color: '#444',
+    color: BURGER_COLORS.muted,
   },
 });

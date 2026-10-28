@@ -22,32 +22,60 @@ import {
   useDriverLocationSocket,
 } from '@/hooks/use-order-socket';
 import { RatingModal } from '@/components/rating-modal';
+import { BURGER_COLORS } from '@/constants/theme';
+import { useLanguage } from '@/context/language-context';
+import { LanguageSwitch } from '@/components/language-switch';
 
 const COLORS = {
-  background: '#FFF9F5',
-  surface: '#FFFFFF',
-  primary: '#FF6B35',
-  primaryLight: '#FFF0E8',
-  text: '#29232A',
-  muted: '#8B8289',
-  border: '#F0E8E3',
-  success: '#16A34A',
-  successLight: '#DCFCE7',
-  danger: '#EF4444',
-  dangerLight: '#FEE2E2',
-  blue: '#3478F6',
-  blueLight: '#EAF2FF',
-  purple: '#8B5CF6',
-  purpleLight: '#F1EBFF',
-  grayLight: '#F5F1EE',
+  background: BURGER_COLORS.background,
+  surface: BURGER_COLORS.surface,
+  primary: BURGER_COLORS.primary,
+  primaryLight: BURGER_COLORS.primaryLight,
+  text: BURGER_COLORS.text,
+  muted: BURGER_COLORS.muted,
+  border: BURGER_COLORS.border,
+  success: BURGER_COLORS.success,
+  successLight: BURGER_COLORS.successLight,
+  danger: BURGER_COLORS.danger,
+  dangerLight: BURGER_COLORS.dangerLight,
+  blue: '#2563EB',
+  blueLight: '#DBEAFE',
+  purple: '#7C3AED',
+  purpleLight: '#EDE9FE',
+  grayLight: BURGER_COLORS.surfaceMuted,
 };
 
 const STATUS_STEPS = [
-  { key: 'CONFIRMED', label: 'Đơn hàng đã xác nhận', icon: 'checkmark-circle' as const },
-  { key: 'PREPARING', label: 'Nhà hàng đang chuẩn bị', icon: 'restaurant' as const },
-  { key: 'READY', label: 'Món ăn đã sẵn sàng', icon: 'fast-food' as const },
-  { key: 'PICKED_UP', label: 'Tài xế đang giao hàng', icon: 'bicycle' as const },
-  { key: 'DELIVERED', label: 'Giao hàng thành công', icon: 'gift' as const },
+  {
+    key: 'CONFIRMED',
+    labelVi: 'Đơn hàng đã xác nhận',
+    labelEn: 'Order confirmed',
+    icon: 'checkmark-circle' as const,
+  },
+  {
+    key: 'PREPARING',
+    labelVi: 'Nhà hàng đang chuẩn bị',
+    labelEn: 'Restaurant is preparing',
+    icon: 'restaurant' as const,
+  },
+  {
+    key: 'READY',
+    labelVi: 'Món ăn đã sẵn sàng',
+    labelEn: 'Food is ready for pickup',
+    icon: 'fast-food' as const,
+  },
+  {
+    key: 'PICKED_UP',
+    labelVi: 'Tài xế đang giao hàng',
+    labelEn: 'Driver is on the way',
+    icon: 'bicycle' as const,
+  },
+  {
+    key: 'DELIVERED',
+    labelVi: 'Giao hàng thành công',
+    labelEn: 'Delivered successfully',
+    icon: 'gift' as const,
+  },
 ];
 
 const STATUS_ORDER = [
@@ -57,16 +85,6 @@ const STATUS_ORDER = [
   'PICKED_UP',
   'DELIVERED',
 ];
-
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Chờ thanh toán',
-  CONFIRMED: 'Đã xác nhận',
-  PREPARING: 'Đang chuẩn bị',
-  READY: 'Chờ tài xế lấy hàng',
-  PICKED_UP: 'Đang giao hàng',
-  DELIVERED: 'Đã giao thành công',
-  CANCELLED: 'Đã hủy',
-};
 
 type DriverLocation = {
   latitude: number;
@@ -103,12 +121,12 @@ function createOpenStreetMapHtml(location: DriverLocation) {
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <style>
     html, body, #map {
-      height:100%; width:100%; margin:0; padding:0; background:#f5f1ee;
+      height:100%; width:100%; margin:0; padding:0; background:#F7EFE4;
     }
     .driver-pin {
       display:flex; align-items:center; justify-content:center;
       width:40px; height:40px; border-radius:20px;
-      background:#FF6B35; border:3px solid #FFFFFF;
+      background:#D94E1F; border:3px solid #FFFFFF;
       font-size:21px; box-shadow:0 3px 10px rgba(0,0,0,.28);
     }
     .leaflet-control-attribution { font-size:9px !important; }
@@ -270,6 +288,7 @@ function getStatusStyle(status: string) {
 }
 
 export default function OrderConfirmationScreen() {
+  const { tr } = useLanguage();
   const params = useLocalSearchParams<{ id: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -285,6 +304,16 @@ export default function OrderConfirmationScreen() {
   const [mapLoadFailed, setMapLoadFailed] = useState(false);
   const [cachedDriverLocation, setCachedDriverLocation] =
     useState<DriverLocation | null>(null);
+
+  const statusLabels: Record<string, string> = {
+    PENDING: tr('Chờ thanh toán', 'Pending Payment'),
+    CONFIRMED: tr('Đã xác nhận', 'Confirmed'),
+    PREPARING: tr('Đang chuẩn bị', 'Preparing'),
+    READY: tr('Chờ tài xế lấy hàng', 'Ready for Pickup'),
+    PICKED_UP: tr('Đang giao hàng', 'Out for Delivery'),
+    DELIVERED: tr('Đã giao thành công', 'Delivered'),
+    CANCELLED: tr('Đã hủy', 'Cancelled'),
+  };
 
   useEffect(() => {
     if (!orderUpdate || !id) return;
@@ -342,7 +371,10 @@ export default function OrderConfirmationScreen() {
     },
 
     onError: () => {
-      Alert.alert('Không gửi được đánh giá', 'Vui lòng thử lại sau.');
+      Alert.alert(
+        tr('Không gửi được đánh giá', 'Unable to submit review'),
+        tr('Vui lòng thử lại sau.', 'Please try again later.'),
+      );
     },
   });
 
@@ -387,8 +419,6 @@ export default function OrderConfirmationScreen() {
       showMap && driverLocation
         ? createOpenStreetMapHtml(driverLocation)
         : '',
-    // Chỉ khởi tạo lại HTML khi bản đồ chuyển sang trạng thái hiển thị.
-    // Các cập nhật vị trí tiếp theo được gửi qua WebView postMessage.
     [showMap],
   );
 
@@ -410,7 +440,6 @@ export default function OrderConfirmationScreen() {
   ]);
 
   function handleMapMessage(event: WebViewMessageEvent) {
-    // Giữ handler để có thể nhận thông điệp từ bản đồ trong tương lai.
     void event;
   }
 
@@ -431,18 +460,23 @@ export default function OrderConfirmationScreen() {
       });
 
       if (initError) {
-        Alert.alert('Không thể khởi tạo thanh toán', initError.message);
+        Alert.alert(
+          tr('Không thể khởi tạo thanh toán', 'Payment setup failed'),
+          initError.message,
+        );
         return;
       }
 
       const { error: paymentError } = await presentPaymentSheet();
 
       if (paymentError) {
-        Alert.alert('Thanh toán thất bại', paymentError.message);
+        Alert.alert(
+          tr('Thanh toán thất bại', 'Payment failed'),
+          paymentError.message,
+        );
         return;
       }
 
-      // Cập nhật ngay trạng thái CONFIRMED trên giao diện sau khi Stripe PaymentSheet hoàn tất
       queryClient.setQueryData(['order', id], (old: unknown) => ({
         ...((old && typeof old === 'object') ? old : order),
         status: 'CONFIRMED',
@@ -451,11 +485,13 @@ export default function OrderConfirmationScreen() {
       queryClient.invalidateQueries({ queryKey: ['restaurant-orders'] });
 
       Alert.alert(
-        'Thanh toán thành công',
-        'Nhà hàng đang chuẩn bị đơn hàng.',
+        tr('Thanh toán thành công', 'Payment successful'),
+        tr(
+          'Nhà hàng đang chuẩn bị đơn hàng.',
+          'The restaurant is now preparing your order.',
+        ),
       );
 
-      // Đồng bộ ngầm với server sau khi webhook Stripe xử lý xong
       void (async () => {
         for (let i = 0; i < 5; i++) {
           await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -467,8 +503,9 @@ export default function OrderConfirmationScreen() {
       })();
     } catch (error: any) {
       Alert.alert(
-        'Có lỗi xảy ra',
-        error?.response?.data?.message ?? 'Vui lòng thử lại sau.',
+        tr('Có lỗi xảy ra', 'Something went wrong'),
+        error?.response?.data?.message ??
+          tr('Vui lòng thử lại sau.', 'Please try again later.'),
       );
     } finally {
       setPaymentLoading(false);
@@ -482,9 +519,11 @@ export default function OrderConfirmationScreen() {
           <View style={styles.loadingIcon}>
             <ActivityIndicator size="large" color={COLORS.primary} />
           </View>
-          <Text style={styles.loadingTitle}>Đang tải đơn hàng</Text>
+          <Text style={styles.loadingTitle}>
+            {tr('Đang tải đơn hàng', 'Loading order')}
+          </Text>
           <Text style={styles.loadingText}>
-            Vui lòng đợi trong giây lát...
+            {tr('Vui lòng đợi trong giây lát...', 'Please wait a moment...')}
           </Text>
         </View>
       </SafeAreaView>
@@ -498,29 +537,44 @@ export default function OrderConfirmationScreen() {
           <View style={styles.errorIcon}>
             <Ionicons
               name="cloud-offline-outline"
-              size={42}
+              size={40}
               color={COLORS.danger}
             />
           </View>
 
-          <Text style={styles.errorTitle}>Không tải được đơn hàng</Text>
+          <Text style={styles.errorTitle}>
+            {tr('Không tải được đơn hàng', 'Unable to load order')}
+          </Text>
           <Text style={styles.errorText}>
-            Kiểm tra kết nối mạng rồi thử lại nhé.
+            {tr(
+              'Kiểm tra kết nối mạng rồi thử lại nhé.',
+              'Check your internet connection and try again.',
+            )}
           </Text>
 
           <Pressable
-            style={styles.primaryButton}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed && styles.pressed,
+            ]}
             onPress={() => void refetch()}
           >
             <Ionicons name="refresh-outline" size={20} color="#FFFFFF" />
-            <Text style={styles.primaryButtonText}>Thử tải lại</Text>
+            <Text style={styles.primaryButtonText}>
+              {tr('Thử tải lại', 'Retry')}
+            </Text>
           </Pressable>
 
           <Pressable
-            style={styles.secondaryButton}
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              pressed && styles.pressed,
+            ]}
             onPress={() => router.replace('/(customer)/(tabs)/(home)')}
           >
-            <Text style={styles.secondaryButtonText}>Về trang chủ</Text>
+            <Text style={styles.secondaryButtonText}>
+              {tr('Về trang chủ', 'Back to Home')}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -532,25 +586,37 @@ export default function OrderConfirmationScreen() {
 
   const heroTitle =
     order.status === 'CANCELLED'
-      ? 'Đơn hàng đã bị hủy'
+      ? tr('Đơn hàng đã bị hủy', 'Order Cancelled')
       : order.status === 'DELIVERED'
-        ? 'Giao hàng thành công!'
+        ? tr('Giao hàng thành công!', 'Order Delivered!')
         : order.status === 'PENDING'
-          ? 'Chờ thanh toán'
+          ? tr('Chờ thanh toán', 'Awaiting Payment')
           : order.status === 'CONFIRMED'
-            ? 'Đơn hàng đã xác nhận!'
-            : 'Đơn hàng đang được xử lý';
+            ? tr('Đơn hàng đã xác nhận!', 'Order Confirmed!')
+            : tr('Đơn hàng đang được xử lý', 'Order in Progress');
 
   const heroSubtitle =
     order.status === 'CANCELLED'
-      ? 'Đơn hàng này đã bị hủy.'
+      ? tr('Đơn hàng này đã bị hủy.', 'This order has been cancelled.')
       : order.status === 'DELIVERED'
-        ? 'Cảm ơn bạn đã đặt món cùng DeliFood.'
+        ? tr(
+            'Cảm ơn bạn đã đặt món cùng DeliFood.',
+            'Thank you for ordering with DeliFood.',
+          )
         : order.status === 'PENDING'
-          ? 'Hoàn tất thanh toán để nhà hàng bắt đầu chuẩn bị món.'
+          ? tr(
+              'Hoàn tất thanh toán để nhà hàng bắt đầu chuẩn bị món.',
+              'Complete payment so the restaurant can start preparing your meal.',
+            )
           : order.status === 'PICKED_UP'
-            ? 'Tài xế đang trên đường mang món ăn đến cho bạn.'
-            : 'Theo dõi tiến trình đơn hàng của bạn ngay bên dưới.';
+            ? tr(
+                'Tài xế đang trên đường mang món ăn đến cho bạn.',
+                'Your driver is on the way with your meal.',
+              )
+            : tr(
+                'Theo dõi tiến trình đơn hàng của bạn ngay bên dưới.',
+                'Track your order progress live below.',
+              );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -560,24 +626,35 @@ export default function OrderConfirmationScreen() {
       >
         <View style={styles.topBar}>
           <Pressable
-            style={styles.backButton}
+            style={({ pressed }) => [
+              styles.backButton,
+              pressed && styles.pressed,
+            ]}
             onPress={() => router.replace('/(customer)/(tabs)/(home)')}
           >
-            <Ionicons name="arrow-back" size={22} color={COLORS.text} />
+            <Ionicons name="arrow-back" size={21} color={COLORS.text} />
           </Pressable>
 
-          <Text style={styles.topBarTitle}>Chi tiết đơn hàng</Text>
+          <Text style={styles.topBarTitle} numberOfLines={1}>
+            {tr('Chi tiết đơn hàng', 'Order Details')}
+          </Text>
 
-          <Pressable
-            style={styles.refreshButton}
-            onPress={() => void refetch()}
-          >
-            <Ionicons
-              name="refresh-outline"
-              size={21}
-              color={COLORS.text}
-            />
-          </Pressable>
+          <View style={styles.topBarRight}>
+            <LanguageSwitch />
+            <Pressable
+              style={({ pressed }) => [
+                styles.refreshButton,
+                pressed && styles.pressed,
+              ]}
+              onPress={() => void refetch()}
+            >
+              <Ionicons
+                name="refresh-outline"
+                size={19}
+                color={COLORS.text}
+              />
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.hero}>
@@ -618,7 +695,7 @@ export default function OrderConfirmationScreen() {
               ]}
             />
             <Text style={[styles.statusPillText, { color: statusStyle.color }]}>
-              {STATUS_LABELS[order.status] ?? order.status}
+              {statusLabels[order.status] ?? order.status}
             </Text>
           </View>
         </View>
@@ -628,21 +705,23 @@ export default function OrderConfirmationScreen() {
             <View style={styles.orderCardIcon}>
               <Ionicons
                 name="receipt-outline"
-                size={23}
+                size={22}
                 color={COLORS.primary}
               />
             </View>
 
             <View style={styles.orderCardHeading}>
-              <Text style={styles.cardTitle}>Thông tin đơn hàng</Text>
+              <Text style={styles.cardTitle}>
+                {tr('Thông tin đơn hàng', 'Order Information')}
+              </Text>
               <Text style={styles.orderId}>
-                Mã đơn #{order.id.slice(0, 8).toUpperCase()}
+                {tr('Mã đơn', 'Order')} #{order.id.slice(0, 8).toUpperCase()}
               </Text>
             </View>
 
             <Ionicons
               name="checkmark-circle"
-              size={23}
+              size={22}
               color={COLORS.success}
             />
           </View>
@@ -659,14 +738,21 @@ export default function OrderConfirmationScreen() {
             </View>
 
             <View style={styles.infoTextContainer}>
-              <Text style={styles.infoLabel}>Tổng tiền đơn hàng</Text>
+              <Text style={styles.infoLabel}>
+                {tr('Tổng tiền đơn hàng', 'Total order amount')}
+              </Text>
               <Text style={styles.amount}>
                 ${Number(order.totalAmount).toFixed(2)}
               </Text>
               {Number(order.discountAmount ?? 0) > 0 ? (
                 <Text style={styles.discountNote}>
-                  Đã giảm ${Number(order.discountAmount).toFixed(2)}
-                  {order.voucherCode ? ` với voucher ${order.voucherCode}` : ''}
+                  {tr('Đã giảm', 'Saved')} ${Number(order.discountAmount).toFixed(2)}
+                  {order.voucherCode
+                    ? tr(
+                        ` với voucher ${order.voucherCode}`,
+                        ` with voucher ${order.voucherCode}`,
+                      )
+                    : ''}
                 </Text>
               ) : null}
             </View>
@@ -682,9 +768,11 @@ export default function OrderConfirmationScreen() {
             </View>
 
             <View style={styles.infoTextContainer}>
-              <Text style={styles.infoLabel}>Địa chỉ cụ thể</Text>
+              <Text style={styles.infoLabel}>
+                {tr('Địa chỉ cụ thể', 'Delivery address')}
+              </Text>
               <Text style={styles.infoValue}>
-                {order.deliveryAddress || 'Chưa có địa chỉ'}
+                {order.deliveryAddress || tr('Chưa có địa chỉ', 'No address provided')}
               </Text>
             </View>
           </View>
@@ -699,9 +787,11 @@ export default function OrderConfirmationScreen() {
             </View>
 
             <View style={styles.infoTextContainer}>
-              <Text style={styles.infoLabel}>Trạng thái hiện tại</Text>
+              <Text style={styles.infoLabel}>
+                {tr('Trạng thái hiện tại', 'Current status')}
+              </Text>
               <Text style={styles.infoValue}>
-                {STATUS_LABELS[order.status] ?? order.status}
+                {statusLabels[order.status] ?? order.status}
               </Text>
             </View>
           </View>
@@ -713,21 +803,28 @@ export default function OrderConfirmationScreen() {
               <View style={styles.paymentIcon}>
                 <Ionicons
                   name="card-outline"
-                  size={24}
+                  size={23}
                   color={COLORS.primary}
                 />
               </View>
 
               <View style={styles.paymentHeaderText}>
-                <Text style={styles.paymentTitle}>Hoàn tất thanh toán</Text>
+                <Text style={styles.paymentTitle}>
+                  {tr('Hoàn tất thanh toán', 'Complete Payment')}
+                </Text>
                 <Text style={styles.paymentSubtitle}>
-                  Thanh toán an toàn để xác nhận đơn hàng.
+                  {tr(
+                    'Thanh toán an toàn để xác nhận đơn hàng.',
+                    'Pay securely to confirm your order.',
+                  )}
                 </Text>
               </View>
             </View>
 
             <View style={styles.paymentAmountRow}>
-              <Text style={styles.paymentAmountLabel}>Số tiền cần thanh toán</Text>
+              <Text style={styles.paymentAmountLabel}>
+                {tr('Số tiền cần thanh toán', 'Amount due')}
+              </Text>
               <Text style={styles.paymentAmount}>
                 ${Number(order.totalAmount).toFixed(2)}
               </Text>
@@ -753,7 +850,9 @@ export default function OrderConfirmationScreen() {
               )}
 
               <Text style={styles.primaryButtonText}>
-                {paymentLoading ? 'Đang xử lý...' : 'Thanh toán ngay'}
+                {paymentLoading
+                  ? tr('Đang xử lý...', 'Processing...')
+                  : tr('Thanh toán ngay', 'Pay Now')}
               </Text>
 
               {!paymentLoading && (
@@ -772,7 +871,7 @@ export default function OrderConfirmationScreen() {
                 color={COLORS.muted}
               />
               <Text style={styles.secureNoteText}>
-                Thanh toán được xử lý qua Stripe
+                {tr('Thanh toán được xử lý qua Stripe', 'Secured by Stripe')}
               </Text>
             </View>
           </View>
@@ -784,15 +883,20 @@ export default function OrderConfirmationScreen() {
               <View style={styles.sectionIcon}>
                 <Ionicons
                   name="navigate-circle-outline"
-                  size={24}
+                  size={23}
                   color={COLORS.primary}
                 />
               </View>
 
               <View style={styles.sectionHeaderText}>
-                <Text style={styles.sectionTitle}>Theo dõi tài xế</Text>
+                <Text style={styles.sectionTitle}>
+                  {tr('Theo dõi tài xế', 'Live Driver Tracking')}
+                </Text>
                 <Text style={styles.sectionSubtitle}>
-                  Vị trí cập nhật theo dữ liệu nhận được
+                  {tr(
+                    'Vị trí cập nhật theo dữ liệu nhận được',
+                    'Real-time driver position updates',
+                  )}
                 </Text>
               </View>
 
@@ -828,18 +932,20 @@ export default function OrderConfirmationScreen() {
                   <View style={styles.mapErrorIcon}>
                     <Ionicons
                       name="map-outline"
-                      size={30}
+                      size={28}
                       color={COLORS.danger}
                     />
                   </View>
 
                   <Text style={styles.mapErrorTitle}>
-                    Không thể tải bản đồ
+                    {tr('Không thể tải bản đồ', 'Unable to load map')}
                   </Text>
 
                   <Text style={styles.mapErrorText}>
-                    Kiểm tra kết nối Internet. Bản đồ cần tải Leaflet và dữ
-                    liệu từ OpenStreetMap.
+                    {tr(
+                      'Kiểm tra kết nối Internet để tải dữ liệu bản đồ.',
+                      'Check your Internet connection to load map tiles.',
+                    )}
                   </Text>
 
                   <Pressable
@@ -855,7 +961,9 @@ export default function OrderConfirmationScreen() {
                       size={16}
                       color={COLORS.primary}
                     />
-                    <Text style={styles.mapRetryText}>Tải lại bản đồ</Text>
+                    <Text style={styles.mapRetryText}>
+                      {tr('Tải lại bản đồ', 'Reload map')}
+                    </Text>
                   </Pressable>
                 </View>
               )}
@@ -864,11 +972,14 @@ export default function OrderConfirmationScreen() {
             <View style={styles.mapFooter}>
               <Ionicons
                 name="information-circle-outline"
-                size={16}
+                size={15}
                 color={COLORS.muted}
               />
               <Text style={styles.mapAttribution}>
-                Bản đồ © OpenStreetMap contributors
+                {tr(
+                  'Bản đồ © OpenStreetMap contributors',
+                  'Map © OpenStreetMap contributors',
+                )}
               </Text>
             </View>
           </View>
@@ -879,15 +990,20 @@ export default function OrderConfirmationScreen() {
             <View style={styles.cancelledIcon}>
               <Ionicons
                 name="close-circle-outline"
-                size={28}
+                size={26}
                 color={COLORS.danger}
               />
             </View>
 
             <View style={styles.cancelledTextContainer}>
-              <Text style={styles.cancelledTitle}>Đơn hàng đã bị hủy</Text>
+              <Text style={styles.cancelledTitle}>
+                {tr('Đơn hàng đã bị hủy', 'Order Cancelled')}
+              </Text>
               <Text style={styles.cancelledDescription}>
-                Bạn có thể quay lại trang chủ để chọn món khác.
+                {tr(
+                  'Bạn có thể quay lại trang chủ để chọn món khác.',
+                  'You can return to the home screen to place a new order.',
+                )}
               </Text>
             </View>
           </View>
@@ -897,15 +1013,20 @@ export default function OrderConfirmationScreen() {
               <View style={styles.sectionIcon}>
                 <Ionicons
                   name="git-commit-outline"
-                  size={24}
+                  size={23}
                   color={COLORS.primary}
                 />
               </View>
 
               <View style={styles.sectionHeaderText}>
-                <Text style={styles.sectionTitle}>Tiến trình đơn hàng</Text>
+                <Text style={styles.sectionTitle}>
+                  {tr('Tiến trình đơn hàng', 'Order Progress')}
+                </Text>
                 <Text style={styles.sectionSubtitle}>
-                  Cập nhật trạng thái đơn của bạn
+                  {tr(
+                    'Cập nhật trạng thái đơn của bạn',
+                    'Live updates on your meal preparation & delivery',
+                  )}
                 </Text>
               </View>
             </View>
@@ -934,7 +1055,7 @@ export default function OrderConfirmationScreen() {
                               ? '#FFFFFF'
                               : isCompleted
                                 ? COLORS.success
-                                : '#B8ADB4'
+                                : BURGER_COLORS.faint
                           }
                         />
                       </View>
@@ -959,12 +1080,12 @@ export default function OrderConfirmationScreen() {
                           isActive && styles.stepLabelActive,
                         ]}
                       >
-                        {step.label}
+                        {tr(step.labelVi, step.labelEn)}
                       </Text>
 
                       {isActive && (
                         <Text style={styles.stepCurrent}>
-                          Trạng thái hiện tại
+                          {tr('Trạng thái hiện tại', 'Current step')}
                         </Text>
                       )}
                     </View>
@@ -987,12 +1108,17 @@ export default function OrderConfirmationScreen() {
         {order.status === 'DELIVERED' && ratingSubmitted && (
           <View style={styles.reviewedCard}>
             <View style={styles.reviewedIcon}>
-              <Ionicons name="star" size={23} color="#F59E0B" />
+              <Ionicons name="star" size={22} color={BURGER_COLORS.cheese} />
             </View>
             <View style={styles.reviewedTextContainer}>
-              <Text style={styles.reviewedTitle}>Cảm ơn bạn đã đánh giá!</Text>
+              <Text style={styles.reviewedTitle}>
+                {tr('Cảm ơn bạn đã đánh giá!', 'Thank you for your feedback!')}
+              </Text>
               <Text style={styles.reviewedSubtitle}>
-                Ý kiến của bạn giúp chúng tôi phục vụ tốt hơn.
+                {tr(
+                  'Ý kiến của bạn giúp chúng tôi phục vụ tốt hơn.',
+                  'Your rating helps us serve you better.',
+                )}
               </Text>
             </View>
           </View>
@@ -1006,24 +1132,15 @@ export default function OrderConfirmationScreen() {
           onPress={() => router.replace('/(customer)/(tabs)/(home)')}
         >
           <Ionicons name="home-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.homeButtonText}>Quay về trang chủ</Text>
+          <Text style={styles.homeButtonText}>
+            {tr('Quay về trang chủ', 'Back to Home')}
+          </Text>
           <Ionicons
             name="arrow-forward"
             size={19}
             color={COLORS.primary}
           />
         </Pressable>
-
-        <View style={styles.bottomNote}>
-          <Ionicons
-            name="heart"
-            size={14}
-            color={COLORS.primary}
-          />
-          <Text style={styles.bottomNoteText}>
-            Cảm ơn bạn đã lựa chọn DeliFood
-          </Text>
-        </View>
 
         <RatingModal
           visible={showRatingModal}
@@ -1045,256 +1162,224 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     paddingBottom: 34,
   },
-
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: 8,
-    paddingBottom: 18,
+    paddingBottom: 16,
+    gap: 10,
   },
-
+  topBarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   backButton: {
-    width: 43,
-    height: 43,
-    borderRadius: 15,
+    width: 40,
+    height: 40,
+    borderRadius: 13,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   topBarTitle: {
     flex: 1,
-    textAlign: 'center',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
     color: COLORS.text,
   },
-
   refreshButton: {
-    width: 43,
-    height: 43,
-    borderRadius: 15,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   hero: {
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 26,
+    paddingTop: 6,
+    paddingBottom: 22,
   },
-
   heroIcon: {
-    width: 112,
-    height: 112,
-    borderRadius: 38,
+    width: 96,
+    height: 96,
+    borderRadius: 32,
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
-
   heroIconCancelled: {
     backgroundColor: COLORS.dangerLight,
   },
-
   heroIconDelivered: {
     backgroundColor: COLORS.successLight,
   },
-
   heroIconPending: {
-    backgroundColor: '#FFF3D9',
+    backgroundColor: BURGER_COLORS.cheeseLight,
   },
-
   heroEmoji: {
-    fontSize: 48,
+    fontSize: 42,
   },
-
   heroTitle: {
-    fontSize: 25,
+    fontSize: 23,
     fontWeight: '900',
     color: COLORS.text,
     textAlign: 'center',
-    letterSpacing: -0.6,
-    lineHeight: 33,
+    letterSpacing: -0.5,
   },
-
   heroSubtitle: {
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 13,
+    lineHeight: 20,
     color: COLORS.muted,
     textAlign: 'center',
-    marginTop: 9,
+    marginTop: 7,
     maxWidth: 310,
   },
-
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 30,
+    paddingVertical: 8,
+    borderRadius: 999,
     gap: 8,
-    marginTop: 16,
+    marginTop: 14,
   },
-
   statusDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
   },
-
   statusPillText: {
     fontSize: 12,
     fontWeight: '800',
   },
-
   orderCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 23,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 18,
-    marginBottom: 16,
+    padding: 16,
+    marginBottom: 14,
   },
-
   orderCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-
   orderCardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   orderCardHeading: {
     flex: 1,
   },
-
   cardTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: COLORS.text,
   },
-
   orderId: {
     color: COLORS.muted,
     fontSize: 12,
-    marginTop: 5,
+    marginTop: 3,
   },
-
   cardDivider: {
     height: 1,
     backgroundColor: COLORS.border,
-    marginVertical: 18,
+    marginVertical: 14,
   },
-
   infoRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    marginBottom: 18,
+    marginBottom: 14,
   },
-
   infoIcon: {
-    width: 39,
-    height: 39,
-    borderRadius: 13,
-    backgroundColor: '#FAF5F1',
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: COLORS.grayLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   infoTextContainer: {
     flex: 1,
-    paddingTop: 2,
+    paddingTop: 1,
   },
-
   infoLabel: {
     color: COLORS.muted,
     fontSize: 12,
-    marginBottom: 5,
+    marginBottom: 3,
   },
-
   infoValue: {
     fontSize: 14,
-    lineHeight: 21,
+    lineHeight: 20,
     fontWeight: '600',
     color: COLORS.text,
   },
-
   amount: {
     color: COLORS.primary,
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: '900',
   },
-
   discountNote: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#16A34A',
+    color: COLORS.success,
     marginTop: 3,
   },
   paymentCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 23,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#FFE0CF',
-    padding: 18,
-    marginBottom: 16,
+    borderColor: COLORS.border,
+    padding: 16,
+    marginBottom: 14,
   },
-
   paymentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-
   paymentIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   paymentHeaderText: {
     flex: 1,
   },
-
   paymentTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: COLORS.text,
   },
-
   paymentSubtitle: {
     fontSize: 12,
     color: COLORS.muted,
-    lineHeight: 18,
-    marginTop: 4,
+    lineHeight: 17,
+    marginTop: 3,
   },
-
   paymentAmountRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1304,168 +1389,141 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.border,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
-    paddingVertical: 16,
-    marginTop: 18,
-    marginBottom: 16,
+    paddingVertical: 14,
+    marginTop: 14,
+    marginBottom: 14,
   },
-
   paymentAmountLabel: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 13,
     color: COLORS.muted,
   },
-
   paymentAmount: {
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: '900',
     color: COLORS.primary,
   },
-
   primaryButton: {
-    minHeight: 54,
-    borderRadius: 17,
+    minHeight: 52,
+    borderRadius: 15,
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 17,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.18,
-    shadowRadius: 9,
-    elevation: 3,
   },
-
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '800',
   },
-
   disabledButton: {
     opacity: 0.7,
   },
-
   secureNote: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    marginTop: 13,
+    marginTop: 12,
   },
-
   secureNoteText: {
     color: COLORS.muted,
     fontSize: 11,
   },
-
   mapCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 23,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 15,
-    marginBottom: 16,
+    marginBottom: 14,
   },
-
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,
-    marginBottom: 16,
+    marginBottom: 14,
   },
-
   sectionIcon: {
-    width: 45,
-    height: 45,
-    borderRadius: 15,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   sectionHeaderText: {
     flex: 1,
   },
-
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: COLORS.text,
   },
-
   sectionSubtitle: {
     fontSize: 11,
-    lineHeight: 17,
+    lineHeight: 16,
     color: COLORS.muted,
-    marginTop: 4,
+    marginTop: 2,
   },
-
   liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 999,
     backgroundColor: COLORS.successLight,
   },
-
   liveDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: COLORS.success,
   },
-
   liveText: {
     fontSize: 9,
     fontWeight: '900',
     color: COLORS.success,
   },
-
   map: {
     width: '100%',
-    height: 260,
-    borderRadius: 17,
+    height: 250,
+    borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#F5F1EE',
+    backgroundColor: COLORS.grayLight,
   },
-
   mapErrorOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.96)',
+    backgroundColor: 'rgba(255,253,249,0.96)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
   },
-
   mapErrorIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 19,
+    width: 52,
+    height: 52,
+    borderRadius: 18,
     backgroundColor: COLORS.dangerLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
-
   mapErrorTitle: {
     color: COLORS.text,
     fontSize: 15,
     fontWeight: '800',
     textAlign: 'center',
-    marginBottom: 7,
+    marginBottom: 6,
   },
-
   mapErrorText: {
     color: COLORS.muted,
     fontSize: 12,
     textAlign: 'center',
-    lineHeight: 19,
+    lineHeight: 18,
   },
-
   mapRetryButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1474,204 +1532,174 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 12,
     backgroundColor: COLORS.primaryLight,
-    marginTop: 13,
+    marginTop: 12,
   },
-
   mapRetryText: {
     color: COLORS.primary,
     fontWeight: '800',
     fontSize: 12,
   },
-
   mapFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     marginTop: 10,
   },
-
   mapAttribution: {
     color: COLORS.muted,
     fontSize: 10,
   },
-
   trackerCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 23,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 18,
-    marginBottom: 16,
-  },
-
-  tracker: {
-    marginTop: 4,
-  },
-
-  step: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    minHeight: 65,
-    gap: 12,
-  },
-
-  stepLeft: {
-    width: 42,
-    alignItems: 'center',
-  },
-
-  stepCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    backgroundColor: COLORS.grayLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  stepCircleCompleted: {
-    backgroundColor: COLORS.successLight,
-  },
-
-  stepCircleActive: {
-    backgroundColor: COLORS.primary,
-  },
-
-  stepLine: {
-    width: 2,
-    height: 25,
-    backgroundColor: COLORS.border,
-    marginVertical: 3,
-  },
-
-  stepLineCompleted: {
-    backgroundColor: COLORS.success,
-  },
-
-  stepContent: {
-    flex: 1,
-    paddingTop: 10,
-    paddingBottom: 15,
-  },
-
-  stepLabel: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: '#B0A6AC',
-    fontWeight: '500',
-  },
-
-  stepLabelCompleted: {
-    color: COLORS.text,
-    fontWeight: '600',
-  },
-
-  stepLabelActive: {
-    color: COLORS.primary,
-    fontWeight: '800',
-  },
-
-  stepCurrent: {
-    fontSize: 11,
-    color: COLORS.primary,
-    marginTop: 4,
-    fontWeight: '600',
-  },
-
-  stepCheck: {
-    marginTop: 10,
-  },
-
-  cancelledCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 13,
-    padding: 17,
-    backgroundColor: COLORS.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#F7D4D4',
-    marginBottom: 16,
-  },
-
-  cancelledIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: COLORS.dangerLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  cancelledTextContainer: {
-    flex: 1,
-  },
-
-  cancelledTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: COLORS.danger,
-  },
-
-  cancelledDescription: {
-    color: COLORS.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 5,
-  },
-
-  reviewedCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
     backgroundColor: COLORS.surface,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 14,
   },
-
-  reviewedIcon: {
-    width: 45,
-    height: 45,
-    borderRadius: 15,
-    backgroundColor: '#FFF5D9',
+  tracker: {
+    marginTop: 4,
+  },
+  step: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    minHeight: 62,
+    gap: 12,
+  },
+  stepLeft: {
+    width: 40,
+    alignItems: 'center',
+  },
+  stepCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    backgroundColor: COLORS.grayLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  reviewedTextContainer: {
-    flex: 1,
+  stepCircleCompleted: {
+    backgroundColor: COLORS.successLight,
   },
-
-  reviewedTitle: {
+  stepCircleActive: {
+    backgroundColor: COLORS.primary,
+  },
+  stepLine: {
+    width: 2,
+    height: 24,
+    backgroundColor: COLORS.border,
+    marginVertical: 3,
+  },
+  stepLineCompleted: {
+    backgroundColor: COLORS.success,
+  },
+  stepContent: {
+    flex: 1,
+    paddingTop: 9,
+    paddingBottom: 14,
+  },
+  stepLabel: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: BURGER_COLORS.faint,
+    fontWeight: '600',
+  },
+  stepLabelCompleted: {
     color: COLORS.text,
-    fontSize: 14,
+    fontWeight: '700',
+  },
+  stepLabelActive: {
+    color: COLORS.primary,
     fontWeight: '800',
   },
-
-  reviewedSubtitle: {
+  stepCurrent: {
+    fontSize: 11,
+    color: COLORS.primary,
+    marginTop: 3,
+    fontWeight: '700',
+  },
+  stepCheck: {
+    marginTop: 9,
+  },
+  cancelledCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.dangerLight,
+    marginBottom: 14,
+  },
+  cancelledIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    backgroundColor: COLORS.dangerLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelledTextContainer: {
+    flex: 1,
+  },
+  cancelledTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.danger,
+  },
+  cancelledDescription: {
     color: COLORS.muted,
     fontSize: 12,
     lineHeight: 18,
     marginTop: 4,
   },
-
+  reviewedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 15,
+    marginBottom: 14,
+  },
+  reviewedIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: BURGER_COLORS.cheeseLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reviewedTextContainer: {
+    flex: 1,
+  },
+  reviewedTitle: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  reviewedSubtitle: {
+    color: COLORS.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 3,
+  },
   homeButton: {
-    minHeight: 55,
-    borderRadius: 17,
+    minHeight: 52,
+    borderRadius: 16,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: '#FFD9C7',
-    paddingHorizontal: 17,
+    borderColor: COLORS.border,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
-    marginTop: 5,
+    marginTop: 4,
   },
-
   homeButtonText: {
     flex: 1,
     textAlign: 'center',
@@ -1679,80 +1707,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
   },
-
-  bottomNote: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 22,
-  },
-
-  bottomNoteText: {
-    color: COLORS.muted,
-    fontSize: 11,
-  },
-
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 30,
   },
-
   loadingIcon: {
-    width: 85,
-    height: 85,
-    borderRadius: 28,
+    width: 80,
+    height: 80,
+    borderRadius: 26,
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
   },
-
   loadingTitle: {
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: '800',
     color: COLORS.text,
   },
-
   loadingText: {
     fontSize: 13,
     color: COLORS.muted,
-    marginTop: 8,
+    marginTop: 6,
     textAlign: 'center',
   },
-
   errorIcon: {
-    width: 88,
-    height: 88,
-    borderRadius: 29,
+    width: 82,
+    height: 82,
+    borderRadius: 27,
     backgroundColor: COLORS.dangerLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 22,
+    marginBottom: 18,
   },
-
   errorTitle: {
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: '900',
     color: COLORS.text,
     textAlign: 'center',
   },
-
   errorText: {
     color: COLORS.muted,
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 13,
+    lineHeight: 20,
     textAlign: 'center',
-    marginTop: 10,
-    marginBottom: 22,
+    marginTop: 8,
+    marginBottom: 20,
   },
-
   secondaryButton: {
-    minHeight: 50,
+    minHeight: 48,
     width: '100%',
-    borderRadius: 16,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 10,
@@ -1760,15 +1767,12 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     backgroundColor: COLORS.surface,
   },
-
   secondaryButtonText: {
     color: COLORS.text,
     fontSize: 14,
     fontWeight: '700',
   },
-
   pressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.985 }],
+    opacity: 0.88,
   },
 });

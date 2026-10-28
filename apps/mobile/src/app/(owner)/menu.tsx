@@ -19,22 +19,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '@/lib/axios';
 import { useImageUploader } from '@/lib/uploadthing';
 import { MenuCategory, MenuItem, RestaurantType } from '@food-delivery/types';
+import { BURGER_COLORS } from '@/constants/theme';
+import { useLanguage } from '@/context/language-context';
+import { LanguageSwitch } from '@/components/language-switch';
 
 const COLORS = {
-  background: '#FFF9F5',
-  surface: '#FFFFFF',
-  primary: '#FF6B35',
-  primaryLight: '#FFF0E8',
-  text: '#29232A',
-  muted: '#8B8289',
-  border: '#F0E8E3',
-  green: '#16A36A',
-  greenLight: '#E8F8F0',
-  red: '#E5484D',
-  redLight: '#FDEBEC',
+  background: BURGER_COLORS.background,
+  surface: BURGER_COLORS.surface,
+  primary: BURGER_COLORS.primary,
+  primaryLight: BURGER_COLORS.primaryLight,
+  text: BURGER_COLORS.text,
+  muted: BURGER_COLORS.muted,
+  border: BURGER_COLORS.border,
+  green: BURGER_COLORS.success,
+  greenLight: BURGER_COLORS.successLight,
+  red: BURGER_COLORS.danger,
+  redLight: BURGER_COLORS.dangerLight,
 };
 
 export default function OwnerMenuScreen() {
+  const { tr } = useLanguage();
   const queryClient = useQueryClient();
 
   const [showAddCategory, setShowAddCategory] = useState(false);
@@ -92,8 +96,8 @@ export default function OwnerMenuScreen() {
     },
     onError: (e: { response?: { data?: { message?: string } } }) => {
       Alert.alert(
-        'Không thể tạo danh mục',
-        e.response?.data?.message ?? 'Vui lòng thử lại.',
+        tr('Không thể tạo danh mục', 'Unable to create category'),
+        e.response?.data?.message ?? tr('Vui lòng thử lại.', 'Please try again.'),
       );
     },
   });
@@ -110,8 +114,8 @@ export default function OwnerMenuScreen() {
     },
     onError: (e: { response?: { data?: { message?: string } } }) => {
       Alert.alert(
-        'Không thể xóa danh mục',
-        e.response?.data?.message ?? 'Vui lòng thử lại.',
+        tr('Không thể xóa danh mục', 'Unable to delete category'),
+        e.response?.data?.message ?? tr('Vui lòng thử lại.', 'Please try again.'),
       );
     },
   });
@@ -120,7 +124,10 @@ export default function OwnerMenuScreen() {
     const name = newCategoryName.trim();
 
     if (!name) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng nhập tên danh mục.');
+      Alert.alert(
+        tr('Thiếu thông tin', 'Missing information'),
+        tr('Vui lòng nhập tên danh mục.', 'Please enter a category name.'),
+      );
       return;
     }
 
@@ -135,7 +142,7 @@ export default function OwnerMenuScreen() {
       setNewItemImageUrl(res[0].ufsUrl);
     },
     onUploadError: (error) => {
-      Alert.alert('Tải ảnh thất bại', error.message);
+      Alert.alert(tr('Tải ảnh thất bại', 'Upload failed'), error.message);
     },
   });
 
@@ -158,8 +165,8 @@ export default function OwnerMenuScreen() {
     },
     onError: (e: { response?: { data?: { message?: string } } }) => {
       Alert.alert(
-        'Không thể tạo món ăn',
-        e.response?.data?.message ?? 'Vui lòng thử lại.',
+        tr('Không thể tạo món ăn', 'Unable to create item'),
+        e.response?.data?.message ?? tr('Vui lòng thử lại.', 'Please try again.'),
       );
     },
   });
@@ -173,8 +180,8 @@ export default function OwnerMenuScreen() {
       }),
     onError: (e: { response?: { data?: { message?: string } } }) => {
       Alert.alert(
-        'Không thể cập nhật trạng thái',
-        e.response?.data?.message ?? 'Vui lòng thử lại.',
+        tr('Không thể cập nhật trạng thái', 'Unable to update status'),
+        e.response?.data?.message ?? tr('Vui lòng thử lại.', 'Please try again.'),
       );
     },
   });
@@ -185,17 +192,26 @@ export default function OwnerMenuScreen() {
     const numericPrice = Number(price);
 
     if (!name || !price) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng nhập tên món và giá.');
+      Alert.alert(
+        tr('Thiếu thông tin', 'Missing information'),
+        tr('Vui lòng nhập tên món và giá.', 'Please enter dish name and price.'),
+      );
       return;
     }
 
     if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
-      Alert.alert('Giá không hợp lệ', 'Vui lòng nhập giá lớn hơn 0.');
+      Alert.alert(
+        tr('Giá không hợp lệ', 'Invalid price'),
+        tr('Vui lòng nhập giá lớn hơn 0.', 'Please enter a price greater than 0.'),
+      );
       return;
     }
 
     if (!selectedCategoryId) {
-      Alert.alert('Chưa chọn danh mục', 'Vui lòng chọn danh mục cho món ăn.');
+      Alert.alert(
+        tr('Chưa chọn danh mục', 'No category selected'),
+        tr('Vui lòng chọn danh mục cho món ăn.', 'Please select a category for the dish.'),
+      );
       return;
     }
 
@@ -209,7 +225,7 @@ export default function OwnerMenuScreen() {
     setNewItemImageUrl(null);
   }
 
-  const { mutate: deleteItem, isPending: deletingItem } = useMutation({
+  const { mutate: deleteItem } = useMutation({
     mutationFn: (id: string) => api.delete(`/menu/items/${id}`),
     onSuccess: () =>
       queryClient.invalidateQueries({
@@ -217,20 +233,23 @@ export default function OwnerMenuScreen() {
       }),
     onError: (e: { response?: { data?: { message?: string } } }) => {
       Alert.alert(
-        'Không thể xóa món ăn',
-        e.response?.data?.message ?? 'Vui lòng thử lại.',
+        tr('Không thể xóa món ăn', 'Unable to delete item'),
+        e.response?.data?.message ?? tr('Vui lòng thử lại.', 'Please try again.'),
       );
     },
   });
 
   function confirmDeleteCategory(category: MenuCategory) {
     Alert.alert(
-      'Xóa danh mục?',
-      `Danh mục "${category.name}" và các món thuộc danh mục này sẽ bị xóa.`,
+      tr('Xóa danh mục?', 'Delete category?'),
+      tr(
+        `Danh mục "${category.name}" và các món thuộc danh mục này sẽ bị xóa.`,
+        `Category "${category.name}" and all its items will be deleted.`,
+      ),
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: tr('Hủy', 'Cancel'), style: 'cancel' },
         {
-          text: 'Xóa danh mục',
+          text: tr('Xóa danh mục', 'Delete'),
           style: 'destructive',
           onPress: () => deleteCategory(category.id),
         },
@@ -239,14 +258,21 @@ export default function OwnerMenuScreen() {
   }
 
   function confirmDeleteItem(item: MenuItem) {
-    Alert.alert('Xóa món ăn?', `Bạn có muốn xóa "${item.name}" không?`, [
-      { text: 'Hủy', style: 'cancel' },
-      {
-        text: 'Xóa món',
-        style: 'destructive',
-        onPress: () => deleteItem(item.id),
-      },
-    ]);
+    Alert.alert(
+      tr('Xóa món ăn?', 'Delete dish?'),
+      tr(
+        `Bạn có muốn xóa "${item.name}" không?`,
+        `Are you sure you want to delete "${item.name}"?`,
+      ),
+      [
+        { text: tr('Hủy', 'Cancel'), style: 'cancel' },
+        {
+          text: tr('Xóa món', 'Delete'),
+          style: 'destructive',
+          onPress: () => deleteItem(item.id),
+        },
+      ],
+    );
   }
 
   if (restaurantLoading || categoriesLoading) {
@@ -254,7 +280,9 @@ export default function OwnerMenuScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Đang tải thực đơn...</Text>
+          <Text style={styles.loadingText}>
+            {tr('Đang tải thực đơn...', 'Loading menu...')}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -265,11 +293,16 @@ export default function OwnerMenuScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centered}>
           <View style={styles.emptyIcon}>
-            <Text style={styles.emptyEmoji}>🍽️</Text>
+            <Text style={styles.emptyEmoji}>🍔</Text>
           </View>
-          <Text style={styles.emptyTitle}>Bạn chưa có nhà hàng</Text>
+          <Text style={styles.emptyTitle}>
+            {tr('Bạn chưa có nhà hàng', 'No restaurant found')}
+          </Text>
           <Text style={styles.emptyText}>
-            Hãy tạo nhà hàng trước khi bắt đầu quản lý thực đơn.
+            {tr(
+              'Hãy tạo nhà hàng trước khi bắt đầu quản lý thực đơn.',
+              'Please create your restaurant before managing the menu.',
+            )}
           </Text>
         </View>
       </SafeAreaView>
@@ -292,16 +325,21 @@ export default function OwnerMenuScreen() {
           <View>
             <View style={styles.pageHeader}>
               <View style={styles.headerCopy}>
-                <Text style={styles.eyebrow}>QUẢN LÝ NHÀ HÀNG</Text>
-                <Text style={styles.pageTitle}>Thực đơn của bạn</Text>
+                <Text style={styles.eyebrow}>
+                  {tr('QUẢN LÝ NHÀ HÀNG', 'MENU MANAGEMENT')}
+                </Text>
+                <Text style={styles.pageTitle}>
+                  {tr('Thực đơn của bạn', 'Your Menu')}
+                </Text>
                 <Text style={styles.pageSubtitle}>
-                  Quản lý danh mục, món ăn và tình trạng phục vụ.
+                  {tr(
+                    'Quản lý danh mục, món ăn và tình trạng phục vụ.',
+                    'Manage categories, dishes, and availability.',
+                  )}
                 </Text>
               </View>
 
-              <View style={styles.headerIcon}>
-                <Text style={styles.headerEmoji}>🍜</Text>
-              </View>
+              <LanguageSwitch />
             </View>
 
             <View style={styles.summaryCard}>
@@ -310,15 +348,22 @@ export default function OwnerMenuScreen() {
               </View>
 
               <View style={styles.summaryInfo}>
-                <Text style={styles.summaryTitle}>Tổng quan thực đơn</Text>
+                <Text style={styles.summaryTitle}>
+                  {tr('Tổng quan thực đơn', 'Menu Overview')}
+                </Text>
                 <Text style={styles.summarySubtitle}>
-                  {categories.length} danh mục · {items.length} món ăn
+                  {tr(
+                    `${categories.length} danh mục · ${items.length} món ăn`,
+                    `${categories.length} categories · ${items.length} dishes`,
+                  )}
                 </Text>
               </View>
 
               <View style={styles.availableBadge}>
                 <Text style={styles.availableNumber}>{totalAvailable}</Text>
-                <Text style={styles.availableLabel}>Đang bán</Text>
+                <Text style={styles.availableLabel}>
+                  {tr('Đang bán', 'Available')}
+                </Text>
               </View>
             </View>
 
@@ -330,14 +375,21 @@ export default function OwnerMenuScreen() {
               onPress={() => setShowAddCategory(true)}
             >
               <Text style={styles.addCategoryIcon}>＋</Text>
-              <Text style={styles.addCategoryText}>Thêm danh mục mới</Text>
+              <Text style={styles.addCategoryText}>
+                {tr('Thêm danh mục mới', 'Add New Category')}
+              </Text>
             </Pressable>
 
             <View style={styles.sectionHeader}>
               <View>
-                <Text style={styles.sectionTitle}>Danh mục món ăn</Text>
+                <Text style={styles.sectionTitle}>
+                  {tr('Danh mục món ăn', 'Menu Categories')}
+                </Text>
                 <Text style={styles.sectionSubtitle}>
-                  Chọn trạng thái để quản lý món đang bán
+                  {tr(
+                    'Chọn trạng thái để quản lý món đang bán',
+                    'Toggle switches to manage dish availability',
+                  )}
                 </Text>
               </View>
               <View style={styles.countBadge}>
@@ -349,11 +401,16 @@ export default function OwnerMenuScreen() {
         ListEmptyComponent={
           <View style={styles.emptyCard}>
             <View style={styles.emptyIcon}>
-              <Text style={styles.emptyEmoji}>🥗</Text>
+              <Text style={styles.emptyEmoji}>🍔</Text>
             </View>
-            <Text style={styles.emptyTitle}>Chưa có danh mục nào</Text>
+            <Text style={styles.emptyTitle}>
+              {tr('Chưa có danh mục nào', 'No categories yet')}
+            </Text>
             <Text style={styles.emptyText}>
-              Tạo danh mục đầu tiên để bắt đầu thêm món vào thực đơn.
+              {tr(
+                'Tạo danh mục đầu tiên để bắt đầu thêm món vào thực đơn.',
+                'Create your first category to start adding dishes.',
+              )}
             </Text>
           </View>
         }
@@ -373,14 +430,13 @@ export default function OwnerMenuScreen() {
                   <View style={styles.categoryTitleContent}>
                     <Text style={styles.categoryName}>{category.name}</Text>
                     <Text style={styles.categoryCount}>
-                      {categoryItems.length} món ăn
+                      {categoryItems.length} {tr('món ăn', 'dishes')}
                     </Text>
                   </View>
                 </View>
 
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Xóa danh mục ${category.name}`}
                   disabled={deletingCategory}
                   hitSlop={8}
                   style={({ pressed }) => [
@@ -396,7 +452,10 @@ export default function OwnerMenuScreen() {
               {categoryItems.length === 0 ? (
                 <View style={styles.categoryEmpty}>
                   <Text style={styles.categoryEmptyText}>
-                    Chưa có món ăn trong danh mục này.
+                    {tr(
+                      'Chưa có món ăn trong danh mục này.',
+                      'No dishes in this category yet.',
+                    )}
                   </Text>
                 </View>
               ) : (
@@ -415,7 +474,7 @@ export default function OwnerMenuScreen() {
                         />
                       ) : (
                         <View style={styles.itemThumbPlaceholder}>
-                          <Text style={styles.itemPlaceholderEmoji}>🍲</Text>
+                          <Text style={styles.itemPlaceholderEmoji}>🍔</Text>
                         </View>
                       )}
 
@@ -460,14 +519,15 @@ export default function OwnerMenuScreen() {
                               },
                             ]}
                           >
-                            {isAvailable ? 'Đang bán' : 'Tạm hết'}
+                            {isAvailable
+                              ? tr('Đang bán', 'Available')
+                              : tr('Tạm hết', 'Sold out')}
                           </Text>
                         </View>
                       </View>
 
                       <View style={styles.itemActions}>
                         <Switch
-                          accessibilityLabel={`Trạng thái bán món ${item.name}`}
                           value={isAvailable}
                           onValueChange={(value) =>
                             toggleAvailability({
@@ -476,15 +536,14 @@ export default function OwnerMenuScreen() {
                             })
                           }
                           trackColor={{
-                            false: '#E8DCDD',
-                            true: '#A5E6C5',
+                            false: COLORS.border,
+                            true: COLORS.greenLight,
                           }}
                           thumbColor={isAvailable ? COLORS.green : '#FFFFFF'}
                         />
 
                         <Pressable
                           accessibilityRole="button"
-                          accessibilityLabel={`Xóa món ${item.name}`}
                           hitSlop={8}
                           style={({ pressed }) => [
                             styles.deleteItemButton,
@@ -492,7 +551,9 @@ export default function OwnerMenuScreen() {
                           ]}
                           onPress={() => confirmDeleteItem(item)}
                         >
-                          <Text style={styles.deleteItemText}>Xóa món</Text>
+                          <Text style={styles.deleteItemText}>
+                            {tr('Xóa món', 'Delete')}
+                          </Text>
                         </Pressable>
                       </View>
                     </View>
@@ -511,7 +572,9 @@ export default function OwnerMenuScreen() {
                 }}
               >
                 <Text style={styles.addItemPlus}>＋</Text>
-                <Text style={styles.addItemText}>Thêm món vào danh mục</Text>
+                <Text style={styles.addItemText}>
+                  {tr('Thêm món vào danh mục', 'Add dish to category')}
+                </Text>
               </Pressable>
             </View>
           );
@@ -550,18 +613,22 @@ export default function OwnerMenuScreen() {
               </View>
 
               <View style={styles.modalHeaderText}>
-                <Text style={styles.modalTitle}>Danh mục mới</Text>
+                <Text style={styles.modalTitle}>
+                  {tr('Danh mục mới', 'New Category')}
+                </Text>
                 <Text style={styles.modalSubtitle}>
-                  Nhóm các món ăn theo loại
+                  {tr('Nhóm các món ăn theo loại', 'Group your dishes by type')}
                 </Text>
               </View>
             </View>
 
-            <Text style={styles.inputLabel}>Tên danh mục</Text>
+            <Text style={styles.inputLabel}>
+              {tr('Tên danh mục', 'Category Name')}
+            </Text>
             <TextInput
               style={styles.input}
-              placeholder="Ví dụ: Món chính, Đồ uống..."
-              placeholderTextColor="#B4AAB0"
+              placeholder={tr('Ví dụ: Burger bò, Đồ uống...', 'e.g. Beef Burgers, Drinks...')}
+              placeholderTextColor={BURGER_COLORS.faint}
               value={newCategoryName}
               onChangeText={setNewCategoryName}
               maxLength={80}
@@ -582,7 +649,9 @@ export default function OwnerMenuScreen() {
               {addingCategory ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.primaryButtonText}>Tạo danh mục</Text>
+                <Text style={styles.primaryButtonText}>
+                  {tr('Tạo danh mục', 'Create Category')}
+                </Text>
               )}
             </Pressable>
 
@@ -590,7 +659,7 @@ export default function OwnerMenuScreen() {
               style={styles.cancelButton}
               onPress={() => setShowAddCategory(false)}
             >
-              <Text style={styles.cancelText}>Hủy</Text>
+              <Text style={styles.cancelText}>{tr('Hủy', 'Cancel')}</Text>
             </Pressable>
           </View>
         </View>
@@ -618,18 +687,22 @@ export default function OwnerMenuScreen() {
             >
               <View style={styles.modalHeader}>
                 <View style={styles.modalIcon}>
-                  <Text style={styles.modalEmoji}>🍲</Text>
+                  <Text style={styles.modalEmoji}>🍔</Text>
                 </View>
 
                 <View style={styles.modalHeaderText}>
-                  <Text style={styles.modalTitle}>Thêm món ăn</Text>
+                  <Text style={styles.modalTitle}>
+                    {tr('Thêm món ăn', 'Add Dish')}
+                  </Text>
                   <Text style={styles.modalSubtitle}>
-                    Điền thông tin món mới của bạn
+                    {tr('Điền thông tin món mới của bạn', 'Enter details for the new dish')}
                   </Text>
                 </View>
               </View>
 
-              <Text style={styles.inputLabel}>Ảnh món ăn</Text>
+              <Text style={styles.inputLabel}>
+                {tr('Ảnh món ăn', 'Dish Photo')}
+              </Text>
 
               <Pressable
                 style={({ pressed }) => [
@@ -641,12 +714,15 @@ export default function OwnerMenuScreen() {
                     source: 'library',
                     onInsufficientPermissions: () => {
                       Alert.alert(
-                        'Chưa có quyền truy cập',
-                        'Bạn cần cấp quyền truy cập thư viện ảnh trong cài đặt.',
+                        tr('Chưa có quyền truy cập', 'Permission required'),
+                        tr(
+                          'Bạn cần cấp quyền truy cập thư viện ảnh trong cài đặt.',
+                          'Please grant photo library access in Settings.',
+                        ),
                         [
-                          { text: 'Để sau', style: 'cancel' },
+                          { text: tr('Để sau', 'Later'), style: 'cancel' },
                           {
-                            text: 'Mở cài đặt',
+                            text: tr('Mở cài đặt', 'Open Settings'),
                             onPress: () => {
                               void openSettings();
                             },
@@ -665,7 +741,9 @@ export default function OwnerMenuScreen() {
                       style={styles.itemImage}
                     />
                     <View style={styles.changeImageBadge}>
-                      <Text style={styles.changeImageText}>Đổi ảnh</Text>
+                      <Text style={styles.changeImageText}>
+                        {tr('Đổi ảnh', 'Change photo')}
+                      </Text>
                     </View>
                   </>
                 ) : (
@@ -676,10 +754,10 @@ export default function OwnerMenuScreen() {
                       <>
                         <Text style={styles.imagePickerEmoji}>📷</Text>
                         <Text style={styles.imagePickerTitle}>
-                          Chọn ảnh món ăn
+                          {tr('Chọn ảnh món ăn', 'Select dish photo')}
                         </Text>
                         <Text style={styles.imagePickerHint}>
-                          Nhấn để chọn ảnh từ thư viện
+                          {tr('Nhấn để chọn ảnh từ thư viện', 'Tap to choose from library')}
                         </Text>
                       </>
                     )}
@@ -687,24 +765,28 @@ export default function OwnerMenuScreen() {
                 )}
               </Pressable>
 
-              <Text style={styles.inputLabel}>Tên món ăn</Text>
+              <Text style={styles.inputLabel}>
+                {tr('Tên món ăn', 'Dish Name')}
+              </Text>
               <TextInput
                 style={styles.input}
-                placeholder="Ví dụ: Cơm gà sốt tiêu"
-                placeholderTextColor="#B4AAB0"
+                placeholder={tr('Ví dụ: Burger bò phô mai', 'e.g. Double Cheese Burger')}
+                placeholderTextColor={BURGER_COLORS.faint}
                 value={newItemName}
                 onChangeText={setNewItemName}
                 maxLength={120}
                 returnKeyType="next"
               />
 
-              <Text style={styles.inputLabel}>Giá bán (USD)</Text>
+              <Text style={styles.inputLabel}>
+                {tr('Giá bán (USD)', 'Price (USD)')}
+              </Text>
               <View style={styles.priceInputWrapper}>
                 <Text style={styles.currencySymbol}>$</Text>
                 <TextInput
                   style={styles.priceInput}
                   placeholder="0.00"
-                  placeholderTextColor="#B4AAB0"
+                  placeholderTextColor={BURGER_COLORS.faint}
                   value={newItemPrice}
                   onChangeText={setNewItemPrice}
                   keyboardType="decimal-pad"
@@ -733,7 +815,9 @@ export default function OwnerMenuScreen() {
                 {addingItem ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.primaryButtonText}>Tạo món ăn</Text>
+                  <Text style={styles.primaryButtonText}>
+                    {tr('Tạo món ăn', 'Create Dish')}
+                  </Text>
                 )}
               </Pressable>
 
@@ -741,7 +825,7 @@ export default function OwnerMenuScreen() {
                 style={styles.cancelButton}
                 onPress={closeAddItemModal}
               >
-                <Text style={styles.cancelText}>Hủy</Text>
+                <Text style={styles.cancelText}>{tr('Hủy', 'Cancel')}</Text>
               </Pressable>
             </ScrollView>
           </View>
@@ -760,8 +844,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingHorizontal: 18,
+    paddingTop: 14,
     paddingBottom: 25,
   },
   centered: {
@@ -777,43 +861,32 @@ const styles = StyleSheet.create({
   },
   pageHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 21,
+    marginBottom: 18,
+    gap: 12,
   },
   headerCopy: {
     flex: 1,
-    paddingRight: 10,
   },
   eyebrow: {
     color: COLORS.primary,
     fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-    marginBottom: 6,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+    marginBottom: 4,
   },
   pageTitle: {
     color: COLORS.text,
     fontSize: 25,
-    fontWeight: '800',
+    fontWeight: '900',
     letterSpacing: -0.5,
   },
   pageSubtitle: {
     color: COLORS.muted,
     fontSize: 12,
     lineHeight: 18,
-    marginTop: 6,
-  },
-  headerIcon: {
-    width: 53,
-    height: 53,
-    borderRadius: 18,
-    backgroundColor: COLORS.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerEmoji: {
-    fontSize: 26,
+    marginTop: 4,
   },
   summaryCard: {
     flexDirection: 'row',
@@ -821,21 +894,21 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 20,
-    padding: 15,
-    marginBottom: 15,
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 14,
     gap: 11,
   },
   summaryIcon: {
-    width: 43,
-    height: 43,
-    borderRadius: 14,
+    width: 42,
+    height: 42,
+    borderRadius: 13,
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   summaryEmoji: {
-    fontSize: 21,
+    fontSize: 20,
   },
   summaryInfo: {
     flex: 1,
@@ -848,20 +921,20 @@ const styles = StyleSheet.create({
   summarySubtitle: {
     color: COLORS.muted,
     fontSize: 11,
-    marginTop: 5,
+    marginTop: 3,
   },
   availableBadge: {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.greenLight,
     paddingHorizontal: 11,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingVertical: 7,
+    borderRadius: 11,
   },
   availableNumber: {
     color: COLORS.green,
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 17,
+    fontWeight: '900',
   },
   availableLabel: {
     color: COLORS.green,
@@ -874,16 +947,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.primary,
-    borderRadius: 15,
-    paddingVertical: 15,
+    borderRadius: 14,
+    paddingVertical: 14,
     paddingHorizontal: 14,
-    marginBottom: 25,
+    marginBottom: 22,
     gap: 8,
   },
   addCategoryIcon: {
     color: '#FFFFFF',
-    fontSize: 21,
-    fontWeight: '600',
+    fontSize: 19,
+    fontWeight: '700',
   },
   addCategoryText: {
     color: '#FFFFFF',
@@ -894,21 +967,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 13,
+    marginBottom: 12,
   },
   sectionTitle: {
     color: COLORS.text,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
   },
   sectionSubtitle: {
     color: COLORS.muted,
     fontSize: 11,
-    marginTop: 5,
+    marginTop: 3,
   },
   countBadge: {
-    minWidth: 33,
-    height: 33,
+    minWidth: 32,
+    height: 32,
     paddingHorizontal: 9,
     borderRadius: 11,
     backgroundColor: COLORS.primaryLight,
@@ -918,21 +991,21 @@ const styles = StyleSheet.create({
   countBadgeText: {
     color: COLORS.primary,
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   categoryCard: {
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 21,
+    borderRadius: 18,
     padding: 14,
-    marginBottom: 15,
+    marginBottom: 14,
   },
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 13,
+    marginBottom: 12,
   },
   categoryHeading: {
     flexDirection: 'row',
@@ -941,48 +1014,48 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   categoryIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   categoryIconText: {
-    fontSize: 19,
+    fontSize: 18,
   },
   categoryTitleContent: {
     flex: 1,
   },
   categoryName: {
     color: COLORS.text,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
   },
   categoryCount: {
     color: COLORS.muted,
     fontSize: 11,
-    marginTop: 4,
+    marginTop: 2,
   },
   deleteIconButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     backgroundColor: COLORS.redLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   deleteIcon: {
     color: COLORS.red,
-    fontSize: 23,
-    lineHeight: 26,
-    fontWeight: '500',
+    fontSize: 21,
+    lineHeight: 23,
+    fontWeight: '600',
   },
   categoryEmpty: {
-    paddingVertical: 15,
+    paddingVertical: 14,
     paddingHorizontal: 10,
-    backgroundColor: COLORS.background,
-    borderRadius: 12,
+    backgroundColor: BURGER_COLORS.surfaceMuted,
+    borderRadius: 11,
     marginBottom: 10,
   },
   categoryEmptyText: {
@@ -994,41 +1067,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 12,
+    paddingVertical: 11,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
   },
   itemThumb: {
-    width: 67,
-    height: 75,
-    borderRadius: 14,
-    backgroundColor: COLORS.background,
+    width: 64,
+    height: 68,
+    borderRadius: 13,
+    backgroundColor: BURGER_COLORS.surfaceMuted,
   },
   unavailableImage: {
     opacity: 0.55,
   },
   itemThumbPlaceholder: {
-    width: 67,
-    height: 75,
-    borderRadius: 14,
+    width: 64,
+    height: 68,
+    borderRadius: 13,
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   itemPlaceholderEmoji: {
-    fontSize: 25,
+    fontSize: 24,
   },
   itemInfo: {
     flex: 1,
     minWidth: 0,
-    alignSelf: 'stretch',
     justifyContent: 'center',
-    gap: 5,
+    gap: 4,
   },
   itemName: {
     color: COLORS.text,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     lineHeight: 18,
   },
   unavailableText: {
@@ -1037,7 +1109,7 @@ const styles = StyleSheet.create({
   itemPrice: {
     color: COLORS.primary,
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   itemStatusBadge: {
     flexDirection: 'row',
@@ -1045,8 +1117,8 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     gap: 5,
     paddingHorizontal: 7,
-    paddingVertical: 4,
-    borderRadius: 7,
+    paddingVertical: 3,
+    borderRadius: 999,
   },
   itemStatusAvailable: {
     backgroundColor: COLORS.greenLight,
@@ -1066,7 +1138,7 @@ const styles = StyleSheet.create({
   itemActions: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
+    gap: 4,
   },
   deleteItemButton: {
     paddingVertical: 4,
@@ -1075,25 +1147,25 @@ const styles = StyleSheet.create({
   deleteItemText: {
     color: COLORS.red,
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   addItemButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 12,
-    marginTop: 5,
-    borderRadius: 12,
+    paddingVertical: 11,
+    marginTop: 4,
+    borderRadius: 11,
     borderWidth: 1,
-    borderColor: '#FFD0BC',
+    borderColor: COLORS.border,
     borderStyle: 'dashed',
-    backgroundColor: '#FFFCFA',
+    backgroundColor: BURGER_COLORS.surfaceMuted,
   },
   addItemPlus: {
     color: COLORS.primary,
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
   },
   addItemText: {
     color: COLORS.primary,
@@ -1103,23 +1175,23 @@ const styles = StyleSheet.create({
   emptyCard: {
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: 21,
-    paddingHorizontal: 24,
-    paddingVertical: 30,
+    borderRadius: 18,
+    paddingHorizontal: 22,
+    paddingVertical: 28,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
   emptyIcon: {
-    width: 66,
-    height: 66,
-    borderRadius: 22,
+    width: 64,
+    height: 64,
+    borderRadius: 21,
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   emptyEmoji: {
-    fontSize: 30,
+    fontSize: 28,
   },
   emptyTitle: {
     color: COLORS.text,
@@ -1130,9 +1202,9 @@ const styles = StyleSheet.create({
   emptyText: {
     color: COLORS.muted,
     fontSize: 13,
-    lineHeight: 20,
+    lineHeight: 19,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 6,
   },
   itemsLoading: {
     marginVertical: 20,
@@ -1143,18 +1215,18 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(41,35,42,0.42)',
+    backgroundColor: 'rgba(44, 26, 17, 0.45)',
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
   },
   modal: {
     backgroundColor: COLORS.background,
-    borderTopLeftRadius: 27,
-    borderTopRightRadius: 27,
-    paddingHorizontal: 22,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 30,
+    paddingBottom: 28,
   },
   itemModal: {
     maxHeight: '90%',
@@ -1162,41 +1234,41 @@ const styles = StyleSheet.create({
   },
   modalHandle: {
     alignSelf: 'center',
-    width: 42,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#DDD2D7',
-    marginBottom: 20,
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.border,
+    marginBottom: 18,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 22,
+    marginBottom: 20,
   },
   modalIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 15,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalEmoji: {
-    fontSize: 23,
+    fontSize: 22,
   },
   modalHeaderText: {
     flex: 1,
   },
   modalTitle: {
     color: COLORS.text,
-    fontSize: 21,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '900',
   },
   modalSubtitle: {
     color: COLORS.muted,
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 3,
   },
   inputLabel: {
     color: COLORS.text,
@@ -1208,22 +1280,22 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 13,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    borderRadius: 12,
+    paddingHorizontal: 13,
+    paddingVertical: 13,
     color: COLORS.text,
     fontSize: 14,
-    marginBottom: 17,
+    marginBottom: 16,
   },
   primaryButton: {
     backgroundColor: COLORS.primary,
     borderRadius: 14,
-    minHeight: 50,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginTop: 5,
+    paddingVertical: 13,
+    marginTop: 4,
   },
   primaryButtonText: {
     color: '#FFFFFF',
@@ -1233,7 +1305,7 @@ const styles = StyleSheet.create({
   cancelButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 13,
   },
   cancelText: {
     color: COLORS.muted,
@@ -1241,24 +1313,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   imagePicker: {
-    height: 150,
+    height: 145,
     backgroundColor: COLORS.surface,
-    borderRadius: 16,
+    borderRadius: 15,
     borderWidth: 1,
-    borderColor: '#FFD0BC',
+    borderColor: COLORS.border,
     borderStyle: 'dashed',
     overflow: 'hidden',
-    marginBottom: 18,
+    marginBottom: 16,
   },
   imagePickerContent: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
+    gap: 6,
   },
   imagePickerEmoji: {
-    fontSize: 29,
-    marginBottom: 2,
+    fontSize: 26,
   },
   imagePickerTitle: {
     color: COLORS.text,
@@ -1277,9 +1348,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 10,
     bottom: 10,
-    backgroundColor: 'rgba(41,35,42,0.78)',
+    backgroundColor: 'rgba(44, 26, 17, 0.8)',
     paddingHorizontal: 11,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderRadius: 9,
   },
   changeImageText: {
@@ -1293,24 +1364,24 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 13,
-    paddingHorizontal: 14,
-    marginBottom: 17,
+    borderRadius: 12,
+    paddingHorizontal: 13,
+    marginBottom: 16,
   },
   currencySymbol: {
     color: COLORS.primary,
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '900',
     marginRight: 8,
   },
   priceInput: {
     flex: 1,
     color: COLORS.text,
     fontSize: 14,
-    paddingVertical: 14,
+    paddingVertical: 13,
   },
   pressed: {
-    opacity: 0.75,
+    opacity: 0.88,
   },
   disabledButton: {
     opacity: 0.5,

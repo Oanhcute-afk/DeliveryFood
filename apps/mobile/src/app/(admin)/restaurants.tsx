@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLanguage } from '@/context/language-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import {
   adminApi,
@@ -33,6 +34,7 @@ const TAB_BAR_OFFSET = 88;
 
 export default function AdminRestaurantsScreen() {
   const queryClient = useQueryClient();
+  const { tr } = useLanguage();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search.trim(), 350);
 
@@ -51,14 +53,16 @@ export default function AdminRestaurantsScreen() {
     mutationFn: ({ id, isOpen }: { id: string; isOpen: boolean }) =>
       adminApi.setRestaurantOpen(id, isOpen),
     onSuccess: invalidate,
-    onError: (err) => Alert.alert('Không thực hiện được', errorMessage(err)),
+    onError: (err) =>
+      Alert.alert(tr('Không thực hiện được', 'Action failed'), errorMessage(err)),
   });
 
   const ownerMutation = useMutation({
     mutationFn: ({ id, blocked }: { id: string; blocked: boolean }) =>
       adminApi.setUserBlocked(id, blocked),
     onSuccess: invalidate,
-    onError: (err) => Alert.alert('Không thực hiện được', errorMessage(err)),
+    onError: (err) =>
+      Alert.alert(tr('Không thực hiện được', 'Action failed'), errorMessage(err)),
   });
 
   function confirmOwner(restaurant: AdminRestaurant) {
@@ -66,14 +70,22 @@ export default function AdminRestaurantsScreen() {
     const name = `${owner.firstName} ${owner.lastName}`.trim();
     const blocking = !owner.isBlocked;
     Alert.alert(
-      blocking ? 'Khoá chủ nhà hàng?' : 'Mở khoá chủ nhà hàng?',
       blocking
-        ? `${name} sẽ không thể đăng nhập để quản lý ${restaurant.name}. Bạn có thể đóng cửa nhà hàng bằng công tắc bên trên.`
-        : `${name} sẽ có thể đăng nhập trở lại.`,
+        ? tr('Khoá chủ nhà hàng?', 'Block restaurant owner?')
+        : tr('Mở khoá chủ nhà hàng?', 'Unblock restaurant owner?'),
+      blocking
+        ? tr(
+            `${name} sẽ không thể đăng nhập để quản lý ${restaurant.name}. Bạn có thể đóng cửa nhà hàng bằng công tắc bên trên.`,
+            `${name} will not be able to sign in to manage ${restaurant.name}. You can close the restaurant using the switch above.`,
+          )
+        : tr(
+            `${name} sẽ có thể đăng nhập trở lại.`,
+            `${name} will be able to sign in again.`,
+          ),
       [
-        { text: 'Huỷ', style: 'cancel' },
+        { text: tr('Huỷ', 'Cancel'), style: 'cancel' },
         {
-          text: blocking ? 'Khoá' : 'Mở khoá',
+          text: blocking ? tr('Khoá', 'Block') : tr('Mở khoá', 'Unblock'),
           style: blocking ? 'destructive' : 'default',
           onPress: () =>
             ownerMutation.mutate({ id: owner.id, blocked: blocking }),
@@ -101,18 +113,27 @@ export default function AdminRestaurantsScreen() {
         ListHeaderComponent={
           <>
             <ScreenHeader
-              title="Nhà hàng"
-              subtitle="Mở/đóng cửa nhà hàng và quản lý chủ quán"
-              emoji="🍜"
+              title={tr('Nhà hàng', 'Restaurants')}
+              subtitle={tr(
+                'Mở/đóng cửa nhà hàng và quản lý chủ quán',
+                'Open/close restaurants and manage owners',
+              )}
+              emoji="🍔"
             />
             <SearchBox
               value={search}
               onChange={setSearch}
-              placeholder="Tìm theo tên, địa chỉ, email chủ quán"
+              placeholder={tr(
+                'Tìm theo tên, địa chỉ, email chủ quán',
+                'Search by name, address, or owner email',
+              )}
             />
             {data ? (
               <Text style={styles.summary}>
-                {data.length} nhà hàng · {openCount} đang mở cửa
+                {tr(
+                  `${data.length} nhà hàng · ${openCount} đang mở cửa`,
+                  `${data.length} restaurants · ${openCount} open now`,
+                )}
               </Text>
             ) : null}
           </>
@@ -123,7 +144,9 @@ export default function AdminRestaurantsScreen() {
           ) : error ? (
             <EmptyState text={errorMessage(error)} />
           ) : (
-            <EmptyState text="Không tìm thấy nhà hàng nào" />
+            <EmptyState
+              text={tr('Không tìm thấy nhà hàng nào', 'No restaurants found')}
+            />
           )
         }
         renderItem={({ item }) => {
@@ -147,7 +170,7 @@ export default function AdminRestaurantsScreen() {
                   />
                 ) : (
                   <View style={[styles.image, styles.imagePlaceholder]}>
-                    <Text style={styles.imageEmoji}>🍽️</Text>
+                    <Text style={styles.imageEmoji}>🍔</Text>
                   </View>
                 )}
                 <View style={styles.info}>
@@ -160,15 +183,15 @@ export default function AdminRestaurantsScreen() {
                   <View style={styles.badges}>
                     {item.isOpen ? (
                       <Badge
-                        label="Đang mở"
+                        label={tr('Đang mở', 'Open')}
                         color={COLORS.green}
                         background={COLORS.greenLight}
                       />
                     ) : (
                       <Badge
-                        label="Đã đóng"
+                        label={tr('Đã đóng', 'Closed')}
                         color={COLORS.muted}
-                        background="#F0EEF1"
+                        background={COLORS.surfaceAlt}
                       />
                     )}
                     {rating > 0 ? (
@@ -181,18 +204,24 @@ export default function AdminRestaurantsScreen() {
               <View style={styles.stats}>
                 <View style={styles.stat}>
                   <Text style={styles.statValue}>{item.orderCount}</Text>
-                  <Text style={styles.statLabel}>Đơn hàng</Text>
+                  <Text style={styles.statLabel}>
+                    {tr('Đơn hàng', 'Orders')}
+                  </Text>
                 </View>
                 <View style={styles.stat}>
                   <Text style={styles.statValue}>
                     {formatUsd(item.revenue)}
                   </Text>
-                  <Text style={styles.statLabel}>Doanh thu</Text>
+                  <Text style={styles.statLabel}>
+                    {tr('Doanh thu', 'Revenue')}
+                  </Text>
                 </View>
               </View>
 
               <View style={styles.toggleRow}>
-                <Text style={styles.toggleLabel}>Cho phép nhận đơn</Text>
+                <Text style={styles.toggleLabel}>
+                  {tr('Cho phép nhận đơn', 'Accepting orders')}
+                </Text>
                 {togglingOpen ? (
                   <ActivityIndicator color={COLORS.primary} />
                 ) : (
@@ -201,7 +230,7 @@ export default function AdminRestaurantsScreen() {
                     onValueChange={(isOpen) =>
                       openMutation.mutate({ id: item.id, isOpen })
                     }
-                    trackColor={{ false: '#E3DCD8', true: COLORS.primary }}
+                    trackColor={{ false: COLORS.border, true: COLORS.primary }}
                     thumbColor="#FFFFFF"
                   />
                 )}
@@ -209,10 +238,14 @@ export default function AdminRestaurantsScreen() {
 
               <View style={styles.ownerRow}>
                 <View style={styles.info}>
-                  <Text style={styles.ownerLabel}>CHỦ NHÀ HÀNG</Text>
+                  <Text style={styles.ownerLabel}>
+                    {tr('CHỦ NHÀ HÀNG', 'RESTAURANT OWNER')}
+                  </Text>
                   <Text style={styles.ownerName} numberOfLines={1}>
                     {ownerName}
-                    {item.owner.isBlocked ? '  · đã khoá' : ''}
+                    {item.owner.isBlocked
+                      ? tr('  · đã khoá', '  · blocked')
+                      : ''}
                   </Text>
                   <Text style={styles.meta} numberOfLines={1}>
                     {item.owner.email}
@@ -242,7 +275,9 @@ export default function AdminRestaurantsScreen() {
                         },
                       ]}
                     >
-                      {item.owner.isBlocked ? 'Mở khoá' : 'Khoá'}
+                      {item.owner.isBlocked
+                        ? tr('Mở khoá', 'Unblock')
+                        : tr('Khoá', 'Block')}
                     </Text>
                   )}
                 </Pressable>
@@ -309,7 +344,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F3ECE7',
+    borderTopColor: COLORS.border,
   },
   toggleLabel: { fontSize: 13, fontWeight: '700', color: COLORS.textSoft },
   ownerRow: {
@@ -319,7 +354,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F3ECE7',
+    borderTopColor: COLORS.border,
   },
   ownerLabel: {
     fontSize: 10,
@@ -345,5 +380,5 @@ const styles = StyleSheet.create({
   actionLock: { backgroundColor: COLORS.redLight, borderColor: '#F5C9CB' },
   actionUnlock: { backgroundColor: COLORS.greenLight, borderColor: '#BFE8D3' },
   actionText: { fontSize: 13, fontWeight: '800' },
-  pressed: { opacity: 0.8 },
+  pressed: { opacity: 0.88 },
 });
