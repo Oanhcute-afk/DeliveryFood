@@ -444,6 +444,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: BURGER_COLORS.muted,
     marginTop: 3,
+    padding:1
   },
   orderCountBadge: {
     minWidth: 34,

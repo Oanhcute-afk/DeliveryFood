@@ -958,6 +958,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     color: BURGER_COLORS.muted,
     marginBottom: 3,
+    padding:1
   },
   notificationFooter: {
     flexDirection: 'row',

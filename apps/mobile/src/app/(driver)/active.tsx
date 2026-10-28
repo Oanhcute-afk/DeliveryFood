@@ -424,6 +424,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: BURGER_COLORS.background,
+    padding:1
   },
   emptyTopBar: {
     flexDirection: 'row',

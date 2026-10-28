@@ -291,7 +291,7 @@ export default function AdminRestaurantsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: COLORS.background,padding:1 },
   content: {
     paddingHorizontal: 20,
     paddingTop: 20,

@@ -326,6 +326,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: BURGER_COLORS.muted,
     marginBottom: 3,
+    padding:1
   },
   infoValue: {
     fontSize: 14,
