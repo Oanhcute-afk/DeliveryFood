@@ -105,6 +105,7 @@ export interface Order {
   discountAmount?: string;
   voucherId?: string | null;
   voucherCode?: string | null;
+  cancelReason?: string | null;
   deliveryAddress: string;
   stripePaymentIntentId: string | null;
   createdAt: Date;

@@ -1,10 +1,11 @@
-
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Image,
   Pressable,
+  ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -13,14 +14,81 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { api } from '@/lib/axios';
 import { RestaurantType } from '@food-delivery/types';
 import { useDebounce } from '@/hooks/use-debounce';
+import { useCartStore } from '@/store/cart-store';
+import { useAuth } from '@/context/auth-context';
+
+const FOOD_CATEGORIES = [
+  { id: 'all', label: 'Tất cả', emoji: '🍽️', keywords: [] as string[] },
+  {
+    id: 'viet',
+    label: 'Món Việt',
+    emoji: '🍜',
+    keywords: ['việt', 'phở', 'bún', 'cơm', 'bánh mì', 'vietnamese', 'rice'],
+  },
+  {
+    id: 'fastfood',
+    label: 'Burger & Gà',
+    emoji: '🍔',
+    keywords: ['burger', 'gà', 'chicken', 'fast', 'american', 'kfc'],
+  },
+  {
+    id: 'pizza',
+    label: 'Pizza & Ý',
+    emoji: '🍕',
+    keywords: ['pizza', 'ý', 'italian', 'pasta', 'mì ý'],
+  },
+  {
+    id: 'asian',
+    label: 'Hàn & Nhật',
+    emoji: '🍣',
+    keywords: ['hàn', 'nhật', 'sushi', 'korean', 'japanese', 'ramen', 'tokbokki'],
+  },
+  {
+    id: 'drink',
+    label: 'Đồ uống',
+    emoji: '🧋',
+    keywords: ['trà', 'cà phê', 'coffee', 'tea', 'drink', 'đồ uống', 'sinh tố'],
+  },
+  {
+    id: 'top_rated',
+    label: 'Đánh giá cao',
+    emoji: '⭐',
+    keywords: [],
+  },
+];
+
+function getDeliveryEstimate(index: number): {
+  time: string;
+  distance: string;
+  promo: string;
+} {
+  const estimates = [
+    { time: '15-20 phút', distance: '0.8 km', promo: 'Freeship đơn từ $0' },
+    { time: '20-25 phút', distance: '1.4 km', promo: 'Giảm $2 phí giao' },
+    { time: '15-25 phút', distance: '1.1 km', promo: 'Freeship • Quán chuẩn' },
+    { time: '25-30 phút', distance: '2.0 km', promo: 'Ưu đãi món mới' },
+  ];
+  return estimates[index % estimates.length];
+}
 
 export default function CustomerHomeScreen() {
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 400);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const debouncedSearch = useDebounce(search, 350);
+
+  const { user } = useAuth();
+  const cartItems = useCartStore((s) => s.items);
+  const cartRestaurantName = useCartStore((s) => s.restaurantName);
+  const cartTotalItems = cartItems.reduce((sum, i) => sum + i.quantity, 0);
+  const cartTotalPrice = cartItems.reduce(
+    (sum, i) => sum + parseFloat(i.price) * i.quantity,
+    0,
+  );
 
   const {
     data: restaurants = [],
@@ -41,11 +109,165 @@ export default function CustomerHomeScreen() {
         .then((response) => response.data),
   });
 
+  const filteredRestaurants = useMemo(() => {
+    if (selectedCategory === 'all') return restaurants;
+
+    if (selectedCategory === 'top_rated') {
+      return [...restaurants].sort(
+        (a, b) => Number(b.rating ?? 0) - Number(a.rating ?? 0),
+      );
+    }
+
+    const cat = FOOD_CATEGORIES.find((c) => c.id === selectedCategory);
+    if (!cat || cat.keywords.length === 0) return restaurants;
+
+    const matches = restaurants.filter((r) => {
+      const haystack =
+        `${r.name ?? ''} ${r.cuisineType ?? ''} ${r.description ?? ''}`.toLowerCase();
+      return cat.keywords.some((kw) => haystack.includes(kw));
+    });
+
+    return matches.length > 0 ? matches : restaurants;
+  }, [restaurants, selectedCategory]);
+
   function openRestaurant(id: string) {
     router.push({
-      pathname: '/(customer)/(home)/restaurant/[id]',
+      pathname: '/(customer)/(tabs)/(home)/restaurant/[id]',
       params: { id },
     });
+  }
+
+  const userFirstName = user?.firstName?.trim() || 'bạn';
+
+  function renderHeader() {
+    return (
+      <View style={styles.listHeaderContainer}>
+        {/* Banner khuyến mãi đậm chất Delivery Food */}
+        <View style={styles.promoBanner}>
+          <View style={styles.promoLeft}>
+            <View style={styles.promoTag}>
+              <Ionicons name="flame" size={13} color="#FF6B35" />
+              <Text style={styles.promoTagText}>ƯU ĐÃI GIAO ĐỒ ĂN</Text>
+            </View>
+
+            <Text style={styles.promoTitle}>
+              Món nóng hổi{'\n'}Freeship tận cửa!
+            </Text>
+            <Text style={styles.promoSubtitle}>
+              Áp mã voucher tại bước thanh toán để nhận ưu đãi hấp dẫn hôm nay.
+            </Text>
+
+            <View style={styles.promoActions}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.promoCta,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={() => router.push('/(customer)/(tabs)/vouchers')}
+              >
+                <Ionicons name="pricetag" size={14} color="#FF6B35" />
+                <Text style={styles.promoCtaText}>Săn Voucher ngay</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={styles.promoVisual}>
+            <View style={styles.promoCircle}>
+              <Text style={styles.promoEmoji}>🍔</Text>
+            </View>
+            <View style={styles.promoMiniBadge}>
+              <Text style={styles.promoMiniText}>⚡ 15p</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Cam kết dịch vụ giao đồ ăn */}
+        <View style={styles.perksBar}>
+          <View style={styles.perkItem}>
+            <Ionicons name="flash" size={15} color="#FF6B35" />
+            <Text style={styles.perkText}>Giao nhanh 20p</Text>
+          </View>
+          <View style={styles.perkDivider} />
+          <View style={styles.perkItem}>
+            <Ionicons name="shield-checkmark" size={15} color="#16A34A" />
+            <Text style={styles.perkText}>Quán ngon tuyển chọn</Text>
+          </View>
+          <View style={styles.perkDivider} />
+          <View style={styles.perkItem}>
+            <Ionicons name="pricetag" size={15} color="#F59E0B" />
+            <Text style={styles.perkText}>Nhiều mã giảm giá</Text>
+          </View>
+        </View>
+
+        {/* Danh mục món ăn */}
+        <View style={styles.categorySection}>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionTitle}>Hôm nay ăn gì?</Text>
+            {selectedCategory !== 'all' && (
+              <Pressable onPress={() => setSelectedCategory('all')}>
+                <Text style={styles.resetFilterText}>Xem tất cả</Text>
+              </Pressable>
+            )}
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryScroll}
+          >
+            {FOOD_CATEGORIES.map((cat) => {
+              const active = selectedCategory === cat.id;
+              return (
+                <Pressable
+                  key={cat.id}
+                  onPress={() => setSelectedCategory(cat.id)}
+                  style={[
+                    styles.categoryChip,
+                    active && styles.categoryChipActive,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.categoryEmojiWrap,
+                      active && styles.categoryEmojiWrapActive,
+                    ]}
+                  >
+                    <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.categoryChipLabel,
+                      active && styles.categoryChipLabelActive,
+                    ]}
+                  >
+                    {cat.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Tiêu đề danh sách nhà hàng */}
+        {filteredRestaurants.length > 0 && (
+          <View style={styles.listSectionHeader}>
+            <View>
+              <Text style={styles.sectionEyebrow}>QUÁN NGON QUANH BẠN</Text>
+              <Text style={styles.sectionTitle}>
+                {selectedCategory === 'top_rated'
+                  ? 'Nhà hàng được đánh giá cao'
+                  : 'Giao nhanh • Đặt là có ngay'}
+              </Text>
+            </View>
+            <View style={styles.countBadge}>
+              <Text style={styles.countText}>
+                {filteredRestaurants.length} quán
+              </Text>
+            </View>
+          </View>
+        )}
+      </View>
+    );
   }
 
   function renderContent() {
@@ -55,9 +277,9 @@ export default function CustomerHomeScreen() {
           <View style={styles.loadingIcon}>
             <ActivityIndicator size="large" color="#FF6B35" />
           </View>
-          <Text style={styles.stateTitle}>Đang tìm nhà hàng</Text>
+          <Text style={styles.stateTitle}>Đang tìm quán ngon gần bạn</Text>
           <Text style={styles.stateDescription}>
-            Chờ một chút, món ngon sắp đến rồi!
+            Chờ một chút, hàng loạt món ngon sắp hiện ra!
           </Text>
         </View>
       );
@@ -67,9 +289,7 @@ export default function CustomerHomeScreen() {
       return (
         <View style={styles.centered}>
           <Text style={styles.stateEmoji}>📡</Text>
-          <Text style={styles.stateTitle}>
-            Không tải được nhà hàng
-          </Text>
+          <Text style={styles.stateTitle}>Không tải được danh sách quán</Text>
           <Text style={styles.stateDescription}>
             Kiểm tra kết nối mạng hoặc máy chủ API rồi thử lại nhé.
           </Text>
@@ -84,7 +304,7 @@ export default function CustomerHomeScreen() {
               pressed && styles.buttonPressed,
             ]}
           >
-            <Text style={styles.retryButtonText}>Thử lại</Text>
+            <Text style={styles.retryButtonText}>Thử lại ngay</Text>
           </Pressable>
         </View>
       );
@@ -92,132 +312,177 @@ export default function CustomerHomeScreen() {
 
     return (
       <FlatList
-        data={restaurants}
+        data={filteredRestaurants}
         keyExtractor={(item) => String(item.id)}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.listContent,
-          restaurants.length === 0 && styles.emptyListContent,
+          filteredRestaurants.length === 0 && styles.emptyListContent,
+          cartTotalItems > 0 && { paddingBottom: 105 },
         ]}
         refreshing={isFetching && !isLoading}
         onRefresh={() => refetch()}
-        ListHeaderComponent={
-          restaurants.length > 0 ? (
-            <View style={styles.listHeader}>
-              <View>
-                <Text style={styles.sectionEyebrow}>
-                  DÀNH RIÊNG CHO BẠN
-                </Text>
-                <Text style={styles.sectionTitle}>
-                  Nhà hàng nổi bật
-                </Text>
-              </View>
-              <View style={styles.countBadge}>
-                <Text style={styles.countText}>
-                  {restaurants.length} nơi
-                </Text>
-              </View>
-            </View>
-          ) : null
-        }
+        ListHeaderComponent={renderHeader}
         ListEmptyComponent={
-          <View style={styles.centered}>
+          <View style={styles.emptyCard}>
             <Text style={styles.stateEmoji}>🍽️</Text>
-            <Text style={styles.stateTitle}>
-              Chưa tìm thấy nhà hàng
-            </Text>
+            <Text style={styles.stateTitle}>Chưa tìm thấy nhà hàng phù hợp</Text>
             <Text style={styles.stateDescription}>
-              Thử một tên nhà hàng hoặc loại ẩm thực khác nhé.
+              Hãy thử từ khóa khác hoặc chọn lại danh mục món ăn nhé.
             </Text>
-            {search.length > 0 && (
+            {(search.length > 0 || selectedCategory !== 'all') && (
               <Pressable
-                onPress={() => setSearch('')}
+                onPress={() => {
+                  setSearch('');
+                  setSelectedCategory('all');
+                }}
                 style={styles.retryButton}
               >
-                <Text style={styles.retryButtonText}>
-                  Xóa tìm kiếm
-                </Text>
+                <Text style={styles.retryButtonText}>Xóa bộ lọc</Text>
               </Pressable>
             )}
           </View>
         }
-        renderItem={({ item }) => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Xem thực đơn ${item.name}`}
-            style={({ pressed }) => [
-              styles.card,
-              pressed && styles.cardPressed,
-            ]}
-            onPress={() => openRestaurant(String(item.id))}
-          >
-            <View style={styles.imageContainer}>
-              {item.imageUrl ? (
-                <Image
-                  source={{ uri: item.imageUrl }}
-                  style={styles.cardImage}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={styles.cardImagePlaceholder}>
-                  <Text style={styles.placeholderEmoji}>🍲</Text>
-                  <Text style={styles.placeholderText}>
-                    Hương vị thơm ngon
-                  </Text>
+        renderItem={({ item, index }) => {
+          const deliveryInfo = getDeliveryEstimate(index);
+          const isOpen = item.isOpen !== false;
+          const ratingNum = Number(item.rating ?? 0);
+
+          return (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Xem thực đơn ${item.name}`}
+              style={({ pressed }) => [
+                styles.card,
+                pressed && styles.cardPressed,
+              ]}
+              onPress={() => openRestaurant(String(item.id))}
+            >
+              <View style={styles.imageContainer}>
+                {item.imageUrl ? (
+                  <Image
+                    source={{ uri: item.imageUrl }}
+                    style={styles.cardImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.cardImagePlaceholder}>
+                    <Text style={styles.placeholderEmoji}>🍲</Text>
+                    <Text style={styles.placeholderText}>
+                      Món ngon chuẩn vị
+                    </Text>
+                  </View>
+                )}
+
+                {/* Tag ưu đãi góc trái trên */}
+                <View style={styles.promoBadgeOverlay}>
+                  <Ionicons name="flash" size={12} color="#FFFFFF" />
+                  <Text style={styles.promoBadgeText}>Yêu thích</Text>
                 </View>
-              )}
 
-              <View style={styles.imageBadge}>
-                <Text style={styles.imageBadgeText}>
-                  🍴 Đặt món
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.cardBody}>
-              <View style={styles.cardTitleRow}>
-                <Text style={styles.cardName} numberOfLines={2}>
-                  {item.name}
-                </Text>
-
-                <View style={styles.ratingBadge}>
-                  <Text style={styles.ratingStar}>★</Text>
-                  <Text style={styles.ratingValue}>
-                    {Number(item.rating) > 0
-                      ? Number(item.rating).toFixed(1)
-                      : 'Mới'}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.cardCuisine} numberOfLines={1}>
-                {item.cuisineType || 'Ẩm thực đa dạng'}
-              </Text>
-
-              <View style={styles.cardDivider} />
-
-              <View style={styles.cardFooter}>
-                <View style={styles.openBadge}>
-                  <View style={styles.openDot} />
-                  <Text style={styles.openBadgeText}>
-                    Sẵn sàng phục vụ
+                {/* Trạng thái đóng/mở góc phải trên */}
+                <View
+                  style={[
+                    styles.statusOverlayBadge,
+                    !isOpen && styles.statusOverlayClosed,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.statusDot,
+                      !isOpen && { backgroundColor: '#9CA3AF' },
+                    ]}
+                  />
+                  <Text style={styles.statusOverlayText}>
+                    {isOpen ? 'Đang mở cửa' : 'Tạm đóng'}
                   </Text>
                 </View>
 
-                <View style={styles.viewMenu}>
-                  <Text style={styles.viewMenuText}>Xem thực đơn</Text>
-                  <Text style={styles.viewMenuArrow}>›</Text>
+                {/* Thời gian giao hàng góc dưới ảnh */}
+                <View style={styles.deliveryTimeOverlay}>
+                  <Ionicons name="bicycle" size={14} color="#FF6B35" />
+                  <Text style={styles.deliveryTimeText}>
+                    {deliveryInfo.time} • {deliveryInfo.distance}
+                  </Text>
                 </View>
               </View>
-            </View>
-          </Pressable>
-        )}
+
+              <View style={styles.cardBody}>
+                <View style={styles.cardTitleRow}>
+                  <View style={styles.nameWithTick}>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={17}
+                      color="#FF6B35"
+                      style={{ marginTop: 2 }}
+                    />
+                    <Text style={styles.cardName} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                  </View>
+
+                  <View style={styles.ratingBadge}>
+                    <Ionicons name="star" size={13} color="#F59E0B" />
+                    <Text style={styles.ratingValue}>
+                      {ratingNum > 0 ? ratingNum.toFixed(1) : '4.8'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.metaRow}>
+                  <View style={styles.cuisinePill}>
+                    <Text style={styles.cuisinePillText} numberOfLines={1}>
+                      {item.cuisineType || 'Ẩm thực đa dạng'}
+                    </Text>
+                  </View>
+
+                  {item.address ? (
+                    <View style={styles.addressPreview}>
+                      <Ionicons
+                        name="location-outline"
+                        size={13}
+                        color="#8B8289"
+                      />
+                      <Text style={styles.addressPreviewText} numberOfLines={1}>
+                        {item.address}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                <View style={styles.cardDivider} />
+
+                <View style={styles.cardFooter}>
+                  <View style={styles.freeshipTag}>
+                    <Ionicons
+                      name="pricetag-outline"
+                      size={13}
+                      color="#168653"
+                    />
+                    <Text style={styles.freeshipTagText}>
+                      {deliveryInfo.promo}
+                    </Text>
+                  </View>
+
+                  <View style={styles.viewMenuButton}>
+                    <Text style={styles.viewMenuText}>Đặt món</Text>
+                    <Ionicons
+                      name="arrow-forward"
+                      size={13}
+                      color="#FFFFFF"
+                    />
+                  </View>
+                </View>
+              </View>
+            </Pressable>
+          );
+        }}
         ListFooterComponent={
-          restaurants.length > 0 ? (
+          filteredRestaurants.length > 0 ? (
             <View style={styles.footerNote}>
-              <Text style={styles.footerEmoji}>🧡</Text>
+              <Text style={styles.footerEmoji}>🛵</Text>
               <Text style={styles.footerText}>
-                Khám phá món ngon và tìm hương vị yêu thích của bạn.
+                DeliFood giao món nóng hổi tận tay bạn mỗi ngày!
               </Text>
             </View>
           ) : null
@@ -228,35 +493,52 @@ export default function CustomerHomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <View style={styles.greetingRow}>
-          <View style={styles.brandIcon}>
-            <Text style={styles.brandEmoji}>🍊</Text>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFF9F5" />
+
+      {/* Top Delivery Bar gọn gàng, chuẩn app giao đồ ăn */}
+      <View style={styles.topHeader}>
+        <View style={styles.deliveryRow}>
+          <View style={styles.locationPinBox}>
+            <Ionicons name="location" size={20} color="#FFFFFF" />
           </View>
 
-          <View style={styles.greetingContent}>
-            <Text style={styles.greetingLabel}>
-              HÔM NAY BẠN MUỐN ĂN GÌ?
-            </Text>
-            <Text style={styles.greetingTitle}>
-              Chào bạn! 👋
+          <View style={styles.deliveryInfo}>
+            <View style={styles.deliveryLabelRow}>
+              <Text style={styles.deliveryLabel}>GIAO ĐẾN</Text>
+              <View style={styles.fastBadge}>
+                <Text style={styles.fastBadgeText}>⚡ Giao nhanh</Text>
+              </View>
+            </View>
+            <Text style={styles.deliveryAddressText} numberOfLines={1}>
+              Xin chào {userFirstName} • Vị trí hiện tại của bạn
             </Text>
           </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Mở giỏ hàng"
+            style={({ pressed }) => [
+              styles.cartIconButton,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={() => router.push('/(customer)/(tabs)/cart')}
+          >
+            <Ionicons name="bag-handle" size={21} color="#FF6B35" />
+            {cartTotalItems > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{cartTotalItems}</Text>
+              </View>
+            )}
+          </Pressable>
         </View>
 
-        <Text style={styles.heading}>
-          Món ngon, giao tận nơi
-        </Text>
-        <Text style={styles.subtitle}>
-          Tìm nhà hàng và khám phá món ăn yêu thích.
-        </Text>
-
+        {/* Thanh tìm kiếm nổi bật */}
         <View style={styles.searchContainer}>
-          <Text style={styles.searchIcon}>⌕</Text>
+          <Ionicons name="search" size={20} color="#FF6B35" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Tìm nhà hàng, món ăn..."
-            placeholderTextColor="#A1989E"
+            placeholder="Tìm món ăn, trà sữa, burger, nhà hàng..."
+            placeholderTextColor="#9E949A"
             value={search}
             onChangeText={setSearch}
             returnKeyType="search"
@@ -271,13 +553,47 @@ export default function CustomerHomeScreen() {
               hitSlop={10}
               style={styles.clearButton}
             >
-              <Text style={styles.clearButtonText}>×</Text>
+              <Ionicons name="close" size={16} color="#756B72" />
             </Pressable>
           )}
         </View>
       </View>
 
       <View style={styles.content}>{renderContent()}</View>
+
+      {/* Thanh giỏ hàng nổi (Floating Mini Cart) khi khách đã chọn món */}
+      {cartTotalItems > 0 && (
+        <View style={styles.floatingCartWrapper}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.floatingCartBar,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={() => router.push('/(customer)/(tabs)/cart')}
+          >
+            <View style={styles.floatingCartLeft}>
+              <View style={styles.floatingCartCountBox}>
+                <Text style={styles.floatingCartCountText}>
+                  {cartTotalItems}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.floatingCartTitle} numberOfLines={1}>
+                  {cartRestaurantName || 'Giỏ hàng của bạn'}
+                </Text>
+                <Text style={styles.floatingCartSub}>
+                  Tạm tính: ${cartTotalPrice.toFixed(2)}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.floatingCartAction}>
+              <Text style={styles.floatingCartActionText}>Thanh toán</Text>
+              <Ionicons name="arrow-forward" size={16} color="#FF6B35" />
+            </View>
+          </Pressable>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -287,128 +603,338 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFF9F5',
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 22,
+  topHeader: {
+    paddingHorizontal: 18,
+    paddingTop: 8,
+    paddingBottom: 12,
     backgroundColor: '#FFF9F5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F4EBE4',
   },
-  greetingRow: {
+  deliveryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 24,
+    gap: 11,
+    marginBottom: 12,
   },
-  brandIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#FFF0E8',
+  locationPinBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: '#FF6B35',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  brandEmoji: {
-    fontSize: 25,
-  },
-  greetingContent: {
+  deliveryInfo: {
     flex: 1,
   },
-  greetingLabel: {
+  deliveryLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  deliveryLabel: {
     fontSize: 10,
     fontWeight: '900',
     color: '#FF6B35',
-    letterSpacing: 1.1,
-    marginBottom: 4,
+    letterSpacing: 0.9,
   },
-  greetingTitle: {
-    fontSize: 19,
-    fontWeight: '900',
+  fastBadge: {
+    backgroundColor: '#FFF0E8',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  fastBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#E85D2A',
+  },
+  deliveryAddressText: {
+    fontSize: 14,
+    fontWeight: '800',
     color: '#29232A',
   },
-  heading: {
-    fontSize: 29,
-    lineHeight: 36,
-    fontWeight: '900',
-    letterSpacing: -0.8,
-    color: '#29232A',
+  cartIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F0E4DC',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  subtitle: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: '#8B8289',
-    marginTop: 7,
-    marginBottom: 20,
+  cartBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+    borderWidth: 2,
+    borderColor: '#FFF9F5',
+  },
+  cartBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
   },
   searchContainer: {
-    minHeight: 54,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#F0E8E3',
-    borderRadius: 16,
+    borderColor: '#EDE2DA',
+    borderRadius: 15,
     paddingHorizontal: 14,
-  },
-  searchIcon: {
-    fontSize: 28,
-    color: '#FF6B35',
-    marginRight: 10,
-    lineHeight: 32,
+    gap: 10,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 14,
     fontSize: 14,
     color: '#29232A',
+    height: '100%',
   },
   clearButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F5EDE7',
-  },
-  clearButtonText: {
-    fontSize: 21,
-    color: '#756B72',
-    lineHeight: 24,
+    backgroundColor: '#F3ECE7',
   },
   content: {
     flex: 1,
   },
   listContent: {
     paddingHorizontal: 18,
-    paddingTop: 2,
-    paddingBottom: 30,
+    paddingTop: 14,
+    paddingBottom: 28,
   },
   emptyListContent: {
     flexGrow: 1,
   },
-  listHeader: {
+  listHeaderContainer: {
+    marginBottom: 8,
+  },
+  promoBanner: {
+    backgroundColor: '#FF6B35',
+    borderRadius: 24,
+    padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 4,
-    marginBottom: 16,
+    marginBottom: 12,
+    overflow: 'hidden',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  promoLeft: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  promoTag: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+    marginBottom: 10,
+  },
+  promoTagText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#FF6B35',
+    letterSpacing: 0.6,
+  },
+  promoTitle: {
+    fontSize: 21,
+    lineHeight: 26,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.4,
+  },
+  promoSubtitle: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: '#FFE5D9',
+    marginTop: 6,
+  },
+  promoActions: {
+    flexDirection: 'row',
+    marginTop: 12,
+  },
+  promoCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 11,
+  },
+  promoCtaText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#FF6B35',
+  },
+  promoVisual: {
+    width: 82,
+    height: 82,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  promoCircle: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  promoEmoji: {
+    fontSize: 40,
+  },
+  promoMiniBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#29232A',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  promoMiniText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
+  },
+  perksBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#F0E6DF',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 18,
+  },
+  perkItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  perkText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#4B4248',
+  },
+  perkDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: '#EDE2DA',
+  },
+  categorySection: {
+    marginBottom: 18,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  resetFilterText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FF6B35',
+  },
+  categoryScroll: {
+    gap: 10,
+    paddingRight: 8,
+  },
+  categoryChip: {
+    alignItems: 'center',
+    width: 76,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F0E6DF',
+    gap: 6,
+  },
+  categoryChipActive: {
+    backgroundColor: '#FF6B35',
+    borderColor: '#FF6B35',
+  },
+  categoryEmojiWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: '#FFF3EC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryEmojiWrapActive: {
+    backgroundColor: 'rgba(255,255,255,0.24)',
+  },
+  categoryEmoji: {
+    fontSize: 21,
+  },
+  categoryChipLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#574E54',
+    textAlign: 'center',
+  },
+  categoryChipLabelActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  listSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
   sectionEyebrow: {
     fontSize: 9,
     fontWeight: '900',
     color: '#FF6B35',
-    letterSpacing: 1.3,
-    marginBottom: 5,
+    letterSpacing: 1.2,
+    marginBottom: 3,
   },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 19,
     fontWeight: '900',
     color: '#29232A',
+    letterSpacing: -0.4,
   },
   countBadge: {
-    paddingHorizontal: 11,
-    paddingVertical: 8,
-    borderRadius: 11,
     backgroundColor: '#FFF0E8',
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
   countText: {
     fontSize: 11,
@@ -416,21 +942,26 @@ const styles = StyleSheet.create({
     color: '#FF6B35',
   },
   card: {
-    marginBottom: 17,
-    borderRadius: 20,
     backgroundColor: '#FFFFFF',
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
+    borderColor: '#EFE5DE',
+    marginBottom: 16,
     overflow: 'hidden',
+    shadowColor: '#29232A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   cardPressed: {
-    opacity: 0.85,
+    opacity: 0.92,
     transform: [{ scale: 0.99 }],
   },
   imageContainer: {
-    height: 180,
-    backgroundColor: '#F5E6DC',
     position: 'relative',
+    height: 168,
+    backgroundColor: '#FFF0E8',
   },
   cardImage: {
     width: '100%',
@@ -440,117 +971,190 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F9E8DC',
+    backgroundColor: '#FFE8D9',
   },
   placeholderEmoji: {
-    fontSize: 43,
-    marginBottom: 7,
+    fontSize: 40,
+    marginBottom: 6,
   },
   placeholderText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#9C7160',
-  },
-  imageBadge: {
-    position: 'absolute',
-    left: 13,
-    bottom: 13,
-    paddingHorizontal: 11,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-  },
-  imageBadgeText: {
     fontSize: 11,
+    fontWeight: '800',
+    color: '#B5633F',
+  },
+  promoBadgeOverlay: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  promoBadgeText: {
+    fontSize: 10,
     fontWeight: '900',
-    color: '#FF6B35',
+    color: '#FFFFFF',
+  },
+  statusOverlayBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  statusOverlayClosed: {
+    backgroundColor: 'rgba(243, 244, 246, 0.95)',
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#16A34A',
+  },
+  statusOverlayText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#29232A',
+  },
+  deliveryTimeOverlay: {
+    position: 'absolute',
+    bottom: 10,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  deliveryTimeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#29232A',
   },
   cardBody: {
-    paddingHorizontal: 15,
-    paddingTop: 14,
-    paddingBottom: 15,
+    padding: 15,
   },
   cardTitleRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 10,
+  },
+  nameWithTick: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    flex: 1,
   },
   cardName: {
     flex: 1,
     fontSize: 17,
-    lineHeight: 23,
     fontWeight: '900',
     color: '#29232A',
+    letterSpacing: -0.3,
   },
   ratingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 9,
-    backgroundColor: '#FFF4D9',
-  },
-  ratingStar: {
-    color: '#E9A323',
-    fontSize: 13,
+    backgroundColor: '#FFF8E6',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
   },
   ratingValue: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '900',
-    color: '#75511C',
+    color: '#B45309',
   },
-  cardCuisine: {
-    marginTop: 5,
-    fontSize: 13,
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  cuisinePill: {
+    backgroundColor: '#FFF2EA',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  cuisinePillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#D95322',
+  },
+  addressPreview: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  addressPreviewText: {
+    flex: 1,
+    fontSize: 12,
     color: '#8B8289',
   },
   cardDivider: {
     height: 1,
-    backgroundColor: '#F0E8E3',
-    marginVertical: 13,
+    backgroundColor: '#F4ECE6',
+    marginVertical: 12,
   },
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
-    flexWrap: 'wrap',
   },
-  openBadge: {
+  freeshipTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
+    backgroundColor: '#EAFBF1',
     paddingHorizontal: 9,
-    paddingVertical: 7,
+    paddingVertical: 5,
     borderRadius: 9,
-    backgroundColor: '#EAF8EF',
   },
-  openDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#22A06B',
-  },
-  openBadgeText: {
-    fontSize: 10,
+  freeshipTagText: {
+    fontSize: 11,
     fontWeight: '800',
     color: '#168653',
   },
-  viewMenu: {
+  viewMenuButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 11,
   },
   viewMenuText: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: '#FF6B35',
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
-  viewMenuArrow: {
-    fontSize: 22,
-    lineHeight: 23,
-    color: '#FF6B35',
+  emptyCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#F0E6DF',
+    padding: 28,
+    marginTop: 10,
   },
   centered: {
     flex: 1,
@@ -562,68 +1166,131 @@ const styles = StyleSheet.create({
   loadingIcon: {
     width: 72,
     height: 72,
-    borderRadius: 23,
+    borderRadius: 24,
     backgroundColor: '#FFF0E8',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 18,
+    marginBottom: 16,
   },
   stateEmoji: {
-    fontSize: 45,
-    marginBottom: 14,
+    fontSize: 44,
+    marginBottom: 12,
   },
   stateTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '900',
     color: '#29232A',
     textAlign: 'center',
   },
   stateDescription: {
     fontSize: 13,
+    lineHeight: 20,
     color: '#8B8289',
     textAlign: 'center',
-    lineHeight: 20,
-    marginTop: 8,
+    marginTop: 6,
   },
   errorDetails: {
-    fontSize: 11,
-    color: '#B45309',
-    textAlign: 'center',
     marginTop: 10,
-    lineHeight: 17,
+    fontSize: 11,
+    color: '#C7522A',
+    textAlign: 'center',
   },
   retryButton: {
-    marginTop: 18,
+    marginTop: 16,
     backgroundColor: '#FF6B35',
-    paddingHorizontal: 23,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 11,
+    borderRadius: 13,
   },
   retryButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   buttonPressed: {
-    opacity: 0.75,
+    opacity: 0.85,
   },
   footerNote: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    padding: 15,
-    marginTop: 3,
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 4,
+    padding: 14,
     borderRadius: 15,
     backgroundColor: '#FFF0E8',
   },
   footerEmoji: {
-    fontSize: 21,
+    fontSize: 18,
   },
   footerText: {
-    flex: 1,
     fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '600',
     color: '#9A6046',
+    fontWeight: '700',
+  },
+  floatingCartWrapper: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 12,
+  },
+  floatingCartBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#29232A',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  floatingCartLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    flex: 1,
+    marginRight: 10,
+  },
+  floatingCartCountBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#FF6B35',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  floatingCartCountText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  floatingCartTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  floatingCartSub: {
+    color: '#D6CED4',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  floatingCartAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderRadius: 12,
+  },
+  floatingCartActionText: {
+    color: '#FF6B35',
+    fontSize: 12,
+    fontWeight: '900',
   },
 });

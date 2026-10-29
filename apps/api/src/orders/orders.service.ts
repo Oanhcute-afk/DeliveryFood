@@ -171,6 +171,7 @@ export class OrdersService {
     orderId: string,
     newStatus: OrderStatus,
     user: { sub: string; role: string },
+    cancelReason?: string,
   ) {
     const [order] = await this.db
       .select()
@@ -180,6 +181,15 @@ export class OrdersService {
     if (!order) throw new NotFoundException('Order not found');
 
     this.validateTransition(order.status, newStatus, user.role);
+
+    if (user.role === UserRole.CUSTOMER) {
+      if (order.customerId !== user.sub) {
+        throw new ForbiddenException('Đơn hàng này không thuộc về bạn');
+      }
+      if (!cancelReason?.trim()) {
+        throw new BadRequestException('Vui lòng chọn lý do hủy đơn hàng');
+      }
+    }
 
     if (user.role === UserRole.RESTAURANT_OWNER) {
       const [restaurant] = await this.db
@@ -206,6 +216,10 @@ export class OrdersService {
       updatedAt: new Date(),
     };
 
+    if (newStatus === 'CANCELLED' && cancelReason?.trim()) {
+      updateValues.cancelReason = cancelReason.trim();
+    }
+
     if (user.role === UserRole.DRIVER && newStatus === 'PICKED_UP') {
       updateValues.driverId = user.sub;
       this.driverService.clearOrderDeclines(orderId);
@@ -231,6 +245,10 @@ export class OrdersService {
     newStatus: string,
     role: string,
   ) {
+    const customerTransitions: Record<string, string[]> = {
+      PENDING: ['CANCELLED'],
+    };
+
     const ownerTransitions: Record<string, string[]> = {
       CONFIRMED: ['PREPARING', 'CANCELLED'],
       PREPARING: ['READY', 'CANCELLED'],
@@ -242,11 +260,13 @@ export class OrdersService {
     };
 
     const allowed =
-      role === UserRole.RESTAURANT_OWNER
-        ? (ownerTransitions[currentStatus] ?? [])
-        : role === UserRole.DRIVER
-          ? (driverTransitions[currentStatus] ?? [])
-          : [];
+      role === UserRole.CUSTOMER
+        ? (customerTransitions[currentStatus] ?? [])
+        : role === UserRole.RESTAURANT_OWNER
+          ? (ownerTransitions[currentStatus] ?? [])
+          : role === UserRole.DRIVER
+            ? (driverTransitions[currentStatus] ?? [])
+            : [];
 
     if (!allowed.includes(newStatus)) {
       throw new BadRequestException(

@@ -22,6 +22,13 @@ import {
   useDriverLocationSocket,
 } from '@/hooks/use-order-socket';
 import { RatingModal } from '@/components/rating-modal';
+import { CancelOrderModal } from '@/components/cancel-order-modal';
+import {
+  applyLocalCancellation,
+  cancelPendingOrder,
+  ensureCancelledOrdersHydrated,
+  type CancelOrderReason,
+} from '@/lib/cancelled-orders';
 
 const COLORS = {
   background: '#FFF9F5',
@@ -279,6 +286,7 @@ export default function OrderConfirmationScreen() {
   const mapWebViewRef = useRef<WebView | null>(null);
 
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -289,10 +297,13 @@ export default function OrderConfirmationScreen() {
   useEffect(() => {
     if (!orderUpdate || !id) return;
 
-    queryClient.setQueryData(['order', id], (old: unknown) => ({
-      ...((old && typeof old === 'object') ? old : {}),
-      ...orderUpdate,
-    }));
+    queryClient.setQueryData(['order', id], (old: unknown) => {
+      const merged = {
+        ...((old && typeof old === 'object') ? old : {}),
+        ...orderUpdate,
+      } as unknown as Order & { items: any[] };
+      return merged.id ? applyLocalCancellation(merged) : merged;
+    });
     queryClient.invalidateQueries({ queryKey: ['my-orders'] });
   }, [orderUpdate, id, queryClient]);
 
@@ -304,10 +315,37 @@ export default function OrderConfirmationScreen() {
     refetch,
   } = useQuery<Order & { items: any[] }>({
     queryKey: ['order', id],
-    queryFn: () =>
-      api.get<Order & { items: any[] }>(`/orders/${id}`).then((r) => r.data),
+    queryFn: async () => {
+      await ensureCancelledOrdersHydrated();
+      const r = await api.get<Order & { items: any[] }>(`/orders/${id}`);
+      return applyLocalCancellation(r.data);
+    },
     enabled: !!id,
     refetchInterval: 4000,
+  });
+
+  const { mutate: cancelOrder, isPending: isCancellingOrder } = useMutation({
+    mutationFn: (reason: CancelOrderReason) =>
+      cancelPendingOrder(order!.id, reason),
+    onSuccess: (result) => {
+      setShowCancelModal(false);
+      queryClient.setQueryData(['order', id], (old: unknown) => ({
+        ...((old && typeof old === 'object') ? old : order),
+        status: 'CANCELLED',
+        cancelReason: result.cancelReason,
+      }));
+      queryClient.invalidateQueries({ queryKey: ['my-orders'] });
+      Alert.alert(
+        'Hủy đơn thành công',
+        `Đơn hàng chờ thanh toán đã được hủy thành công.\nLý do: ${result.cancelReason}`,
+      );
+    },
+    onError: (e: any) => {
+      Alert.alert(
+        'Không thể hủy đơn',
+        e?.response?.data?.message ?? 'Vui lòng thử lại sau.',
+      );
+    },
   });
 
   useEffect(() => {
@@ -426,7 +464,7 @@ export default function OrderConfirmationScreen() {
       );
 
       const { error: initError } = await initPaymentSheet({
-        merchantDisplayName: 'Food Delivery',
+        merchantDisplayName: 'DeliFood',
         paymentIntentClientSecret: res.data.clientSecret,
       });
 
@@ -543,7 +581,9 @@ export default function OrderConfirmationScreen() {
 
   const heroSubtitle =
     order.status === 'CANCELLED'
-      ? 'Đơn hàng này đã bị hủy.'
+      ? order.cancelReason
+        ? `Lý do hủy: ${order.cancelReason}`
+        : 'Đơn hàng này đã bị hủy.'
       : order.status === 'DELIVERED'
         ? 'Cảm ơn bạn đã đặt món cùng DeliFood.'
         : order.status === 'PENDING'
@@ -641,9 +681,15 @@ export default function OrderConfirmationScreen() {
             </View>
 
             <Ionicons
-              name="checkmark-circle"
+              name={
+                order.status === 'CANCELLED'
+                  ? 'close-circle'
+                  : 'checkmark-circle'
+              }
               size={23}
-              color={COLORS.success}
+              color={
+                order.status === 'CANCELLED' ? COLORS.danger : COLORS.success
+              }
             />
           </View>
 
@@ -705,6 +751,64 @@ export default function OrderConfirmationScreen() {
               </Text>
             </View>
           </View>
+
+          {order.status === 'CANCELLED' && order.cancelReason ? (
+            <View style={styles.infoRow}>
+              <View style={[styles.infoIcon, styles.cancelReasonIcon]}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={20}
+                  color={COLORS.danger}
+                />
+              </View>
+
+              <View style={styles.infoTextContainer}>
+                <Text style={styles.infoLabel}>Lý do hủy đơn</Text>
+                <Text style={[styles.infoValue, { color: COLORS.danger }]}>
+                  {order.cancelReason}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
+          {Array.isArray(order.items) && order.items.length > 0 ? (
+            <View style={styles.orderedItemsBox}>
+              <View style={styles.orderedItemsHeader}>
+                <Ionicons
+                  name="fast-food-outline"
+                  size={17}
+                  color={COLORS.primary}
+                />
+                <Text style={styles.orderedItemsTitle}>
+                  Món đã đặt ({order.items.length})
+                </Text>
+              </View>
+
+              {order.items.map((item: any, idx: number) => {
+                const qty = Number(item.quantity ?? 1);
+                const unitPrice = Number(
+                  item.unitPrice ?? item.menuItem?.price ?? 0,
+                );
+                const itemName =
+                  item.menuItem?.name ?? item.name ?? `Món ăn #${idx + 1}`;
+                return (
+                  <View key={item.id ?? idx} style={styles.orderedItemRow}>
+                    <View style={styles.orderedItemQtyBadge}>
+                      <Text style={styles.orderedItemQtyText}>{qty}x</Text>
+                    </View>
+                    <Text style={styles.orderedItemName} numberOfLines={2}>
+                      {itemName}
+                    </Text>
+                    {unitPrice > 0 ? (
+                      <Text style={styles.orderedItemPrice}>
+                        ${(unitPrice * qty).toFixed(2)}
+                      </Text>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
         </View>
 
         {order.status === 'PENDING' && (
@@ -740,7 +844,7 @@ export default function OrderConfirmationScreen() {
                 pressed && !paymentLoading && styles.pressed,
               ]}
               onPress={() => void handlePayment()}
-              disabled={paymentLoading}
+              disabled={paymentLoading || isCancellingOrder}
             >
               {paymentLoading ? (
                 <ActivityIndicator color="#FFFFFF" />
@@ -763,6 +867,25 @@ export default function OrderConfirmationScreen() {
                   color="#FFFFFF"
                 />
               )}
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.cancelOrderButton,
+                (paymentLoading || isCancellingOrder) && styles.disabledButton,
+                pressed && !paymentLoading && !isCancellingOrder && styles.pressed,
+              ]}
+              onPress={() => setShowCancelModal(true)}
+              disabled={paymentLoading || isCancellingOrder}
+            >
+              <Ionicons
+                name="close-circle-outline"
+                size={19}
+                color={COLORS.danger}
+              />
+              <Text style={styles.cancelOrderButtonText}>
+                Hủy đơn chờ thanh toán
+              </Text>
             </Pressable>
 
             <View style={styles.secureNote}>
@@ -798,7 +921,7 @@ export default function OrderConfirmationScreen() {
 
               <View style={styles.liveBadge}>
                 <View style={styles.liveDot} />
-                <Text style={styles.liveText}>LIVE</Text>
+                <Text style={styles.liveText}>TRỰC TIẾP</Text>
               </View>
             </View>
 
@@ -886,6 +1009,11 @@ export default function OrderConfirmationScreen() {
 
             <View style={styles.cancelledTextContainer}>
               <Text style={styles.cancelledTitle}>Đơn hàng đã bị hủy</Text>
+              {order.cancelReason ? (
+                <Text style={styles.cancelledReasonText}>
+                  Lý do: {order.cancelReason}
+                </Text>
+              ) : null}
               <Text style={styles.cancelledDescription}>
                 Bạn có thể quay lại trang chủ để chọn món khác.
               </Text>
@@ -1024,6 +1152,13 @@ export default function OrderConfirmationScreen() {
             Cảm ơn bạn đã lựa chọn DeliFood
           </Text>
         </View>
+
+        <CancelOrderModal
+          visible={showCancelModal}
+          isSubmitting={isCancellingOrder}
+          onClose={() => setShowCancelModal(false)}
+          onConfirm={(reason) => cancelOrder(reason)}
+        />
 
         <RatingModal
           visible={showRatingModal}
@@ -1224,6 +1359,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  cancelReasonIcon: {
+    backgroundColor: COLORS.dangerLight,
+  },
+
   infoTextContainer: {
     flex: 1,
     paddingTop: 2,
@@ -1253,6 +1392,66 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#16A34A',
     marginTop: 3,
+  },
+
+  orderedItemsBox: {
+    marginTop: 4,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    gap: 10,
+  },
+
+  orderedItemsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginBottom: 2,
+  },
+
+  orderedItemsTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.text,
+  },
+
+  orderedItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FFFAF7',
+    borderRadius: 13,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+  },
+
+  orderedItemQtyBadge: {
+    minWidth: 28,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+
+  orderedItemQtyText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: COLORS.primary,
+  },
+
+  orderedItemName: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+
+  orderedItemPrice: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.primary,
   },
   paymentCard: {
     backgroundColor: COLORS.surface,
@@ -1340,6 +1539,26 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
+    fontWeight: '800',
+  },
+
+  cancelOrderButton: {
+    minHeight: 50,
+    borderRadius: 16,
+    backgroundColor: '#FFF5F5',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+  },
+
+  cancelOrderButtonText: {
+    color: COLORS.danger,
+    fontSize: 14,
     fontWeight: '800',
   },
 
@@ -1613,11 +1832,18 @@ const styles = StyleSheet.create({
     color: COLORS.danger,
   },
 
+  cancelledReasonText: {
+    color: '#393039',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+
   cancelledDescription: {
     color: COLORS.muted,
     fontSize: 12,
     lineHeight: 18,
-    marginTop: 5,
+    marginTop: 4,
   },
 
   reviewedCard: {

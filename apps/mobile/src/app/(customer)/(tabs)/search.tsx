@@ -1,29 +1,100 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
+  Image,
+  Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   View,
-  Pressable,
-  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { api } from '@/lib/axios';
+import { RestaurantType } from '@food-delivery/types';
+import { useDebounce } from '@/hooks/use-debounce';
 
 const CATEGORIES = [
-  { name: 'Tất cả', icon: 'grid-outline' as const },
-  { name: 'Burger', icon: 'fast-food-outline' as const },
-  { name: 'Pizza', icon: 'pizza-outline' as const },
-  { name: 'Đồ uống', icon: 'cafe-outline' as const },
-  { name: 'Tráng miệng', icon: 'ice-cream-outline' as const },
+  { name: 'Tất cả', icon: 'grid-outline' as const, keywords: [] as string[] },
+  {
+    name: 'Món Việt',
+    icon: 'restaurant-outline' as const,
+    keywords: ['việt', 'phở', 'bún', 'cơm', 'vietnamese'],
+  },
+  {
+    name: 'Burger & Gà',
+    icon: 'fast-food-outline' as const,
+    keywords: ['burger', 'gà', 'chicken', 'fast'],
+  },
+  {
+    name: 'Pizza & Ý',
+    icon: 'pizza-outline' as const,
+    keywords: ['pizza', 'ý', 'italian', 'pasta'],
+  },
+  {
+    name: 'Đồ uống',
+    icon: 'cafe-outline' as const,
+    keywords: ['trà', 'cà phê', 'coffee', 'drink', 'tea'],
+  },
+  {
+    name: 'Tráng miệng',
+    icon: 'ice-cream-outline' as const,
+    keywords: ['kem', 'bánh', 'sweet', 'dessert'],
+  },
+];
+
+const POPULAR_TAGS = [
+  '🔥 Cơm tấm',
+  '🍜 Phở bò',
+  '🍔 Burger',
+  '🍕 Pizza',
+  '🍗 Gà rán',
+  '🧋 Trà sữa',
 ];
 
 export default function CustomerSearchScreen() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
+  const debouncedSearch = useDebounce(search, 300);
+
+  const { data: restaurants = [], isLoading } = useQuery<RestaurantType[]>({
+    queryKey: ['restaurants', debouncedSearch],
+    queryFn: () =>
+      api
+        .get<RestaurantType[]>('/restaurants', {
+          params: debouncedSearch.trim()
+            ? { search: debouncedSearch.trim() }
+            : undefined,
+        })
+        .then((r) => r.data),
+  });
+
+  const filteredRestaurants = useMemo(() => {
+    const cat = CATEGORIES.find((c) => c.name === selectedCategory);
+    if (!cat || cat.keywords.length === 0) return restaurants;
+
+    const matched = restaurants.filter((r) => {
+      const text =
+        `${r.name ?? ''} ${r.cuisineType ?? ''} ${r.description ?? ''}`.toLowerCase();
+      return cat.keywords.some((k) => text.includes(k));
+    });
+
+    return matched.length > 0 ? matched : restaurants;
+  }, [restaurants, selectedCategory]);
+
+  function openRestaurant(id: string) {
+    router.push({
+      pathname: '/(customer)/(tabs)/(home)/restaurant/[id]',
+      params: { id },
+    });
+  }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFF9F5" />
 
       <ScrollView
@@ -33,29 +104,29 @@ export default function CustomerSearchScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>KHÁM PHÁ MÓN NGON</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.greeting}>TÌM KIẾM & KHÁM PHÁ</Text>
             <Text style={styles.title}>
-              Tìm món <Text style={styles.titleAccent}>yêu thích</Text>
+              Hôm nay ăn <Text style={styles.titleAccent}>món gì?</Text>
             </Text>
             <Text style={styles.subtitle}>
-              Hôm nay bạn muốn thưởng thức món gì?
+              Tìm nhanh món ngon, quán quen và ưu đãi Freeship gần bạn
             </Text>
           </View>
 
           <View style={styles.headerIcon}>
-            <Ionicons name="fast-food" size={27} color="#FF6B35" />
+            <Ionicons name="fast-food" size={26} color="#FF6B35" />
           </View>
         </View>
 
-        {/* Search bar */}
+        {/* Thanh tìm kiếm */}
         <View style={styles.searchContainer}>
-          <Ionicons name="search-outline" size={22} color="#99929A" />
+          <Ionicons name="search" size={21} color="#FF6B35" />
 
           <TextInput
             style={styles.searchInput}
-            placeholder="Tìm món ăn, nhà hàng..."
-            placeholderTextColor="#AAA4AA"
+            placeholder="Nhập tên món ăn, nhà hàng, trà sữa..."
+            placeholderTextColor="#9E949A"
             value={search}
             onChangeText={setSearch}
             returnKeyType="search"
@@ -69,10 +140,43 @@ export default function CustomerSearchScreen() {
           )}
         </View>
 
-        {/* Categories */}
+        {/* Từ khóa phổ biến */}
+        <View style={styles.popularWrap}>
+          <Text style={styles.popularLabel}>Tìm kiếm phổ biến:</Text>
+          <View style={styles.popularChips}>
+            {POPULAR_TAGS.map((tag) => {
+              const cleanKeyword = tag.replace(/^[^\s]+\s/, '');
+              const isSelected =
+                search.toLowerCase() === cleanKeyword.toLowerCase();
+              return (
+                <Pressable
+                  key={tag}
+                  style={[
+                    styles.popularChip,
+                    isSelected && styles.popularChipActive,
+                  ]}
+                  onPress={() =>
+                    setSearch(isSelected ? '' : cleanKeyword)
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.popularChipText,
+                      isSelected && styles.popularChipTextActive,
+                    ]}
+                  >
+                    {tag}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Danh mục */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Danh mục</Text>
-          <Text style={styles.sectionHint}>Khám phá theo khẩu vị</Text>
+          <Text style={styles.sectionTitle}>Danh mục ẩm thực</Text>
+          <Text style={styles.sectionHint}>Chọn theo khẩu vị</Text>
         </View>
 
         <ScrollView
@@ -95,7 +199,7 @@ export default function CustomerSearchScreen() {
                 <Ionicons
                   name={category.icon}
                   size={22}
-                  color={active ? '#FFFFFF' : '#8B8289'}
+                  color={active ? '#FFFFFF' : '#FF6B35'}
                 />
                 <Text
                   style={[
@@ -110,82 +214,122 @@ export default function CustomerSearchScreen() {
           })}
         </ScrollView>
 
-        {/* Featured section */}
-        <View style={styles.featuredCard}>
-          <View style={styles.featuredContent}>
-            <View style={styles.featuredBadge}>
-              <Ionicons name="flame" size={13} color="#FF6B35" />
-              <Text style={styles.featuredBadgeText}>KHÁM PHÁ ẨM THỰC</Text>
+        {/* Kết quả nhà hàng */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>
+            {search.trim()
+              ? `Kết quả cho "${search}"`
+              : 'Quán ngon đề xuất cho bạn'}
+          </Text>
+          <Text style={styles.resultCountText}>
+            {filteredRestaurants.length} quán
+          </Text>
+        </View>
+
+        {isLoading ? (
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color="#FF6B35" />
+            <Text style={styles.loadingText}>Đang tìm món ngon...</Text>
+          </View>
+        ) : filteredRestaurants.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <View style={styles.emptyIcon}>
+              <Ionicons
+                name="restaurant-outline"
+                size={30}
+                color="#FF6B35"
+              />
             </View>
 
-            <Text style={styles.featuredTitle}>
-              Đang thèm món gì{'\n'}ngon miệng?
+            <Text style={styles.emptyTitle}>
+              Không tìm thấy quán phù hợp
             </Text>
 
-            <Text style={styles.featuredSubtitle}>
-              Tìm kiếm và chọn ngay bữa ăn yêu thích tiếp theo của bạn.
+            <Text style={styles.emptySubtitle}>
+              Thử tìm kiếm với từ khóa khác hoặc bấm xóa bộ lọc bên dưới nhé.
             </Text>
 
             <Pressable
-              style={styles.exploreButton}
+              style={styles.resetBtn}
               onPress={() => {
-                // Giao diện tìm kiếm
+                setSearch('');
+                setSelectedCategory('Tất cả');
               }}
             >
-              <Text style={styles.exploreButtonText}>Khám phá ngay</Text>
-              <Ionicons
-                name="arrow-forward"
-                size={16}
-                color="#FFFFFF"
-              />
+              <Text style={styles.resetBtnText}>Xem tất cả nhà hàng</Text>
             </Pressable>
           </View>
+        ) : (
+          <View style={styles.resultsList}>
+            {filteredRestaurants.map((item, idx) => (
+              <Pressable
+                key={item.id}
+                style={({ pressed }) => [
+                  styles.restaurantRowCard,
+                  pressed && { opacity: 0.88 },
+                ]}
+                onPress={() => openRestaurant(String(item.id))}
+              >
+                <View style={styles.thumbWrap}>
+                  {item.imageUrl ? (
+                    <Image
+                      source={{ uri: item.imageUrl }}
+                      style={styles.thumbImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.thumbPlaceholder}>
+                      <Text style={{ fontSize: 28 }}>🍲</Text>
+                    </View>
+                  )}
+                  <View style={styles.thumbBadge}>
+                    <Text style={styles.thumbBadgeText}>Freeship</Text>
+                  </View>
+                </View>
 
-          <View style={styles.featuredIllustration}>
-            <Ionicons name="restaurant" size={56} color="#FF6B35" />
-            <View style={styles.illustrationDot} />
-            <View style={styles.illustrationDotSmall} />
+                <View style={styles.restaurantRowInfo}>
+                  <View style={styles.restaurantRowTop}>
+                    <Text style={styles.restaurantRowName} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <View style={styles.ratingMini}>
+                      <Ionicons name="star" size={12} color="#F59E0B" />
+                      <Text style={styles.ratingMiniText}>
+                        {Number(item.rating) > 0
+                          ? Number(item.rating).toFixed(1)
+                          : '4.8'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.restaurantRowCuisine} numberOfLines={1}>
+                    {item.cuisineType || 'Ẩm thực đa dạng'}
+                  </Text>
+
+                  <View style={styles.restaurantRowBottom}>
+                    <View style={styles.deliveryTag}>
+                      <Ionicons name="bicycle" size={13} color="#FF6B35" />
+                      <Text style={styles.deliveryTagText}>
+                        {15 + (idx % 3) * 5}-{25 + (idx % 3) * 5} phút
+                      </Text>
+                    </View>
+
+                    <View style={styles.orderNowMini}>
+                      <Text style={styles.orderNowMiniText}>Xem menu</Text>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={13}
+                        color="#FF6B35"
+                      />
+                    </View>
+                  </View>
+                </View>
+              </Pressable>
+            ))}
           </View>
-        </View>
-
-        {/* Results placeholder */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {search.trim() ? 'Kết quả tìm kiếm' : 'Phổ biến gần bạn'}
-          </Text>
-          <Ionicons name="sparkles-outline" size={19} color="#FF6B35" />
-        </View>
-
-        <View style={styles.emptyCard}>
-          <View style={styles.emptyIcon}>
-            <Ionicons
-              name="restaurant-outline"
-              size={30}
-              color="#FF6B35"
-            />
-          </View>
-
-          <Text style={styles.emptyTitle}>
-            {search.trim()
-              ? 'Sẵn sàng tìm món ngon?'
-              : 'Bữa ăn ngon đang chờ bạn'}
-          </Text>
-
-          <Text style={styles.emptySubtitle}>
-            {search.trim()
-              ? `Bạn đang tìm "${search}". Hãy chọn danh mục hoặc khám phá các nhà hàng trên trang chủ.`
-              : 'Khám phá hàng loạt món ăn ngon và nhà hàng hấp dẫn trên trang chủ.'}
-          </Text>
-        </View>
-
-        <View style={styles.bottomNote}>
-          <Ionicons name="heart" size={13} color="#FF6B35" />
-          <Text style={styles.bottomNoteText}>
-            Dành trọn tâm huyết cho tín đồ ẩm thực
-          </Text>
-        </View>
+        )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -195,28 +339,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF9F5',
   },
   content: {
-    paddingHorizontal: 22,
-    paddingTop: 24,
+    paddingHorizontal: 20,
+    paddingTop: 14,
     paddingBottom: 32,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 25,
+    marginBottom: 18,
+    gap: 12,
   },
   greeting: {
     color: '#FF6B35',
     fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-    marginBottom: 9,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+    marginBottom: 6,
   },
   title: {
     color: '#29232A',
-    fontSize: 27,
-    fontWeight: '800',
-    letterSpacing: -0.8,
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -0.7,
   },
   titleAccent: {
     color: '#FF6B35',
@@ -224,63 +369,105 @@ const styles = StyleSheet.create({
   subtitle: {
     color: '#8B8289',
     fontSize: 12,
-    marginTop: 8,
+    marginTop: 5,
   },
   headerIcon: {
-    width: 54,
-    height: 54,
+    width: 52,
+    height: 52,
     borderRadius: 18,
     backgroundColor: '#FFEEE5',
     alignItems: 'center',
     justifyContent: 'center',
   },
   searchContainer: {
-    height: 57,
+    height: 52,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#F0E8E3',
-    borderRadius: 17,
+    borderColor: '#EDE2DA',
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    gap: 11,
-    marginBottom: 30,
+    paddingHorizontal: 15,
+    gap: 10,
+    marginBottom: 14,
   },
   searchInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     color: '#29232A',
     height: '100%',
+  },
+  popularWrap: {
+    marginBottom: 22,
+  },
+  popularLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#8B8289',
+    marginBottom: 8,
+  },
+  popularChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  popularChip: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFE4DC',
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  popularChipActive: {
+    backgroundColor: '#FFF0E8',
+    borderColor: '#FF6B35',
+  },
+  popularChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#574E54',
+  },
+  popularChipTextActive: {
+    color: '#FF6B35',
+    fontWeight: '800',
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '900',
     color: '#29232A',
   },
   sectionHint: {
     color: '#A49AA0',
     fontSize: 11,
+    fontWeight: '600',
+  },
+  resultCountText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FF6B35',
   },
   categoryList: {
-    gap: 11,
-    paddingBottom: 30,
+    gap: 10,
+    paddingBottom: 22,
   },
   categoryItem: {
-    width: 78,
-    height: 88,
+    width: 86,
+    height: 84,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: '#F0E8E3',
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 9,
+    gap: 8,
+    paddingHorizontal: 6,
   },
   categoryItemActive: {
     backgroundColor: '#FF6B35',
@@ -288,96 +475,136 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#8B8289',
+    fontWeight: '700',
+    color: '#574E54',
+    textAlign: 'center',
   },
   categoryTextActive: {
     color: '#FFFFFF',
+    fontWeight: '800',
   },
-  featuredCard: {
-    minHeight: 210,
-    backgroundColor: '#FFF0E7',
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 30,
-    flexDirection: 'row',
-    overflow: 'hidden',
-  },
-  featuredContent: {
-    flex: 1,
-    zIndex: 1,
-  },
-  featuredBadge: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
+  loadingCard: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 9,
-    paddingVertical: 6,
     borderRadius: 20,
-    marginBottom: 14,
+    padding: 32,
+    alignItems: 'center',
+    gap: 10,
   },
-  featuredBadgeText: {
-    fontSize: 8,
-    fontWeight: '800',
-    color: '#FF6B35',
-    letterSpacing: 0.6,
-  },
-  featuredTitle: {
-    color: '#29232A',
-    fontSize: 21,
-    fontWeight: '800',
-    lineHeight: 27,
-    letterSpacing: -0.4,
-  },
-  featuredSubtitle: {
+  loadingText: {
+    fontSize: 13,
+    fontWeight: '700',
     color: '#8B8289',
-    fontSize: 10,
-    lineHeight: 16,
-    marginTop: 7,
-    maxWidth: 190,
   },
-  exploreButton: {
-    alignSelf: 'flex-start',
+  resultsList: {
+    gap: 12,
+  },
+  restaurantRowCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#FF6B35',
-    borderRadius: 11,
-    paddingHorizontal: 13,
-    paddingVertical: 10,
-    marginTop: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F0E6DF',
+    padding: 12,
+    gap: 13,
   },
-  exploreButtonText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  featuredIllustration: {
-    width: 76,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: -5,
-  },
-  illustrationDot: {
-    position: 'absolute',
+  thumbWrap: {
     width: 86,
     height: 86,
-    borderRadius: 43,
-    borderWidth: 1,
-    borderColor: '#FFD0B8',
-    right: -30,
-    top: 3,
+    borderRadius: 15,
+    overflow: 'hidden',
+    backgroundColor: '#FFE8D9',
+    position: 'relative',
   },
-  illustrationDotSmall: {
+  thumbImage: {
+    width: '100%',
+    height: '100%',
+  },
+  thumbPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbBadge: {
     position: 'absolute',
-    width: 13,
-    height: 13,
-    borderRadius: 7,
-    backgroundColor: '#FFB38E',
-    top: 4,
-    left: 8,
+    bottom: 5,
+    left: 5,
+    backgroundColor: '#16A34A',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  thumbBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
+  },
+  restaurantRowInfo: {
+    flex: 1,
+    justifyContent: 'space-between',
+    minHeight: 80,
+  },
+  restaurantRowTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  restaurantRowName: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#29232A',
+  },
+  ratingMini: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FFF8E6',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  ratingMiniText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#B45309',
+  },
+  restaurantRowCuisine: {
+    fontSize: 12,
+    color: '#8B8289',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  restaurantRowBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  deliveryTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF2EA',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  deliveryTagText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#D95322',
+  },
+  orderNowMini: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  orderNowMiniText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FF6B35',
   },
   emptyCard: {
     backgroundColor: '#FFFFFF',
@@ -399,7 +626,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     color: '#29232A',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 8,
@@ -410,15 +637,16 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     textAlign: 'center',
   },
-  bottomNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 25,
+  resetBtn: {
+    marginTop: 14,
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
-  bottomNoteText: {
-    fontSize: 10,
-    color: '#A49AA0',
+  resetBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

@@ -142,7 +142,7 @@ export default function ChatScreen() {
 
   function openRestaurant(card: ChatCard) {
     router.push({
-      pathname: '/(customer)/(home)/restaurant/[id]',
+      pathname: '/(customer)/(tabs)/(home)/restaurant/[id]',
       params: { id: card.restaurantId },
     });
   }
