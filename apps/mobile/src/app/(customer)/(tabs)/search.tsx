@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import {
   ScrollView,
@@ -12,16 +11,16 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 const CATEGORIES = [
-  { name: 'All', icon: 'grid-outline' as const },
+  { name: 'Tất cả', icon: 'grid-outline' as const },
   { name: 'Burger', icon: 'fast-food-outline' as const },
   { name: 'Pizza', icon: 'pizza-outline' as const },
-  { name: 'Drinks', icon: 'cafe-outline' as const },
-  { name: 'Dessert', icon: 'ice-cream-outline' as const },
+  { name: 'Đồ uống', icon: 'cafe-outline' as const },
+  { name: 'Tráng miệng', icon: 'ice-cream-outline' as const },
 ];
 
 export default function CustomerSearchScreen() {
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState('Tất cả');
 
   return (
     <View style={styles.container}>
@@ -35,12 +34,12 @@ export default function CustomerSearchScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>DISCOVER DELICIOUS FOOD</Text>
+            <Text style={styles.greeting}>KHÁM PHÁ MÓN NGON</Text>
             <Text style={styles.title}>
-              Find your <Text style={styles.titleAccent}>favorite</Text>
+              Tìm món <Text style={styles.titleAccent}>yêu thích</Text>
             </Text>
             <Text style={styles.subtitle}>
-              What would you like to eat today?
+              Hôm nay bạn muốn thưởng thức món gì?
             </Text>
           </View>
 
@@ -55,7 +54,7 @@ export default function CustomerSearchScreen() {
 
           <TextInput
             style={styles.searchInput}
-            placeholder="Search dishes, restaurants..."
+            placeholder="Tìm món ăn, nhà hàng..."
             placeholderTextColor="#AAA4AA"
             value={search}
             onChangeText={setSearch}
@@ -72,8 +71,8 @@ export default function CustomerSearchScreen() {
 
         {/* Categories */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Categories</Text>
-          <Text style={styles.sectionHint}>Explore by taste</Text>
+          <Text style={styles.sectionTitle}>Danh mục</Text>
+          <Text style={styles.sectionHint}>Khám phá theo khẩu vị</Text>
         </View>
 
         <ScrollView
@@ -116,24 +115,24 @@ export default function CustomerSearchScreen() {
           <View style={styles.featuredContent}>
             <View style={styles.featuredBadge}>
               <Ionicons name="flame" size={13} color="#FF6B35" />
-              <Text style={styles.featuredBadgeText}>FOOD DISCOVERY</Text>
+              <Text style={styles.featuredBadgeText}>KHÁM PHÁ ẨM THỰC</Text>
             </View>
 
             <Text style={styles.featuredTitle}>
-              Craving something{'\n'}delicious?
+              Đang thèm món gì{'\n'}ngon miệng?
             </Text>
 
             <Text style={styles.featuredSubtitle}>
-              Search and find your next favorite meal.
+              Tìm kiếm và chọn ngay bữa ăn yêu thích tiếp theo của bạn.
             </Text>
 
             <Pressable
               style={styles.exploreButton}
               onPress={() => {
-                // Search UI only; connect to your menu API when ready.
+                // Giao diện tìm kiếm
               }}
             >
-              <Text style={styles.exploreButtonText}>Explore food</Text>
+              <Text style={styles.exploreButtonText}>Khám phá ngay</Text>
               <Ionicons
                 name="arrow-forward"
                 size={16}
@@ -152,7 +151,7 @@ export default function CustomerSearchScreen() {
         {/* Results placeholder */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
-            {search.trim() ? 'Search results' : 'Popular near you'}
+            {search.trim() ? 'Kết quả tìm kiếm' : 'Phổ biến gần bạn'}
           </Text>
           <Ionicons name="sparkles-outline" size={19} color="#FF6B35" />
         </View>
@@ -168,21 +167,21 @@ export default function CustomerSearchScreen() {
 
           <Text style={styles.emptyTitle}>
             {search.trim()
-              ? 'Ready to find your food?'
-              : 'Your next meal awaits'}
+              ? 'Sẵn sàng tìm món ngon?'
+              : 'Bữa ăn ngon đang chờ bạn'}
           </Text>
 
           <Text style={styles.emptySubtitle}>
             {search.trim()
-              ? `You searched for "${search}". Connect your menu API to display matching dishes.`
-              : 'Connect your menu API to discover dishes and restaurants.'}
+              ? `Bạn đang tìm "${search}". Hãy chọn danh mục hoặc khám phá các nhà hàng trên trang chủ.`
+              : 'Khám phá hàng loạt món ăn ngon và nhà hàng hấp dẫn trên trang chủ.'}
           </Text>
         </View>
 
         <View style={styles.bottomNote}>
           <Ionicons name="heart" size={13} color="#FF6B35" />
           <Text style={styles.bottomNoteText}>
-            Made with love for food lovers
+            Dành trọn tâm huyết cho tín đồ ẩm thực
           </Text>
         </View>
       </ScrollView>

@@ -83,11 +83,11 @@ export default function DriverActiveScreen() {
   async function startTracking(orderId: string) {
     stopTracking();
 
-    const serverUrl = process.env.EXPO_PUBLIC_SERVER_URL;
-    if (!serverUrl) {
-      console.warn('Chưa cấu hình EXPO_PUBLIC_SERVER_URL.');
-      return;
-    }
+    const serverUrl = (
+      process.env.EXPO_PUBLIC_SERVER_URL?.trim() ||
+      process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/api\/?$/, '') ||
+      'https://deliveryfood-l3dv.onrender.com'
+    ).replace(/\/+$/, '');
 
     const socket = io(`${serverUrl}/orders`, {
       transports: ['websocket'],
@@ -244,7 +244,7 @@ export default function DriverActiveScreen() {
           <Text style={styles.sectionTitle}>Vị trí giao hàng</Text>
           <View style={styles.liveBadge}>
             <View style={styles.liveDot} />
-            <Text style={styles.liveText}>LIVE</Text>
+            <Text style={styles.liveText}>TRỰC TIẾP</Text>
           </View>
         </View>
 

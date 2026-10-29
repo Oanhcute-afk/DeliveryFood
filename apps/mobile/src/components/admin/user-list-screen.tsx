@@ -128,7 +128,7 @@ export function UserListScreen({ role }: { role: SignupRole }) {
               <Text style={styles.summary}>
                 {data.length} {copy.noun}
                 {role === UserRole.DRIVER
-                  ? ` · ${onlineCount} đang online`
+                  ? ` · ${onlineCount} đang trực tuyến`
                   : ''}
                 {blockedCount ? ` · ${blockedCount} đang bị khoá` : ''}
               </Text>
@@ -206,12 +206,12 @@ function UserCard({
         {user.role === UserRole.DRIVER ? (
           user.isOnline ? (
             <Badge
-              label="Online"
+              label="Trực tuyến"
               color={COLORS.green}
               background={COLORS.greenLight}
             />
           ) : (
-            <Badge label="Offline" color={COLORS.muted} background="#F0EEF1" />
+            <Badge label="Ngoại tuyến" color={COLORS.muted} background="#F0EEF1" />
           )
         ) : null}
         {user.hasGoogle ? (

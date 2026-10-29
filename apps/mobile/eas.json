@@ -1,3 +1,4 @@
+
 {
   "cli": {
     "version": ">= 25.3.0",
@@ -7,9 +8,11 @@
     "preview": {
       "distribution": "internal",
       "node": "22.16.0",
-      "corepack": true,
+      "pnpm": "12.9.1",
       "environment": "preview",
-      "android": { "buildType": "apk" }
+      "android": {
+        "buildType": "apk"
+      }
     }
   }
 }

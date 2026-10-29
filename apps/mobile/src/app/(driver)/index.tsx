@@ -30,10 +30,16 @@ export default function DriverHomeScreen() {
   const queryClient = useQueryClient();
   const [incomingOrder, setIncomingOrder] = useState<DriverOrder | null>(null);
 
-  const { data: status, isLoading } = useQuery<{ isOnline: boolean }>({
+  const {
+    data: status,
+    isLoading,
+    refetch: refetchStatus,
+  } = useQuery<{ isOnline: boolean }>({
     queryKey: ['driver-status'],
     queryFn: () =>
       api.get<{ isOnline: boolean }>('/driver/status').then((r) => r.data),
+    enabled: !!user?.id,
+    refetchInterval: 5000,
   });
 
   // Lấy danh sách đơn hàng của tài xế từ server để giữ lại thông báo không bị mất khi tải lại / chuyển tab
@@ -127,12 +133,11 @@ export default function DriverHomeScreen() {
   useEffect(() => {
     if (!user?.id) return;
 
-    const serverUrl = process.env.EXPO_PUBLIC_SERVER_URL;
-
-    if (!serverUrl) {
-      console.warn('Missing EXPO_PUBLIC_SERVER_URL');
-      return;
-    }
+    const serverUrl = (
+      process.env.EXPO_PUBLIC_SERVER_URL?.trim() ||
+      process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/api\/?$/, '') ||
+      'https://deliveryfood-l3dv.onrender.com'
+    ).replace(/\/+$/, '');
 
     const driverSocket: Socket = io(`${serverUrl}/orders`, {
       transports: ['websocket'],
@@ -142,6 +147,7 @@ export default function DriverHomeScreen() {
 
     const handleConnect = () => {
       driverSocket.emit('join:driver', user.id);
+      queryClient.invalidateQueries({ queryKey: ['driver-status'] });
       queryClient.invalidateQueries({ queryKey: ['driver-orders'] });
     };
 
@@ -239,6 +245,7 @@ export default function DriverHomeScreen() {
           <RefreshControl
             refreshing={isRefetchingOrders}
             onRefresh={() => {
+              void refetchStatus();
               void refetchDriverOrders();
             }}
             tintColor="#FF6B35"
@@ -249,7 +256,7 @@ export default function DriverHomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerTextContainer}>
-            <Text style={styles.eyebrow}>FOOD DELIVERY</Text>
+            <Text style={styles.eyebrow}>GIAO ĐỒ ĂN</Text>
             <Text style={styles.title}>Xin chào,</Text>
             <Text style={styles.driverName}>
               {user?.firstName || 'Tài xế'} 👋
@@ -261,7 +268,7 @@ export default function DriverHomeScreen() {
 
           <View style={styles.headerAvatar}>
             <Text style={styles.headerAvatarText}>
-              {user?.firstName?.[0]?.toUpperCase() ?? 'D'}
+              {user?.firstName?.[0]?.toUpperCase() ?? 'T'}
             </Text>
           </View>
         </View>
@@ -667,7 +674,7 @@ export default function DriverHomeScreen() {
             </Pressable>
 
             <Text style={styles.modalFooter}>
-              Cảm ơn bạn đã đồng hành cùng FoodDelivery
+              Cảm ơn bạn đã đồng hành cùng DeliFood
             </Text>
           </View>
         </View>

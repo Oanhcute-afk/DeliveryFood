@@ -2,9 +2,13 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { createRouteHandler } from 'uploadthing/express';
-import { uploadRouter } from './uploadthing/upload-router';
+import {
+  resolveUploadthingToken,
+  uploadRouter,
+} from './uploadthing/upload-router';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { MetricsService } from './monitor/metrics.service';
+import type { NextFunction, Request, Response } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -34,12 +38,23 @@ async function bootstrap() {
     }),
   );
 
+  const uploadthingToken = resolveUploadthingToken(
+    process.env.UPLOADTHING_TOKEN,
+  );
+  process.env.UPLOADTHING_TOKEN = uploadthingToken;
+
   app.use(
     '/api/uploadthing',
+    (req: Request, _res: Response, next: NextFunction) => {
+      if (req.headers['content-type']?.startsWith('application/json')) {
+        req.headers['content-type'] = 'application/json';
+      }
+      next();
+    },
     createRouteHandler({
       router: uploadRouter,
       config: {
-        token: process.env.UPLOADTHING_TOKEN!,
+        token: uploadthingToken,
       },
     }),
   );

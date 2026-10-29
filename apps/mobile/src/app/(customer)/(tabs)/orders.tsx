@@ -30,13 +30,13 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Pending',
-  CONFIRMED: 'Confirmed',
-  PREPARING: 'Preparing',
-  READY: 'Ready for pickup',
-  PICKED_UP: 'On the way',
-  DELIVERED: 'Delivered',
-  CANCELLED: 'Cancelled',
+  PENDING: 'Chờ thanh toán',
+  CONFIRMED: 'Đã xác nhận',
+  PREPARING: 'Đang chuẩn bị',
+  READY: 'Chờ tài xế lấy',
+  PICKED_UP: 'Đang giao hàng',
+  DELIVERED: 'Đã giao thành công',
+  CANCELLED: 'Đã hủy',
 };
 
 const STATUS_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -60,9 +60,9 @@ function OrderCard({
   const statusLabel = STATUS_LABELS[order.status] ?? order.status;
   const statusIcon = STATUS_ICONS[order.status] ?? 'receipt-outline';
 
-  const date = new Date(order.createdAt).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
+  const date = new Date(order.createdAt).toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
     year: 'numeric',
   });
 
@@ -89,7 +89,7 @@ function OrderCard({
 
           <View style={styles.restaurantInfo}>
             <Text style={styles.restaurantName} numberOfLines={1}>
-              {order.restaurant?.name ?? 'Restaurant'}
+              {order.restaurant?.name ?? 'Nhà hàng'}
             </Text>
             <Text style={styles.date}>{date}</Text>
           </View>
@@ -139,12 +139,12 @@ function OrderCard({
           </View>
 
           <Text style={styles.items}>
-            {itemCount} {itemCount === 1 ? 'item' : 'items'}
+            {itemCount} món
           </Text>
         </View>
 
         <View style={styles.totalSection}>
-          <Text style={styles.totalLabel}>Total amount</Text>
+          <Text style={styles.totalLabel}>Tổng thanh toán</Text>
           <Text style={styles.total}>
             ${Number(order.totalAmount).toFixed(2)}
           </Text>
@@ -176,7 +176,7 @@ export default function CustomerOrdersScreen() {
           <View style={styles.loadingIcon}>
             <ActivityIndicator size="large" color="#FF6B35" />
           </View>
-          <Text style={styles.loadingText}>Loading your orders...</Text>
+          <Text style={styles.loadingText}>Đang tải đơn hàng của bạn...</Text>
         </View>
       </SafeAreaView>
     );
@@ -189,10 +189,10 @@ export default function CustomerOrdersScreen() {
       {/* Page header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerCaption}>YOUR FOOD JOURNEY</Text>
-          <Text style={styles.title}>My Orders</Text>
+          <Text style={styles.headerCaption}>HÀNH TRÌNH ẨM THỰC</Text>
+          <Text style={styles.title}>Đơn hàng của tôi</Text>
           <Text style={styles.subtitle}>
-            Keep track of your delicious moments.
+            Theo dõi các đơn hàng ngon miệng của bạn.
           </Text>
         </View>
 
@@ -210,7 +210,7 @@ export default function CustomerOrdersScreen() {
         <View style={styles.summaryRow}>
           <View style={styles.summaryDot} />
           <Text style={styles.summaryText}>
-            {orders.length} {orders.length === 1 ? 'order' : 'orders'} in your history
+            {orders.length} đơn hàng trong lịch sử của bạn
           </Text>
         </View>
       )}
@@ -225,9 +225,9 @@ export default function CustomerOrdersScreen() {
             />
           </View>
 
-          <Text style={styles.emptyText}>Unable to load orders</Text>
+          <Text style={styles.emptyText}>Không thể tải đơn hàng</Text>
           <Text style={styles.emptySubText}>
-            Please check your connection and try again.
+            Vui lòng kiểm tra kết nối mạng và thử lại.
           </Text>
 
           <Pressable
@@ -237,7 +237,7 @@ export default function CustomerOrdersScreen() {
             }}
           >
             <Ionicons name="refresh-outline" size={18} color="#FFFFFF" />
-            <Text style={styles.retryText}>Try again</Text>
+            <Text style={styles.retryText}>Thử lại</Text>
           </Pressable>
         </View>
       ) : orders.length === 0 ? (
@@ -256,10 +256,10 @@ export default function CustomerOrdersScreen() {
             </View>
           </View>
 
-          <Text style={styles.emptyText}>No orders yet</Text>
+          <Text style={styles.emptyText}>Chưa có đơn hàng nào</Text>
           <Text style={styles.emptySubText}>
-            Your delicious journey starts here.{'\n'}
-            Explore the menu and place your first order!
+            Hành trình ẩm thực của bạn bắt đầu từ đây.{'\n'}
+            Khám phá thực đơn và đặt đơn hàng đầu tiên ngay!
           </Text>
 
           <Pressable
@@ -270,7 +270,7 @@ export default function CustomerOrdersScreen() {
             onPress={() => router.push('/(customer)/search')}
           >
             <Ionicons name="fast-food-outline" size={19} color="#FFFFFF" />
-            <Text style={styles.shopButtonText}>Explore food</Text>
+            <Text style={styles.shopButtonText}>Khám phá món ngon</Text>
             <Ionicons name="arrow-forward" size={17} color="#FFFFFF" />
           </Pressable>
         </View>

@@ -71,11 +71,11 @@ export function RatingModal({
     >
       <View style={styles.overlay}>
         <View style={styles.sheet}>
-          <Text style={styles.title}>🎉 Order Delivered!</Text>
-          <Text style={styles.subtitle}>How was your experience?</Text>
+          <Text style={styles.title}>🎉 Đã giao hàng thành công!</Text>
+          <Text style={styles.subtitle}>Trải nghiệm của bạn như thế nào?</Text>
 
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Restaurant</Text>
+            <Text style={styles.sectionLabel}>Nhà hàng</Text>
             <StarRating
               rating={restaurantRating}
               onRate={setRestaurantRating}
@@ -84,14 +84,14 @@ export function RatingModal({
 
           {hasDriver && (
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Driver</Text>
+              <Text style={styles.sectionLabel}>Tài xế</Text>
               <StarRating rating={driverRating} onRate={setDriverRating} />
             </View>
           )}
 
           <TextInput
             style={styles.input}
-            placeholder="Leave a comment (optional)"
+            placeholder="Nhập nhận xét của bạn (tùy chọn)"
             placeholderTextColor="#aaa"
             value={comment}
             onChangeText={setComment}
@@ -110,12 +110,12 @@ export function RatingModal({
             {isSubmitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.submitButtonText}>Submit Review</Text>
+              <Text style={styles.submitButtonText}>Gửi đánh giá</Text>
             )}
           </Pressable>
 
           <Pressable style={styles.skipButton} onPress={onDismiss}>
-            <Text style={styles.skipText}>Skip for now</Text>
+            <Text style={styles.skipText}>Bỏ qua lúc này</Text>
           </Pressable>
         </View>
       </View>

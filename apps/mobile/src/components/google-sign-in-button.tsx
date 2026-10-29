@@ -36,7 +36,10 @@ export function GoogleSignInButton({ role }: Props) {
       idToken = await signInWithGoogle(pathname);
     } catch (error: any) {
       setIsLoading(false);
-      Alert.alert('Google sign-in failed', String(error?.message ?? error));
+      Alert.alert(
+        'Đăng nhập Google thất bại',
+        String(error?.message ?? error),
+      );
       return;
     }
 
@@ -61,9 +64,10 @@ export function GoogleSignInButton({ role }: Props) {
       }
 
       setPendingIdToken(null);
-      const message = data?.message ?? error?.message ?? 'Something went wrong';
+      const message =
+        data?.message ?? error?.message ?? 'Đã xảy ra lỗi, vui lòng thử lại.';
       Alert.alert(
-        'Google sign-in failed',
+        'Đăng nhập Google thất bại',
         Array.isArray(message) ? message.join('\n') : String(message),
       );
     } finally {
@@ -75,7 +79,7 @@ export function GoogleSignInButton({ role }: Props) {
     <>
       <View style={styles.divider}>
         <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or</Text>
+        <Text style={styles.dividerText}>hoặc</Text>
         <View style={styles.dividerLine} />
       </View>
 
@@ -95,7 +99,7 @@ export function GoogleSignInButton({ role }: Props) {
         ) : (
           <>
             <Ionicons name="logo-google" size={20} color="#EA4335" />
-            <Text style={styles.buttonText}>Continue with Google</Text>
+            <Text style={styles.buttonText}>Tiếp tục với Google</Text>
           </>
         )}
       </Pressable>
@@ -108,10 +112,10 @@ export function GoogleSignInButton({ role }: Props) {
       >
         <View style={styles.backdrop}>
           <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>Choose your role</Text>
+            <Text style={styles.sheetTitle}>Chọn vai trò của bạn</Text>
             <Text style={styles.sheetSubtitle}>
-              This is your first time signing in with Google. How will you use
-              the app?
+              Đây là lần đầu bạn đăng nhập bằng Google. Bạn muốn sử dụng ứng
+              dụng với vai trò nào?
             </Text>
 
             {ROLES.map((r) => (
@@ -145,7 +149,7 @@ export function GoogleSignInButton({ role }: Props) {
                 hitSlop={10}
                 style={styles.cancel}
               >
-                <Text style={styles.cancelText}>Cancel</Text>
+                <Text style={styles.cancelText}>Hủy</Text>
               </Pressable>
             )}
           </View>

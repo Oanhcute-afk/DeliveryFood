@@ -8,8 +8,8 @@ export default function CustomerHomeLayout() {
         name="restaurant/[id]"
         options={{
           headerShown: true,
-          title: 'Menu',
-          headerBackTitle: 'Back',
+          title: 'Thực đơn',
+          headerBackTitle: 'Quay lại',
         }}
       />
     </Stack>

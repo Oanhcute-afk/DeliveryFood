@@ -1,4 +1,3 @@
-
 import {
   Pressable,
   ScrollView,
@@ -15,17 +14,18 @@ export default function ProfileScreen() {
 
   const fullName =
     `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() ||
-    'Food Lover';
+    'Tín đồ ẩm thực';
 
   const roleLabel: Record<string, string> = {
-    CUSTOMER: 'Customer',
-    RESTAURANT_OWNER: 'Restaurant Owner',
-    DRIVER: 'Driver',
+    CUSTOMER: 'Khách hàng',
+    RESTAURANT_OWNER: 'Chủ nhà hàng',
+    DRIVER: 'Tài xế',
+    ADMIN: 'Quản trị viên',
   };
 
   const displayRole = user?.role
     ? roleLabel[user.role] ?? user.role
-    : 'Member';
+    : 'Thành viên';
 
   return (
     <View style={styles.screen}>
@@ -38,8 +38,8 @@ export default function ProfileScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.headerCaption}>YOUR ACCOUNT</Text>
-            <Text style={styles.headerTitle}>My Profile</Text>
+            <Text style={styles.headerCaption}>TÀI KHOẢN CỦA BẠN</Text>
+            <Text style={styles.headerTitle}>Hồ sơ cá nhân</Text>
           </View>
 
           <View style={styles.headerIcon}>
@@ -67,7 +67,7 @@ export default function ProfileScreen() {
 
           <Text style={styles.name}>{fullName}</Text>
           <Text style={styles.email}>
-            {user?.email ?? 'No email available'}
+            {user?.email ?? 'Chưa có email'}
           </Text>
 
           <View style={styles.roleBadge}>
@@ -91,9 +91,9 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.memberTextContainer}>
-              <Text style={styles.memberTitle}>Welcome to DeliFood</Text>
+              <Text style={styles.memberTitle}>Chào mừng đến với DeliFood</Text>
               <Text style={styles.memberSubtitle}>
-                Good food, good mood.
+                Món ngon mỗi ngày, niềm vui trọn vẹn.
               </Text>
             </View>
 
@@ -106,7 +106,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Account details */}
-        <Text style={styles.sectionTitle}>Account information</Text>
+        <Text style={styles.sectionTitle}>Thông tin tài khoản</Text>
 
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
@@ -119,7 +119,7 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Full name</Text>
+              <Text style={styles.infoLabel}>Họ và tên</Text>
               <Text style={styles.infoValue}>{fullName}</Text>
             </View>
 
@@ -142,9 +142,9 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Email address</Text>
+              <Text style={styles.infoLabel}>Địa chỉ email</Text>
               <Text style={styles.infoValue}>
-                {user?.email ?? 'Not provided'}
+                {user?.email ?? 'Chưa cập nhật'}
               </Text>
             </View>
 
@@ -167,7 +167,7 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Account role</Text>
+              <Text style={styles.infoLabel}>Vai trò tài khoản</Text>
               <Text style={styles.infoValue}>{displayRole}</Text>
             </View>
 
@@ -180,7 +180,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Logout */}
-        <Text style={styles.sectionTitle}>Account actions</Text>
+        <Text style={styles.sectionTitle}>Thao tác tài khoản</Text>
 
         <Pressable
           style={({ pressed }) => [
@@ -199,7 +199,7 @@ export default function ProfileScreen() {
             />
           </View>
 
-          <Text style={styles.logoutText}>Log Out</Text>
+          <Text style={styles.logoutText}>Đăng xuất</Text>
 
           <View style={styles.logoutArrow}>
             <Ionicons
@@ -213,7 +213,7 @@ export default function ProfileScreen() {
         <View style={styles.footer}>
           <Ionicons name="heart" size={13} color="#FF6B35" />
           <Text style={styles.footerText}>
-            Made with love for food lovers
+            Dành trọn tâm huyết cho tín đồ ẩm thực
           </Text>
         </View>
       </ScrollView>

@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { desc, eq, inArray, SQL } from 'drizzle-orm';
+import { desc, eq, inArray, or, SQL } from 'drizzle-orm';
 import { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import * as schema from '../db/schema';
 import { OrderStatus, UserRole } from '@food-delivery/types';
@@ -104,7 +104,19 @@ export class OrdersService {
   }
 
   async findByDriver(driverId: string) {
-    return this.findOrdersWithDetails(eq(schema.orders.driverId, driverId));
+    // Hiển thị các đơn đã gán cho tài xế này CÙNG VỚI mọi đơn READY đang chờ tài xế nhận
+    const orders = await this.findOrdersWithDetails(
+      or(
+        eq(schema.orders.driverId, driverId),
+        eq(schema.orders.status, 'READY'),
+      )!,
+    );
+
+    return orders.filter(
+      (o) =>
+        o.status !== 'READY' ||
+        !this.driverService.hasDriverDeclined(o.id, driverId),
+    );
   }
 
   // routes to customer or driver query based on JWT role
@@ -129,7 +141,8 @@ export class OrdersService {
       (user.role === UserRole.CUSTOMER && order.customerId === user.sub) ||
       (user.role === UserRole.RESTAURANT_OWNER &&
         (await this.isOwnerOfRestaurant(user.sub, order.restaurantId))) ||
-      (user.role === UserRole.DRIVER && order.driverId === user.sub);
+      (user.role === UserRole.DRIVER &&
+        (order.driverId === user.sub || order.status === 'READY'));
 
     if (!canView) throw new NotFoundException('Order not found');
 
@@ -181,13 +194,26 @@ export class OrdersService {
       }
     }
 
-    if (user.role === UserRole.DRIVER && order.driverId !== user.sub) {
-      throw new ForbiddenException('This order is not assigned to you');
+    if (user.role === UserRole.DRIVER) {
+      // Với đơn đang ở trạng thái READY chuyển sang PICKED_UP, cho phép bất kỳ tài xế nào nhận đơn
+      if (order.status !== 'READY' && order.driverId !== user.sub) {
+        throw new ForbiddenException('This order is not assigned to you');
+      }
+    }
+
+    const updateValues: Partial<typeof schema.orders.$inferInsert> = {
+      status: newStatus,
+      updatedAt: new Date(),
+    };
+
+    if (user.role === UserRole.DRIVER && newStatus === 'PICKED_UP') {
+      updateValues.driverId = user.sub;
+      this.driverService.clearOrderDeclines(orderId);
     }
 
     const [updated] = await this.db
       .update(schema.orders)
-      .set({ status: newStatus, updatedAt: new Date() })
+      .set(updateValues)
       .where(eq(schema.orders.id, orderId))
       .returning();
 

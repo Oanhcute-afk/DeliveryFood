@@ -16,23 +16,23 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Food Delivery</Text>
-      <Text style={styles.subtitle}>Connection Text</Text>
+      <Text style={styles.title}>DeliFood</Text>
+      <Text style={styles.subtitle}>Kiểm tra kết nối máy chủ</Text>
 
       {isLoading && <ActivityIndicator size="large" color="#ff6b35" />}
 
       {health && (
         <View style={styles.statusBox}>
-          <Text style={styles.statusText}>API Status: {health.status}</Text>
+          <Text style={styles.statusText}>Trạng thái API: {health.status}</Text>
           <Text style={styles.timestampText}>
-            {new Date(health.timestamp).toLocaleTimeString()}
+            {new Date(health.timestamp).toLocaleTimeString('vi-VN')}
           </Text>
         </View>
       )}
       {error && (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>
-            Could not reach the API. Is the server running?
+            Không thể kết nối tới API. Vui lòng kiểm tra lại máy chủ.
           </Text>
         </View>
       )}

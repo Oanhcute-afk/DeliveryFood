@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -31,7 +30,7 @@ export default function RegisterScreen() {
 
   async function handleRegister() {
     if (!firstName || !lastName || !email || !password) {
-      return Alert.alert('Please fill in all fields');
+      return Alert.alert('Thiếu thông tin', 'Vui lòng điền đầy đủ thông tin.');
     }
 
     setIsLoading(true);
@@ -44,10 +43,10 @@ export default function RegisterScreen() {
       const message =
         error?.response?.data?.message ??
         error?.message ??
-        'Something went wrong';
+        'Đã xảy ra lỗi, vui lòng thử lại.';
 
       Alert.alert(
-        'Registration failed',
+        'Đăng ký thất bại',
         Array.isArray(message) ? message.join('\n') : String(message),
       );
     } finally {
@@ -78,22 +77,22 @@ export default function RegisterScreen() {
           </Text>
 
           <Text style={styles.brandCaption}>
-            GOOD FOOD, GOOD MOOD.
+            MÓN NGON MỖI NGÀY
           </Text>
         </View>
 
         {/* Heading */}
         <View style={styles.heading}>
-          <Text style={styles.title}>Create account</Text>
+          <Text style={styles.title}>Tạo tài khoản</Text>
           <Text style={styles.subtitle}>
-            Join us and discover a world of delicious food.
+            Tham gia ngay để khám phá thế giới ẩm thực hấp dẫn.
           </Text>
         </View>
 
         {/* Name fields */}
         <View style={styles.nameRow}>
           <View style={styles.nameField}>
-            <Text style={styles.label}>First name</Text>
+            <Text style={styles.label}>Tên</Text>
 
             <View style={styles.inputContainer}>
               <Ionicons
@@ -103,7 +102,7 @@ export default function RegisterScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="First name"
+                placeholder="Tên"
                 placeholderTextColor="#AAA4AA"
                 value={firstName}
                 onChangeText={setFirstName}
@@ -114,7 +113,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.nameField}>
-            <Text style={styles.label}>Last name</Text>
+            <Text style={styles.label}>Họ</Text>
 
             <View style={styles.inputContainer}>
               <Ionicons
@@ -124,7 +123,7 @@ export default function RegisterScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="Last name"
+                placeholder="Họ"
                 placeholderTextColor="#AAA4AA"
                 value={lastName}
                 onChangeText={setLastName}
@@ -136,7 +135,7 @@ export default function RegisterScreen() {
         </View>
 
         {/* Email */}
-        <Text style={styles.label}>Email address</Text>
+        <Text style={styles.label}>Địa chỉ email</Text>
 
         <View style={styles.inputContainer}>
           <Ionicons
@@ -147,7 +146,7 @@ export default function RegisterScreen() {
           />
           <TextInput
             style={styles.input}
-            placeholder="Enter your email"
+            placeholder="Nhập địa chỉ email của bạn"
             placeholderTextColor="#AAA4AA"
             value={email}
             onChangeText={setEmail}
@@ -159,7 +158,7 @@ export default function RegisterScreen() {
         </View>
 
         {/* Password */}
-        <Text style={styles.label}>Password</Text>
+        <Text style={styles.label}>Mật khẩu</Text>
 
         <View style={styles.inputContainer}>
           <Ionicons
@@ -170,7 +169,7 @@ export default function RegisterScreen() {
           />
           <TextInput
             style={styles.input}
-            placeholder="Create a password"
+            placeholder="Tạo mật khẩu"
             placeholderTextColor="#AAA4AA"
             value={password}
             onChangeText={setPassword}
@@ -182,8 +181,8 @@ export default function RegisterScreen() {
 
         {/* Role selector */}
         <View style={styles.roleHeading}>
-          <Text style={styles.label}>Choose your role</Text>
-          <Text style={styles.required}>Required</Text>
+          <Text style={styles.label}>Chọn vai trò của bạn</Text>
+          <Text style={styles.required}>Bắt buộc</Text>
         </View>
 
         <View style={styles.roleContainer}>
@@ -256,7 +255,7 @@ export default function RegisterScreen() {
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <>
-              <Text style={styles.buttonText}>Create Account</Text>
+              <Text style={styles.buttonText}>Tạo tài khoản</Text>
               <Ionicons
                 name="arrow-forward"
                 size={20}
@@ -271,18 +270,18 @@ export default function RegisterScreen() {
         {/* Login link */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Already have an account?
+            Đã có tài khoản?
           </Text>
 
           <Pressable onPress={() => router.back()} hitSlop={10}>
-            <Text style={styles.loginText}> Log In</Text>
+            <Text style={styles.loginText}> Đăng nhập</Text>
           </Pressable>
         </View>
 
         <View style={styles.bottomNote}>
           <Ionicons name="heart" size={13} color="#FF6B35" />
           <Text style={styles.bottomNoteText}>
-            Made with love for food lovers
+            Dành trọn tâm huyết cho tín đồ ẩm thực
           </Text>
         </View>
       </ScrollView>

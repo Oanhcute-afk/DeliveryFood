@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -25,7 +24,7 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     if (!email || !password)
-      return Alert.alert('Please fill in all fields');
+      return Alert.alert('Thiếu thông tin', 'Vui lòng nhập đầy đủ email và mật khẩu.');
 
     setIsLoading(true);
 
@@ -35,11 +34,11 @@ export default function LoginScreen() {
     } catch (error: any) {
       if (error?.response?.status === 403) {
         Alert.alert(
-          'Account locked',
-          'Your account has been locked by an administrator.',
+          'Tài khoản đã bị khóa',
+          'Tài khoản của bạn đã bị khóa bởi quản trị viên.',
         );
       } else {
-        Alert.alert('Login failed', 'Invalid email or password');
+        Alert.alert('Đăng nhập thất bại', 'Email hoặc mật khẩu không chính xác.');
       }
     } finally {
       setIsLoading(false);
@@ -64,21 +63,21 @@ export default function LoginScreen() {
             deli<Text style={styles.brandAccent}>food</Text>
           </Text>
           <Text style={styles.brandCaption}>
-            GOOD FOOD, GOOD MOOD.
+            MÓN NGON MỖI NGÀY
           </Text>
         </View>
 
         {/* Heading */}
         <View style={styles.heading}>
-          <Text style={styles.title}>Welcome back!</Text>
+          <Text style={styles.title}>Chào mừng trở lại!</Text>
           <Text style={styles.subtitle}>
-            Sign in to discover delicious food near you.
+            Đăng nhập để khám phá những món ăn ngon gần bạn.
           </Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
-          <Text style={styles.label}>Email address</Text>
+          <Text style={styles.label}>Địa chỉ email</Text>
 
           <View style={styles.inputContainer}>
             <Ionicons
@@ -89,7 +88,7 @@ export default function LoginScreen() {
             />
             <TextInput
               style={styles.input}
-              placeholder="Enter your email"
+              placeholder="Nhập địa chỉ email của bạn"
               placeholderTextColor="#AAA4AA"
               value={email}
               onChangeText={setEmail}
@@ -99,7 +98,7 @@ export default function LoginScreen() {
             />
           </View>
 
-          <Text style={styles.label}>Password</Text>
+          <Text style={styles.label}>Mật khẩu</Text>
 
           <View style={styles.inputContainer}>
             <Ionicons
@@ -110,7 +109,7 @@ export default function LoginScreen() {
             />
             <TextInput
               style={styles.input}
-              placeholder="Enter your password"
+              placeholder="Nhập mật khẩu của bạn"
               placeholderTextColor="#AAA4AA"
               value={password}
               onChangeText={setPassword}
@@ -134,7 +133,7 @@ export default function LoginScreen() {
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <>
-                <Text style={styles.buttonText}>Sign In</Text>
+                <Text style={styles.buttonText}>Đăng nhập</Text>
                 <Ionicons
                   name="arrow-forward"
                   size={20}
@@ -150,14 +149,14 @@ export default function LoginScreen() {
         {/* Register */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Don't have an account?
+            Chưa có tài khoản?
           </Text>
 
           <Pressable
             onPress={() => router.push('/register')}
             hitSlop={10}
           >
-            <Text style={styles.registerText}> Sign Up</Text>
+            <Text style={styles.registerText}> Đăng ký ngay</Text>
           </Pressable>
         </View>
 
@@ -168,7 +167,7 @@ export default function LoginScreen() {
             color="#FF6B35"
           />
           <Text style={styles.bottomNoteText}>
-            Made with love for food lovers
+            Dành trọn tâm huyết cho tín đồ ẩm thực
           </Text>
         </View>
       </View>

@@ -5,22 +5,22 @@ export default function DriverLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Trang chủ</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="active">
-        <NativeTabs.Trigger.Label>Active</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Đang giao</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="car.fill" md="local_shipping" />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="history">
-        <NativeTabs.Trigger.Label>History</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Lịch sử</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="clock.fill" md="history" />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="profile">
-        <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Tài khoản</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           sf="person.crop.circle.fill"
           md="account_circle"
