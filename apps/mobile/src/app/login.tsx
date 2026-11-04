@@ -12,7 +12,7 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/auth-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,146 +49,149 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFF9F5" />
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.container,
-          {
-            paddingTop: Math.max(insets.top, 16) + 8,
-            paddingBottom: Math.max(insets.bottom, 24) + 60,
-          },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={true}
-        bounces={true}
-        overScrollMode="always"
-        nestedScrollEnabled={true}
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Brand */}
-        <View style={styles.brand}>
-          <View style={styles.logo}>
-            <Ionicons name="fast-food" size={30} color="#FFFFFF" />
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.container,
+            {
+              paddingTop: 8,
+              paddingBottom: Math.max(insets.bottom, 24) + 40,
+            },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          overScrollMode="always"
+        >
+          {/* Brand */}
+          <View style={styles.brand}>
+            <View style={styles.logo}>
+              <Ionicons name="fast-food" size={26} color="#FFFFFF" />
+            </View>
+
+            <Text style={styles.brandName}>
+              deli<Text style={styles.brandAccent}>food</Text>
+            </Text>
+            <Text style={styles.brandCaption}>
+              MÓN NGON MỖI NGÀY
+            </Text>
           </View>
 
-          <Text style={styles.brandName}>
-            deli<Text style={styles.brandAccent}>food</Text>
-          </Text>
-          <Text style={styles.brandCaption}>
-            MÓN NGON MỖI NGÀY
-          </Text>
-        </View>
-
-        {/* Heading */}
-        <View style={styles.heading}>
-          <Text style={styles.title}>Chào mừng trở lại!</Text>
-          <Text style={styles.subtitle}>
-            Đăng nhập để khám phá những món ăn ngon gần bạn.
-          </Text>
-        </View>
-
-        {/* Form */}
-        <View style={styles.form}>
-          <Text style={styles.label}>Địa chỉ email</Text>
-
-          <View style={styles.inputContainer}>
-            <Ionicons
-              name="mail-outline"
-              size={20}
-              color="#99929A"
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Nhập địa chỉ email của bạn"
-              placeholderTextColor="#AAA4AA"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+          {/* Heading */}
+          <View style={styles.heading}>
+            <Text style={styles.title}>Chào mừng trở lại!</Text>
+            <Text style={styles.subtitle}>
+              Đăng nhập để khám phá những món ăn ngon gần bạn.
+            </Text>
           </View>
 
-          <Text style={styles.label}>Mật khẩu</Text>
+          {/* Form */}
+          <View style={styles.form}>
+            <Text style={styles.label}>Địa chỉ email</Text>
 
-          <View style={styles.inputContainer}>
-            <Ionicons
-              name="lock-closed-outline"
-              size={20}
-              color="#99929A"
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Nhập mật khẩu của bạn"
-              placeholderTextColor="#AAA4AA"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <View style={styles.inputContainer}>
+              <Ionicons
+                name="mail-outline"
+                size={20}
+                color="#99929A"
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Nhập địa chỉ email của bạn"
+                placeholderTextColor="#AAA4AA"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <Text style={styles.label}>Mật khẩu</Text>
+
+            <View style={styles.inputContainer}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color="#99929A"
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Nhập mật khẩu của bạn"
+                placeholderTextColor="#AAA4AA"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                pressed && styles.buttonPressed,
+                isLoading && styles.buttonDisabled,
+              ]}
+              onPress={() => {
+                void handleLogin();
+              }}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <>
+                  <Text style={styles.buttonText}>Đăng nhập</Text>
+                  <Ionicons
+                    name="arrow-forward"
+                    size={19}
+                    color="#FFFFFF"
+                  />
+                </>
+              )}
+            </Pressable>
+
+            <GoogleSignInButton />
           </View>
 
+          {/* Register Card — Dễ bấm, nổi bật, không bị thanh điều hướng che */}
           <Pressable
             style={({ pressed }) => [
-              styles.button,
+              styles.registerCard,
               pressed && styles.buttonPressed,
-              isLoading && styles.buttonDisabled,
             ]}
-            onPress={() => {
-              void handleLogin();
-            }}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                <Text style={styles.buttonText}>Đăng nhập</Text>
-                <Ionicons
-                  name="arrow-forward"
-                  size={19}
-                  color="#FFFFFF"
-                />
-              </>
-            )}
-          </Pressable>
-
-          <GoogleSignInButton />
-        </View>
-
-        {/* Register */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Chưa có tài khoản?
-          </Text>
-
-          <Pressable
             onPress={() => router.push('/register')}
-            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Chưa có tài khoản? Đăng ký ngay"
+            hitSlop={{ top: 12, bottom: 20, left: 16, right: 16 }}
           >
+            <Text style={styles.footerText}>Chưa có tài khoản?</Text>
             <Text style={styles.registerText}> Đăng ký ngay</Text>
+            <Ionicons name="arrow-forward-circle" size={18} color="#FF6B35" />
           </Pressable>
-        </View>
 
-        <View style={styles.bottomNote}>
-          <Ionicons
-            name="heart"
-            size={12}
-            color="#FF6B35"
-          />
-          <Text style={styles.bottomNoteText}>
-            Dành trọn tâm huyết cho tín đồ ẩm thực
-          </Text>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <View style={styles.bottomNote}>
+            <Ionicons
+              name="heart"
+              size={12}
+              color="#FF6B35"
+            />
+            <Text style={styles.bottomNoteText}>
+              Dành trọn tâm huyết cho tín đồ ẩm thực
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -197,35 +200,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFF9F5',
   },
+  keyboardView: {
+    flex: 1,
+  },
   scrollView: {
     flex: 1,
   },
   container: {
     flexGrow: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 22,
   },
   brand: {
     alignItems: 'center',
-    marginTop: 4,
-    marginBottom: 14,
+    marginTop: 2,
+    marginBottom: 10,
   },
   logo: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
+    width: 46,
+    height: 46,
+    borderRadius: 15,
     backgroundColor: '#FF6B35',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
     shadowColor: '#FF6B35',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 6,
+    elevation: 3,
   },
   brandName: {
-    fontSize: 26,
-    fontWeight: '800',
+    fontSize: 25,
+    fontWeight: '900',
     color: '#29232A',
     letterSpacing: -0.8,
   },
@@ -233,50 +239,50 @@ const styles = StyleSheet.create({
     color: '#FF6B35',
   },
   brandCaption: {
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: 8.5,
+    fontWeight: '800',
     color: '#A49AA0',
-    letterSpacing: 2.2,
-    marginTop: 3,
+    letterSpacing: 2,
+    marginTop: 2,
   },
   heading: {
-    marginBottom: 14,
+    marginBottom: 12,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 22,
+    fontWeight: '900',
     color: '#29232A',
-    letterSpacing: -0.6,
-    marginBottom: 4,
+    letterSpacing: -0.5,
+    marginBottom: 3,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 12.5,
     color: '#8B8289',
-    lineHeight: 19,
+    lineHeight: 18,
   },
   form: {
     width: '100%',
   },
   label: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     color: '#393039',
-    marginBottom: 5,
+    marginBottom: 4,
     marginTop: 2,
   },
   inputContainer: {
-    height: 48,
+    height: 46,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#F0E8E3',
-    borderRadius: 15,
-    paddingHorizontal: 14,
-    marginBottom: 12,
+    borderRadius: 14,
+    paddingHorizontal: 13,
+    marginBottom: 10,
   },
   inputIcon: {
-    marginRight: 10,
+    marginRight: 9,
   },
   input: {
     flex: 1,
@@ -285,14 +291,14 @@ const styles = StyleSheet.create({
     color: '#29232A',
   },
   button: {
-    height: 50,
+    height: 48,
     backgroundColor: '#FF6B35',
-    borderRadius: 15,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 6,
-    gap: 10,
+    marginTop: 4,
+    gap: 8,
     shadowColor: '#FF6B35',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.18,
@@ -307,36 +313,48 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 14.5,
+    fontWeight: '800',
     color: '#FFFFFF',
   },
-  footer: {
+  registerCard: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 16,
-    paddingVertical: 4,
+    gap: 6,
+    marginTop: 14,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    borderWidth: 1.5,
+    borderColor: '#FFE2D1',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   footerText: {
-    fontSize: 13,
-    color: '#8B8289',
+    fontSize: 13.5,
+    color: '#6B6269',
+    fontWeight: '600',
   },
   registerText: {
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 13.5,
+    fontWeight: '900',
     color: '#FF6B35',
   },
   bottomNote: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 12,
-    marginBottom: 20,
+    gap: 5,
+    marginTop: 10,
+    marginBottom: 8,
   },
   bottomNoteText: {
-    fontSize: 11,
-    color: '#A49AA0',
+    fontSize: 10.5,
+    color: '#B5ABB2',
   },
 });

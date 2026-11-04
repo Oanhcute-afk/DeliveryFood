@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginVertical: 12,
+    marginVertical: 10,
   },
   dividerLine: {
     flex: 1,
@@ -177,11 +177,11 @@ const styles = StyleSheet.create({
     color: '#A49AA0',
   },
   button: {
-    minHeight: 50,
+    minHeight: 46,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#F0E8E3',
-    borderRadius: 15,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

@@ -50,6 +50,12 @@ export default function RestaurantDetailScreen() {
     enabled: !!id,
   });
 
+  const { data: voucherData } = useQuery({
+    queryKey: ['available-vouchers-restaurant'],
+    queryFn: () => voucherApi.available(0).catch(() => null),
+  });
+  const hasVouchers = (voucherData?.vouchers?.length ?? 0) > 0;
+
   function handleAddItem(item: MenuItem) {
     if (!restaurant) return;
 
@@ -123,6 +129,13 @@ export default function RestaurantDetailScreen() {
     }, 0);
   }, [visibleCategories, menuItems, menuSearch]);
 
+  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalCartPrice = items.reduce(
+    (sum, item) => sum + parseFloat(item.price || '0') * item.quantity,
+    0,
+  );
+  const ratingNum = Number(restaurant?.rating ?? 0);
+
   if (loadingRestaurant) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -139,19 +152,28 @@ export default function RestaurantDetailScreen() {
     );
   }
 
-  if (!restaurant) return null;
-
-  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalCartPrice = items.reduce(
-    (sum, item) => sum + parseFloat(item.price) * item.quantity,
-    0,
-  );
-  const { data: voucherData } = useQuery({
-    queryKey: ['available-vouchers-restaurant'],
-    queryFn: () => voucherApi.available(0).catch(() => null),
-  });
-  const hasVouchers = (voucherData?.vouchers?.length ?? 0) > 0;
-  const ratingNum = Number(restaurant.rating ?? 0);
+  if (!restaurant) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.centered}>
+          <Text style={styles.emptyMenuEmoji}>⚠️</Text>
+          <Text style={styles.emptyMenuTitle}>Không tìm thấy nhà hàng</Text>
+          <Text style={styles.emptyMenuText}>
+            Nhà hàng này hiện không khả dụng hoặc đã ngừng hoạt động.
+          </Text>
+          <Pressable
+            style={[
+              styles.addButton,
+              { marginTop: 16, paddingHorizontal: 20, paddingVertical: 12 },
+            ]}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.addButtonText}>Quay lại</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

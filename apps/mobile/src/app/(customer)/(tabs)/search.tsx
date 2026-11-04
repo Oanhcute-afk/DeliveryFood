@@ -117,7 +117,7 @@ export default function CustomerSearchScreen() {
               Hôm nay ăn <Text style={styles.titleAccent}>món gì?</Text>
             </Text>
             <Text style={styles.subtitle}>
-              Tìm nhanh món ngon, quán quen và ưu đãi Freeship gần bạn
+              Tìm nhanh món ngon, quán quen và ưu đãi gần bạn
             </Text>
           </View>
 
@@ -301,9 +301,6 @@ export default function CustomerSearchScreen() {
                             <Text style={{ fontSize: 28 }}>🍲</Text>
                           </View>
                         )}
-                        <View style={styles.thumbBadge}>
-                          <Text style={styles.thumbBadgeText}>Freeship</Text>
-                        </View>
                       </View>
 
                       <View style={styles.restaurantRowInfo}>
@@ -384,9 +381,6 @@ export default function CustomerSearchScreen() {
                       <Text style={{ fontSize: 28 }}>🍲</Text>
                     </View>
                   )}
-                  <View style={styles.thumbBadge}>
-                    <Text style={styles.thumbBadgeText}>Freeship</Text>
-                  </View>
                 </View>
 
                 <View style={styles.restaurantRowInfo}>
@@ -626,20 +620,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  thumbBadge: {
-    position: 'absolute',
-    bottom: 5,
-    left: 5,
-    backgroundColor: '#16A34A',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  thumbBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '900',
   },
   restaurantRowInfo: {
     flex: 1,

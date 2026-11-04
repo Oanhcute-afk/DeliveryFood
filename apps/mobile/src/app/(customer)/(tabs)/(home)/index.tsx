@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -89,6 +90,125 @@ export default function CustomerHomeScreen() {
     queryFn: () => voucherApi.available(0).catch(() => null),
   });
   const hasVouchers = (voucherData?.vouchers?.length ?? 0) > 0;
+
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const bannerScrollRef = useRef<ScrollView>(null);
+  const { width: windowWidth } = useWindowDimensions();
+  const bannerCardWidth = Math.max(windowWidth - 36, 280);
+
+  // Danh sách slide bảng tin:
+  // - Nếu CÓ VOUCHER: Hiện slide voucher + 3 slide (Món ngon đặt nhiều, Cửa hàng mới mở, Tiệm gần nổi tiếng)
+  // - Nếu KHÔNG CÓ VOUCHER: Chỉ hiển thị đúng 3 slide bảng tin
+  const bannerSlides = useMemo(() => {
+    const defaultSlides = [
+      {
+        id: 'popular_dishes',
+        tag: 'MÓN ĐẶT NHIỀU',
+        tagIcon: 'flame' as const,
+        tagColor: '#FF6B35',
+        title: 'Món ngon nóng sốt\nĐặt nhiều nhất tuần',
+        subtitle:
+          'Tổng hợp các món khoái khẩu chuẩn vị được thực khách săn đón.',
+        ctaText: 'Khám phá ngay',
+        ctaIcon: 'restaurant' as const,
+        emoji: '🍔',
+        miniBadge: '🔥 Top 1',
+        bgColor: '#FF6B35',
+        shadowColor: '#FF6B35',
+        onPress: () => setSelectedCategory('popular'),
+      },
+      {
+        id: 'new_stores',
+        tag: 'CỬA HÀNG MỚI MỞ',
+        tagIcon: 'sparkles' as const,
+        tagColor: '#2563EB',
+        title: 'Cửa hàng mới mở\nHương vị mới toanh',
+        subtitle:
+          'Khám phá ngay những nhà hàng mới mở với thực đơn phong phú hấp dẫn.',
+        ctaText: 'Thử quán mới',
+        ctaIcon: 'storefront' as const,
+        emoji: '🏪',
+        miniBadge: '✨ Mới',
+        bgColor: '#2563EB',
+        shadowColor: '#1D4ED8',
+        onPress: () => setSelectedCategory('newest'),
+      },
+      {
+        id: 'top_rated',
+        tag: 'TIỆM GẦN NỔI TIẾNG',
+        tagIcon: 'star' as const,
+        tagColor: '#7C3AED',
+        title: 'Tiệm gần nổi tiếng\nĐánh giá 5 sao',
+        subtitle:
+          'Những quán ngon danh tiếng quanh bạn, chất lượng tuyển chọn.',
+        ctaText: 'Xem quán hot',
+        ctaIcon: 'trophy' as const,
+        emoji: '🍲',
+        miniBadge: '⭐ 4.9+',
+        bgColor: '#7C3AED',
+        shadowColor: '#6D28D9',
+        onPress: () => setSelectedCategory('top_rated'),
+      },
+    ];
+
+    if (hasVouchers) {
+      const voucherCount = voucherData?.vouchers?.length ?? 0;
+      const voucherSlide = {
+        id: 'voucher',
+        tag: 'ƯU ĐÃI VOUCHER',
+        tagIcon: 'pricetag' as const,
+        tagColor: '#EA580C',
+        title: 'Săn Voucher xịn\nGiảm sâu hôm nay!',
+        subtitle:
+          voucherCount > 0
+            ? `Có ${voucherCount} mã giảm giá sẵn sàng áp dụng khi thanh toán.`
+            : 'Áp mã voucher tại bước thanh toán để nhận ưu đãi hấp dẫn.',
+        ctaText: 'Săn Voucher ngay',
+        ctaIcon: 'gift' as const,
+        emoji: '🎟️',
+        miniBadge: '⚡ Giảm sâu',
+        bgColor: '#EA580C',
+        shadowColor: '#C2410C',
+        onPress: () => router.push('/(customer)/(tabs)/cart'),
+      };
+      return [voucherSlide, ...defaultSlides];
+    }
+
+    return defaultSlides;
+  }, [hasVouchers, voucherData]);
+
+  // Đảm bảo index không vượt quá độ dài khi số lượng slide thay đổi
+  useEffect(() => {
+    if (activeSlideIndex >= bannerSlides.length) {
+      setActiveSlideIndex(0);
+      bannerScrollRef.current?.scrollTo({ x: 0, animated: false });
+    }
+  }, [bannerSlides.length, activeSlideIndex]);
+
+  // Tự động chuyển slide sau mỗi 4.5 giây
+  useEffect(() => {
+    if (bannerSlides.length <= 1) return;
+    const interval = setInterval(() => {
+      setActiveSlideIndex((prev) => {
+        const nextIndex = (prev + 1) % bannerSlides.length;
+        bannerScrollRef.current?.scrollTo({
+          x: nextIndex * bannerCardWidth,
+          animated: true,
+        });
+        return nextIndex;
+      });
+    }, 4500);
+
+    return () => clearInterval(interval);
+  }, [bannerSlides.length, bannerCardWidth]);
+
+  const goToSlide = (idx: number) => {
+    setActiveSlideIndex(idx);
+    bannerScrollRef.current?.scrollTo({
+      x: idx * bannerCardWidth,
+      animated: true,
+    });
+  };
 
   const {
     data: restaurants = [],
@@ -261,9 +381,17 @@ export default function CustomerHomeScreen() {
   const filteredRestaurants = useMemo(() => {
     if (selectedCategory === 'all') return restaurants;
 
-    if (selectedCategory === 'top_rated') {
+    if (selectedCategory === 'top_rated' || selectedCategory === 'popular') {
       return [...restaurants].sort(
         (a, b) => Number(b.rating ?? 0) - Number(a.rating ?? 0),
+      );
+    }
+
+    if (selectedCategory === 'newest') {
+      return [...restaurants].sort(
+        (a, b) =>
+          new Date(b.createdAt || 0).getTime() -
+          new Date(a.createdAt || 0).getTime(),
       );
     }
 
@@ -310,42 +438,119 @@ export default function CustomerHomeScreen() {
   function renderHeader() {
     return (
       <View style={styles.listHeaderContainer}>
-        {/* Banner khuyến mãi đậm chất Delivery Food */}
-        <View style={styles.promoBanner}>
-          <View style={styles.promoLeft}>
-            <View style={styles.promoTag}>
-              <Ionicons name="flame" size={13} color="#FF6B35" />
-              <Text style={styles.promoTagText}>ƯU ĐÃI GIAO ĐỒ ĂN</Text>
-            </View>
-
-            <Text style={styles.promoTitle}>
-              Món nóng hổi{'\n'}Freeship tận cửa!
-            </Text>
-            <Text style={styles.promoSubtitle}>
-              Áp mã voucher tại bước thanh toán để nhận ưu đãi hấp dẫn hôm nay.
-            </Text>
-
-            <View style={styles.promoActions}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.promoCta,
-                  pressed && styles.buttonPressed,
+        {/* Bảng tin Banner Carousel */}
+        <View style={styles.carouselWrapper}>
+          <ScrollView
+            ref={bannerScrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            nestedScrollEnabled={true}
+            decelerationRate="fast"
+            snapToInterval={bannerCardWidth}
+            snapToAlignment="center"
+            contentContainerStyle={styles.carouselScrollContent}
+            onMomentumScrollEnd={(e) => {
+              const x = e.nativeEvent.contentOffset.x;
+              const idx = Math.round(x / bannerCardWidth);
+              if (idx >= 0 && idx < bannerSlides.length) {
+                setActiveSlideIndex(idx);
+              }
+            }}
+          >
+            {bannerSlides.map((slide) => (
+              <View
+                key={slide.id}
+                style={[
+                  styles.promoBanner,
+                  {
+                    width: bannerCardWidth,
+                    backgroundColor: slide.bgColor,
+                    shadowColor: slide.shadowColor,
+                  },
                 ]}
-                onPress={() => router.push('/(customer)/(tabs)/cart')}
               >
-                <Ionicons name="pricetag" size={14} color="#FF6B35" />
-                <Text style={styles.promoCtaText}>Săn Voucher ngay</Text>
-              </Pressable>
-            </View>
-          </View>
+                <View style={styles.promoLeft}>
+                  <View style={styles.promoTag}>
+                    <Ionicons
+                      name={slide.tagIcon}
+                      size={13}
+                      color={slide.tagColor}
+                    />
+                    <Text
+                      style={[
+                        styles.promoTagText,
+                        { color: slide.tagColor },
+                      ]}
+                    >
+                      {slide.tag}
+                    </Text>
+                  </View>
 
-          <View style={styles.promoVisual}>
-            <View style={styles.promoCircle}>
-              <Text style={styles.promoEmoji}>🍔</Text>
-            </View>
-            <View style={styles.promoMiniBadge}>
-              <Text style={styles.promoMiniText}>⚡ 15p</Text>
-            </View>
+                  <Text style={styles.promoTitle}>{slide.title}</Text>
+                  <Text style={styles.promoSubtitle}>{slide.subtitle}</Text>
+
+                  <View style={styles.promoActions}>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.promoCta,
+                        pressed && styles.buttonPressed,
+                      ]}
+                      onPress={slide.onPress}
+                    >
+                      <Ionicons
+                        name={slide.ctaIcon}
+                        size={14}
+                        color={slide.tagColor}
+                      />
+                      <Text
+                        style={[
+                          styles.promoCtaText,
+                          { color: slide.tagColor },
+                        ]}
+                      >
+                        {slide.ctaText}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                <View style={styles.promoVisual}>
+                  <View style={styles.promoCircle}>
+                    <Text style={styles.promoEmoji}>{slide.emoji}</Text>
+                  </View>
+                  <View style={styles.promoMiniBadge}>
+                    <Text style={styles.promoMiniText}>{slide.miniBadge}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+
+          {/* Dấu chấm chuyển trang (Pagination Dots) */}
+          <View style={styles.dotsContainer}>
+            {bannerSlides.map((slide, idx) => {
+              const active = idx === activeSlideIndex;
+              return (
+                <Pressable
+                  key={slide.id}
+                  onPress={() => goToSlide(idx)}
+                  hitSlop={8}
+                  style={[
+                    styles.dotItem,
+                    active && [
+                      styles.dotItemActive,
+                      {
+                        backgroundColor:
+                          bannerSlides[
+                            Math.min(activeSlideIndex, bannerSlides.length - 1)
+                          ]?.bgColor || '#FF6B35',
+                      },
+                    ],
+                  ]}
+                />
+              );
+            })}
           </View>
         </View>
 
@@ -366,9 +571,13 @@ export default function CustomerHomeScreen() {
           </View>
           <View style={styles.perkDivider} />
           <View style={styles.perkItem}>
-            <Ionicons name="pricetag" size={14} color="#F59E0B" />
+            <Ionicons
+              name={hasVouchers ? 'pricetag' : 'sparkles'}
+              size={14}
+              color={hasVouchers ? '#F59E0B' : '#3B82F6'}
+            />
             <Text style={styles.perkText} numberOfLines={1}>
-              Nhiều voucher
+              {hasVouchers ? 'Nhiều voucher' : 'Món ngon mỗi ngày'}
             </Text>
           </View>
         </View>
@@ -443,10 +652,22 @@ export default function CustomerHomeScreen() {
         {filteredRestaurants.length > 0 && (
           <View style={styles.listSectionHeader}>
             <View>
-              <Text style={styles.sectionEyebrow}>QUÁN NGON QUANH BẠN</Text>
+              <Text style={styles.sectionEyebrow}>
+                {selectedCategory === 'top_rated'
+                  ? 'TIỆM GẦN NỔI TIẾNG'
+                  : selectedCategory === 'newest'
+                  ? 'CỬA HÀNG MỚI MỞ'
+                  : selectedCategory === 'popular'
+                  ? 'MÓN NGON ĐẶT NHIỀU'
+                  : 'QUÁN NGON QUANH BẠN'}
+              </Text>
               <Text style={styles.sectionTitle}>
                 {selectedCategory === 'top_rated'
                   ? 'Nhà hàng được đánh giá cao'
+                  : selectedCategory === 'newest'
+                  ? 'Những quán mới mở gần đây'
+                  : selectedCategory === 'popular'
+                  ? 'Quán bán chạy & được yêu thích'
                   : 'Giao nhanh • Đặt là có ngay'}
               </Text>
             </View>
@@ -1110,6 +1331,30 @@ const styles = StyleSheet.create({
   listHeaderContainer: {
     marginBottom: 8,
   },
+  carouselWrapper: {
+    marginBottom: 14,
+  },
+  carouselScrollContent: {
+    alignItems: 'center',
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 10,
+  },
+  dotItem: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E5DCD6',
+  },
+  dotItemActive: {
+    width: 20,
+    height: 6,
+    borderRadius: 3,
+  },
   promoBannerNewStores: {
     backgroundColor: '#3B82F6',
     shadowColor: '#2563EB',
@@ -1138,9 +1383,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 0,
     overflow: 'hidden',
-    shadowColor: '#FF6B35',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 12,

@@ -13,7 +13,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { useAuth } from '@/context/auth-context';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { UserRole } from '@food-delivery/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,27 +57,27 @@ export default function RegisterScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFF9F5" />
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.container,
-          {
-            paddingTop: Math.max(insets.top, 16) + 8,
-            paddingBottom: Math.max(insets.bottom, 24) + 60,
-          },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={true}
-        bounces={true}
-        overScrollMode="always"
-        nestedScrollEnabled={true}
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.container,
+            {
+              paddingTop: 8,
+              paddingBottom: Math.max(insets.bottom, 24) + 40,
+            },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          overScrollMode="always"
+        >
         {/* Brand */}
         <View style={styles.brand}>
           <View style={styles.logo}>
@@ -279,16 +279,21 @@ export default function RegisterScreen() {
 
         <GoogleSignInButton role={role} />
 
-        {/* Login link */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Đã có tài khoản?
-          </Text>
-
-          <Pressable onPress={() => router.back()} hitSlop={10}>
-            <Text style={styles.loginText}> Đăng nhập</Text>
-          </Pressable>
-        </View>
+        {/* Login link card */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.loginCard,
+            pressed && styles.buttonPressed,
+          ]}
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Đã có tài khoản? Đăng nhập ngay"
+          hitSlop={{ top: 12, bottom: 20, left: 16, right: 16 }}
+        >
+          <Text style={styles.footerText}>Đã có tài khoản?</Text>
+          <Text style={styles.loginText}> Đăng nhập ngay</Text>
+          <Ionicons name="arrow-forward-circle" size={18} color="#FF6B35" />
+        </Pressable>
 
         <View style={styles.bottomNote}>
           <Ionicons name="heart" size={13} color="#FF6B35" />
@@ -298,6 +303,7 @@ export default function RegisterScreen() {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -305,6 +311,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#FFF9F5',
+  },
+  keyboardView: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
@@ -485,19 +494,32 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  footer: {
+  loginCard: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 23,
+    gap: 6,
+    marginTop: 18,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    borderWidth: 1.5,
+    borderColor: '#FFE2D1',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   footerText: {
-    fontSize: 12,
-    color: '#8B8289',
+    fontSize: 13.5,
+    color: '#6B6269',
+    fontWeight: '600',
   },
   loginText: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 13.5,
+    fontWeight: '900',
     color: '#FF6B35',
   },
   bottomNote: {
