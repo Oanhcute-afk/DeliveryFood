@@ -98,7 +98,10 @@ export default function CustomerSearchScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#FFF9F5" />
 
       <ScrollView
+        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
       >

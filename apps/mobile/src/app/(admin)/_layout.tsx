@@ -15,6 +15,7 @@ export default function AdminLayout() {
         headerShown: false,
         tabBarActiveTintColor: '#FF6B35',
         tabBarInactiveTintColor: '#8B8289',
+        tabBarAllowFontScaling: false,
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopColor: '#F0E8E3',

@@ -515,8 +515,13 @@ export default function OrderConfirmationScreen() {
 
   if (!id || isLoading || (isPending && !isError)) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.centered}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <ScrollView
+          contentContainerStyle={styles.centered}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          alwaysBounceVertical={true}
+        >
           <View style={styles.loadingIcon}>
             <ActivityIndicator size="large" color={COLORS.primary} />
           </View>
@@ -524,15 +529,20 @@ export default function OrderConfirmationScreen() {
           <Text style={styles.loadingText}>
             Vui lòng đợi trong giây lát...
           </Text>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
 
   if (isError || !order) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.centered}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <ScrollView
+          contentContainerStyle={styles.centered}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          alwaysBounceVertical={true}
+        >
           <View style={styles.errorIcon}>
             <Ionicons
               name="cloud-offline-outline"
@@ -560,7 +570,7 @@ export default function OrderConfirmationScreen() {
           >
             <Text style={styles.secondaryButtonText}>Về trang chủ</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -593,9 +603,12 @@ export default function OrderConfirmationScreen() {
             : 'Theo dõi tiến trình đơn hàng của bạn ngay bên dưới.';
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScrollView
+        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
         contentContainerStyle={styles.content}
       >
         <View style={styles.topBar}>
@@ -1920,10 +1933,11 @@ const styles = StyleSheet.create({
   },
 
   centered: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 30,
+    paddingVertical: 32,
   },
 
   loadingIcon: {

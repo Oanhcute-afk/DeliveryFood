@@ -104,6 +104,9 @@ export function UserListScreen({ role }: { role: SignupRole }) {
         data={data ?? []}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
         keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl

@@ -153,7 +153,12 @@ function DeliveryCard({
 }
 
 export default function DriverHistoryScreen() {
-  const { data: orders = [], isLoading } = useQuery<DriverOrder[]>({
+  const {
+    data: orders = [],
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useQuery<DriverOrder[]>({
     queryKey: ['driver-orders'],
     queryFn: () => api.get<DriverOrder[]>('/orders/mine').then((r) => r.data),
   });
@@ -189,6 +194,10 @@ export default function DriverHistoryScreen() {
         data={orders}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
+        refreshing={isRefetching}
+        onRefresh={() => void refetch()}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           <View>

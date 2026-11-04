@@ -163,7 +163,7 @@ export default function CustomerHomeScreen() {
                   styles.promoCta,
                   pressed && styles.buttonPressed,
                 ]}
-                onPress={() => router.push('/(customer)/(tabs)/vouchers')}
+                onPress={() => router.push('/(customer)/(tabs)/cart')}
               >
                 <Ionicons name="pricetag" size={14} color="#FF6B35" />
                 <Text style={styles.promoCtaText}>Săn Voucher ngay</Text>
@@ -184,18 +184,24 @@ export default function CustomerHomeScreen() {
         {/* Cam kết dịch vụ giao đồ ăn */}
         <View style={styles.perksBar}>
           <View style={styles.perkItem}>
-            <Ionicons name="flash" size={15} color="#FF6B35" />
-            <Text style={styles.perkText}>Giao nhanh 20p</Text>
+            <Ionicons name="flash" size={14} color="#FF6B35" />
+            <Text style={styles.perkText} numberOfLines={1}>
+              Giao nhanh 20p
+            </Text>
           </View>
           <View style={styles.perkDivider} />
           <View style={styles.perkItem}>
-            <Ionicons name="shield-checkmark" size={15} color="#16A34A" />
-            <Text style={styles.perkText}>Quán ngon tuyển chọn</Text>
+            <Ionicons name="shield-checkmark" size={14} color="#16A34A" />
+            <Text style={styles.perkText} numberOfLines={1}>
+              Quán tuyển chọn
+            </Text>
           </View>
           <View style={styles.perkDivider} />
           <View style={styles.perkItem}>
-            <Ionicons name="pricetag" size={15} color="#F59E0B" />
-            <Text style={styles.perkText}>Nhiều mã giảm giá</Text>
+            <Ionicons name="pricetag" size={14} color="#F59E0B" />
+            <Text style={styles.perkText} numberOfLines={1}>
+              Nhiều voucher
+            </Text>
           </View>
         </View>
 
@@ -273,7 +279,12 @@ export default function CustomerHomeScreen() {
   function renderContent() {
     if (isLoading) {
       return (
-        <View style={styles.centered}>
+        <ScrollView
+          contentContainerStyle={styles.centered}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          alwaysBounceVertical={true}
+        >
           <View style={styles.loadingIcon}>
             <ActivityIndicator size="large" color="#FF6B35" />
           </View>
@@ -281,13 +292,18 @@ export default function CustomerHomeScreen() {
           <Text style={styles.stateDescription}>
             Chờ một chút, hàng loạt món ngon sắp hiện ra!
           </Text>
-        </View>
+        </ScrollView>
       );
     }
 
     if (isError) {
       return (
-        <View style={styles.centered}>
+        <ScrollView
+          contentContainerStyle={styles.centered}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          alwaysBounceVertical={true}
+        >
           <Text style={styles.stateEmoji}>📡</Text>
           <Text style={styles.stateTitle}>Không tải được danh sách quán</Text>
           <Text style={styles.stateDescription}>
@@ -306,7 +322,7 @@ export default function CustomerHomeScreen() {
           >
             <Text style={styles.retryButtonText}>Thử lại ngay</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       );
     }
 
@@ -315,6 +331,9 @@ export default function CustomerHomeScreen() {
         data={filteredRestaurants}
         keyExtractor={(item) => String(item.id)}
         showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.listContent,
           filteredRestaurants.length === 0 && styles.emptyListContent,
@@ -836,16 +855,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F0E6DF',
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     marginBottom: 18,
   },
   perkItem: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    justifyContent: 'center',
+    gap: 4,
+    minWidth: 0,
   },
   perkText: {
-    fontSize: 11,
+    flexShrink: 1,
+    fontSize: 10.5,
     fontWeight: '700',
     color: '#4B4248',
   },
@@ -853,6 +876,7 @@ const styles = StyleSheet.create({
     width: 1,
     height: 14,
     backgroundColor: '#EDE2DA',
+    marginHorizontal: 4,
   },
   categorySection: {
     marginBottom: 18,
@@ -1157,7 +1181,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   centered: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 28,

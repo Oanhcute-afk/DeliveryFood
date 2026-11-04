@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -69,56 +72,65 @@ export function RatingModal({
       transparent
       onRequestClose={onDismiss}
     >
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         <View style={styles.sheet}>
-          <Text style={styles.title}>🎉 Đã giao hàng thành công!</Text>
-          <Text style={styles.subtitle}>Trải nghiệm của bạn như thế nào?</Text>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Nhà hàng</Text>
-            <StarRating
-              rating={restaurantRating}
-              onRate={setRestaurantRating}
-            />
-          </View>
-
-          {hasDriver && (
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Tài xế</Text>
-              <StarRating rating={driverRating} onRate={setDriverRating} />
-            </View>
-          )}
-
-          <TextInput
-            style={styles.input}
-            placeholder="Nhập nhận xét của bạn (tùy chọn)"
-            placeholderTextColor="#aaa"
-            value={comment}
-            onChangeText={setComment}
-            multiline
-            numberOfLines={2}
-          />
-
-          <Pressable
-            style={[
-              styles.submitButton,
-              !canSubmit && styles.submitButtonDisabled,
-            ]}
-            onPress={handleSubmit}
-            disabled={!canSubmit || isSubmitting}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            bounces={true}
           >
-            {isSubmitting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.submitButtonText}>Gửi đánh giá</Text>
-            )}
-          </Pressable>
+            <Text style={styles.title}>🎉 Đã giao hàng thành công!</Text>
+            <Text style={styles.subtitle}>Trải nghiệm của bạn như thế nào?</Text>
 
-          <Pressable style={styles.skipButton} onPress={onDismiss}>
-            <Text style={styles.skipText}>Bỏ qua lúc này</Text>
-          </Pressable>
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Nhà hàng</Text>
+              <StarRating
+                rating={restaurantRating}
+                onRate={setRestaurantRating}
+              />
+            </View>
+
+            {hasDriver && (
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>Tài xế</Text>
+                <StarRating rating={driverRating} onRate={setDriverRating} />
+              </View>
+            )}
+
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập nhận xét của bạn (tùy chọn)"
+              placeholderTextColor="#aaa"
+              value={comment}
+              onChangeText={setComment}
+              multiline
+              numberOfLines={2}
+            />
+
+            <Pressable
+              style={[
+                styles.submitButton,
+                !canSubmit && styles.submitButtonDisabled,
+              ]}
+              onPress={handleSubmit}
+              disabled={!canSubmit || isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.submitButtonText}>Gửi đánh giá</Text>
+              )}
+            </Pressable>
+
+            <Pressable style={styles.skipButton} onPress={onDismiss}>
+              <Text style={styles.skipText}>Bỏ qua lúc này</Text>
+            </Pressable>
+          </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -135,6 +147,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     padding: 28,
     paddingBottom: 40,
+    maxHeight: '88%',
   },
   title: {
     fontSize: 22,

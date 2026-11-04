@@ -239,8 +239,11 @@ export default function DriverHomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
         refreshControl={
           <RefreshControl
             refreshing={isRefetchingOrders}
@@ -594,7 +597,11 @@ export default function DriverHomeScreen() {
           <View style={styles.modal}>
             <View style={styles.modalHandle} />
 
-            <View style={styles.modalHeaderIcon}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              bounces={true}
+            >
+              <View style={styles.modalHeaderIcon}>
               <Text style={styles.modalEmoji}>🛵</Text>
             </View>
 
@@ -673,9 +680,10 @@ export default function DriverHomeScreen() {
               )}
             </Pressable>
 
-            <Text style={styles.modalFooter}>
-              Cảm ơn bạn đã đồng hành cùng DeliFood
-            </Text>
+              <Text style={styles.modalFooter}>
+                Cảm ơn bạn đã đồng hành cùng DeliFood
+              </Text>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1149,6 +1157,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingTop: 12,
     paddingBottom: 30,
+    maxHeight: '88%',
   },
   modalHandle: {
     width: 42,

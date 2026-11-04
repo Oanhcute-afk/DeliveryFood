@@ -4,6 +4,8 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,6 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { api } from '@/lib/axios';
@@ -136,12 +139,19 @@ export default function EditRestaurantScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-    >
+    <SafeAreaView style={styles.screen} edges={['top']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          style={styles.screen}
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          alwaysBounceVertical={true}
+          keyboardShouldPersistTaps="handled"
+        >
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerIcon}>
@@ -342,11 +352,13 @@ export default function EditRestaurantScreen() {
           <Text style={styles.cancelButtonText}>Hủy và quay lại</Text>
         </Pressable>
 
-        <Text style={styles.footerText}>
-          Kiểm tra thông tin trước khi lưu thay đổi.
-        </Text>
-      </View>
-    </ScrollView>
+          <Text style={styles.footerText}>
+            Kiểm tra thông tin trước khi lưu thay đổi.
+          </Text>
+        </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

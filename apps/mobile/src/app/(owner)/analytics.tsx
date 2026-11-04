@@ -124,6 +124,8 @@ export default function OwnerAnalyticsScreen() {
         refreshing={isRefetching}
         onRefresh={refetch}
         showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           <View>

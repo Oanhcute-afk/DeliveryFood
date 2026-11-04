@@ -341,9 +341,11 @@ export default function OwnerHomeScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={[
           styles.listContent,
-          { paddingBottom: insets.bottom + TAB_BAR_OFFSET },
+          { paddingBottom: 32 },
         ]}
         showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}

@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -36,7 +37,12 @@ export default function DriverActiveScreen() {
   const locationWatchRef = useRef<Location.LocationSubscription | null>(null);
   const [driverCoords, setDriverCoords] = useState(DEFAULT_COORDS);
 
-  const { data: activeOrders = [], isLoading } = useQuery<Order[]>({
+  const {
+    data: activeOrders = [],
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useQuery<Order[]>({
     queryKey: ['driver-active-orders'],
     queryFn: () =>
       api
@@ -182,7 +188,20 @@ export default function DriverActiveScreen() {
   if (!activeOrder) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.centered}>
+        <ScrollView
+          contentContainerStyle={styles.centered}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          alwaysBounceVertical={true}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={() => void refetch()}
+              tintColor="#FF6B35"
+              colors={['#FF6B35']}
+            />
+          }
+        >
           <View style={styles.emptyIcon}>
             <Text style={styles.emptyEmoji}>🛵</Text>
           </View>
@@ -191,7 +210,7 @@ export default function DriverActiveScreen() {
             Khi nhận và lấy hàng từ nhà hàng, đơn hàng đang giao sẽ xuất hiện
             tại đây.
           </Text>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -202,10 +221,20 @@ export default function DriverActiveScreen() {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: insets.bottom + TAB_BAR_OFFSET },
+          { paddingBottom: 32 },
         ]}
         showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={() => void refetch()}
+            tintColor="#FF6B35"
+            colors={['#FF6B35']}
+          />
+        }
       >
         {/* Tiêu đề */}
         <View style={styles.header}>
@@ -689,10 +718,11 @@ const styles = StyleSheet.create({
 
   // Loading và chưa có đơn
   centered: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 30,
+    paddingVertical: 32,
   },
   loadingIcon: {
     width: 76,

@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   Pressable,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -429,7 +430,20 @@ export default function CustomerOrdersScreen() {
       </View>
 
       {isError ? (
-        <View style={styles.centered}>
+        <ScrollView
+          contentContainerStyle={styles.centered}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          alwaysBounceVertical={true}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={() => void refetch()}
+              tintColor="#FF6B35"
+              colors={['#FF6B35']}
+            />
+          }
+        >
           <View style={styles.emptyIcon}>
             <Ionicons
               name="cloud-offline-outline"
@@ -452,9 +466,22 @@ export default function CustomerOrdersScreen() {
             <Ionicons name="refresh-outline" size={18} color="#FFFFFF" />
             <Text style={styles.retryText}>Thử lại</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       ) : filteredOrders.length === 0 ? (
-        <View style={styles.centered}>
+        <ScrollView
+          contentContainerStyle={styles.centered}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          alwaysBounceVertical={true}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={() => void refetch()}
+              tintColor="#FF6B35"
+              colors={['#FF6B35']}
+            />
+          }
+        >
           <View style={styles.emptyIllustration}>
             <View style={styles.emptyIcon}>
               <Ionicons
@@ -492,13 +519,15 @@ export default function CustomerOrdersScreen() {
               {selectedTab === 'ALL' ? 'Đặt món ngay' : 'Xem tất cả đơn hàng'}
             </Text>
           </Pressable>
-        </View>
+        </ScrollView>
       ) : (
         <FlatList
           data={filteredOrders}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          bounces={true}
+          alwaysBounceVertical={true}
           refreshing={isRefetching}
           onRefresh={() => {
             void refetch();
@@ -825,11 +854,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   centered: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 30,
-    paddingBottom: 45,
+    paddingVertical: 32,
   },
   loadingIcon: {
     width: 75,

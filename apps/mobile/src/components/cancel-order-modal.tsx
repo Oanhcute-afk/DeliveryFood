@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -54,7 +55,11 @@ export function CancelOrderModal({
         <View style={styles.sheet}>
           <View style={styles.handle} />
 
-          <View style={styles.headerIcon}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            bounces={true}
+          >
+            <View style={styles.headerIcon}>
             <Ionicons name="close-circle-outline" size={30} color="#EF4444" />
           </View>
 
@@ -134,16 +139,17 @@ export function CancelOrderModal({
             )}
           </Pressable>
 
-          <Pressable
-            disabled={isSubmitting}
-            onPress={onClose}
-            style={({ pressed }) => [
-              styles.backButton,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={styles.backButtonText}>Quay lại</Text>
-          </Pressable>
+            <Pressable
+              disabled={isSubmitting}
+              onPress={onClose}
+              style={({ pressed }) => [
+                styles.backButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.backButtonText}>Quay lại</Text>
+            </Pressable>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -163,6 +169,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingTop: 12,
     paddingBottom: 32,
+    maxHeight: '85%',
   },
   handle: {
     width: 42,

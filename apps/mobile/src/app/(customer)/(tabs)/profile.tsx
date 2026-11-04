@@ -6,6 +6,7 @@ import {
   View,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/auth-context';
 
@@ -28,11 +29,14 @@ export default function ProfileScreen() {
     : 'Thành viên';
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFF9F5" />
 
       <ScrollView
+        style={styles.screen}
         showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
         contentContainerStyle={styles.container}
       >
         {/* Header */}
@@ -217,7 +221,7 @@ export default function ProfileScreen() {
           </Text>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -227,9 +231,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF9F5',
   },
   container: {
-    paddingHorizontal: 22,
-    paddingTop: 25,
-    paddingBottom: 35,
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 32,
   },
   header: {
     flexDirection: 'row',

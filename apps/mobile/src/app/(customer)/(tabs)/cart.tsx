@@ -4,7 +4,10 @@ import {
   Alert,
   FlatList,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -213,7 +216,12 @@ export default function CartScreen() {
           <Text style={styles.screenTitle}>Giỏ hàng</Text>
         </View>
 
-        <View style={styles.emptyContainer}>
+        <ScrollView
+          contentContainerStyle={styles.emptyContainer}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          alwaysBounceVertical={true}
+        >
           <View style={styles.emptyIconCircle}>
             <Ionicons
               name="bag-handle-outline"
@@ -238,40 +246,47 @@ export default function CartScreen() {
             <Ionicons name="restaurant-outline" size={20} color="#FFFFFF" />
             <Text style={styles.browseButtonText}>Khám phá món ngon</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.screenTitle}>Giỏ hàng</Text>
-          <Text style={styles.headerSubtitle}>
-            {itemCount} món ăn đã chọn
-          </Text>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.screenTitle}>Giỏ hàng</Text>
+            <Text style={styles.headerSubtitle}>
+              {itemCount} món ăn đã chọn
+            </Text>
+          </View>
+
+          <Pressable
+            style={styles.clearIconButton}
+            onPress={handleClearCart}
+            accessibilityLabel="Xóa toàn bộ giỏ hàng"
+          >
+            <Ionicons
+              name="trash-outline"
+              size={21}
+              color={COLORS.danger}
+            />
+          </Pressable>
         </View>
 
-        <Pressable
-          style={styles.clearIconButton}
-          onPress={handleClearCart}
-          accessibilityLabel="Xóa toàn bộ giỏ hàng"
-        >
-          <Ionicons
-            name="trash-outline"
-            size={21}
-            color={COLORS.danger}
-          />
-        </Pressable>
-      </View>
-
-      <FlatList
-        data={items}
-        extraData={items}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
+        <FlatList
+          data={items}
+          extraData={items}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          alwaysBounceVertical={true}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           <View style={styles.restaurantCard}>
             <View style={styles.restaurantIcon}>
@@ -599,6 +614,7 @@ export default function CartScreen() {
           </View>
         }
       />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -1015,11 +1031,11 @@ const styles = StyleSheet.create({
   },
 
   emptyContainer: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 34,
-    paddingBottom: 60,
+    paddingVertical: 32,
   },
 
   emptyIconCircle: {

@@ -5,7 +5,9 @@ import {
   Alert,
   FlatList,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -288,6 +290,9 @@ export default function OwnerMenuScreen() {
         style={styles.list}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
+        keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View>
             <View style={styles.pageHeader}>
@@ -535,7 +540,10 @@ export default function OwnerMenuScreen() {
         animationType="slide"
         onRequestClose={() => setShowAddCategory(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
           <Pressable
             style={styles.modalBackdrop}
             onPress={() => setShowAddCategory(false)}
@@ -544,56 +552,61 @@ export default function OwnerMenuScreen() {
           <View style={styles.modal}>
             <View style={styles.modalHandle} />
 
-            <View style={styles.modalHeader}>
-              <View style={styles.modalIcon}>
-                <Text style={styles.modalEmoji}>🗂️</Text>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.modalHeader}>
+                <View style={styles.modalIcon}>
+                  <Text style={styles.modalEmoji}>🗂️</Text>
+                </View>
+
+                <View style={styles.modalHeaderText}>
+                  <Text style={styles.modalTitle}>Danh mục mới</Text>
+                  <Text style={styles.modalSubtitle}>
+                    Nhóm các món ăn theo loại
+                  </Text>
+                </View>
               </View>
 
-              <View style={styles.modalHeaderText}>
-                <Text style={styles.modalTitle}>Danh mục mới</Text>
-                <Text style={styles.modalSubtitle}>
-                  Nhóm các món ăn theo loại
-                </Text>
-              </View>
-            </View>
+              <Text style={styles.inputLabel}>Tên danh mục</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ví dụ: Món chính, Đồ uống..."
+                placeholderTextColor="#B4AAB0"
+                value={newCategoryName}
+                onChangeText={setNewCategoryName}
+                maxLength={80}
+                returnKeyType="done"
+                onSubmitEditing={handleAddCategory}
+              />
 
-            <Text style={styles.inputLabel}>Tên danh mục</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ví dụ: Món chính, Đồ uống..."
-              placeholderTextColor="#B4AAB0"
-              value={newCategoryName}
-              onChangeText={setNewCategoryName}
-              maxLength={80}
-              returnKeyType="done"
-              onSubmitEditing={handleAddCategory}
-            />
+              <Pressable
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  pressed && styles.pressed,
+                  (addingCategory || !newCategoryName.trim()) &&
+                    styles.disabledButton,
+                ]}
+                onPress={handleAddCategory}
+                disabled={addingCategory || !newCategoryName.trim()}
+              >
+                {addingCategory ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Tạo danh mục</Text>
+                )}
+              </Pressable>
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.primaryButton,
-                pressed && styles.pressed,
-                (addingCategory || !newCategoryName.trim()) &&
-                  styles.disabledButton,
-              ]}
-              onPress={handleAddCategory}
-              disabled={addingCategory || !newCategoryName.trim()}
-            >
-              {addingCategory ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.primaryButtonText}>Tạo danh mục</Text>
-              )}
-            </Pressable>
-
-            <Pressable
-              style={styles.cancelButton}
-              onPress={() => setShowAddCategory(false)}
-            >
-              <Text style={styles.cancelText}>Hủy</Text>
-            </Pressable>
+              <Pressable
+                style={styles.cancelButton}
+                onPress={() => setShowAddCategory(false)}
+              >
+                <Text style={styles.cancelText}>Hủy</Text>
+              </Pressable>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal tạo món ăn */}
@@ -603,7 +616,10 @@ export default function OwnerMenuScreen() {
         animationType="slide"
         onRequestClose={closeAddItemModal}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
           <Pressable
             style={styles.modalBackdrop}
             onPress={closeAddItemModal}
@@ -745,7 +761,7 @@ export default function OwnerMenuScreen() {
               </Pressable>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

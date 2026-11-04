@@ -85,6 +85,9 @@ export default function AdminVouchersScreen() {
         data={data ?? []}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -273,21 +276,25 @@ function CreateVoucherModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        style={styles.modal}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Tạo voucher</Text>
-          <Pressable onPress={onClose} hitSlop={10}>
-            <Ionicons name="close" size={26} color={COLORS.text} />
-          </Pressable>
-        </View>
-
-        <ScrollView
-          contentContainerStyle={styles.form}
-          keyboardShouldPersistTaps="handled"
+      <SafeAreaView style={styles.modal} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          style={styles.modal}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Tạo voucher</Text>
+            <Pressable onPress={onClose} hitSlop={10}>
+              <Ionicons name="close" size={26} color={COLORS.text} />
+            </Pressable>
+          </View>
+
+          <ScrollView
+            contentContainerStyle={styles.form}
+            showsVerticalScrollIndicator={false}
+            bounces={true}
+            alwaysBounceVertical={true}
+            keyboardShouldPersistTaps="handled"
+          >
           <Field label="Mã voucher" hint="3-20 ký tự: chữ, số, _ hoặc -">
             <TextInput
               style={styles.input}
@@ -442,8 +449,9 @@ function CreateVoucherModal({
               <Text style={styles.submitText}>Tạo voucher</Text>
             )}
           </Pressable>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </Modal>
   );
 }
