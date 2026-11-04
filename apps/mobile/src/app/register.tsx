@@ -64,16 +64,19 @@ export default function RegisterScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#FFF9F5" />
 
       <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={[
           styles.container,
           {
-            paddingTop: Math.max(insets.top, 16) + 10,
-            paddingBottom: Math.max(insets.bottom, 16) + 16,
+            paddingTop: Math.max(insets.top, 16) + 8,
+            paddingBottom: Math.max(insets.bottom, 24) + 60,
           },
         ]}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         bounces={true}
+        overScrollMode="always"
+        nestedScrollEnabled={true}
       >
         {/* Brand */}
         <View style={styles.brand}>
@@ -302,6 +305,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#FFF9F5',
+  },
+  scrollView: {
+    flex: 1,
   },
   container: {
     flexGrow: 1,

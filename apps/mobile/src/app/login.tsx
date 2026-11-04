@@ -56,17 +56,19 @@ export default function LoginScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#FFF9F5" />
 
       <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={[
           styles.container,
           {
-            paddingTop: Math.max(insets.top, 16) + 10,
-            paddingBottom: Math.max(insets.bottom, 16) + 16,
+            paddingTop: Math.max(insets.top, 16) + 8,
+            paddingBottom: Math.max(insets.bottom, 24) + 60,
           },
         ]}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         bounces={true}
-        alwaysBounceVertical={false}
+        overScrollMode="always"
+        nestedScrollEnabled={true}
       >
         {/* Brand */}
         <View style={styles.brand}>
@@ -195,31 +197,34 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFF9F5',
   },
+  scrollView: {
+    flex: 1,
+  },
   container: {
     flexGrow: 1,
-    justifyContent: 'center',
     paddingHorizontal: 24,
   },
   brand: {
     alignItems: 'center',
-    marginBottom: 18,
+    marginTop: 4,
+    marginBottom: 14,
   },
   logo: {
-    width: 62,
-    height: 62,
-    borderRadius: 20,
+    width: 54,
+    height: 54,
+    borderRadius: 18,
     backgroundColor: '#FF6B35',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
     shadowColor: '#FF6B35',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.18,
-    shadowRadius: 10,
+    shadowRadius: 8,
     elevation: 4,
   },
   brandName: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
     color: '#29232A',
     letterSpacing: -0.8,
@@ -228,39 +233,39 @@ const styles = StyleSheet.create({
     color: '#FF6B35',
   },
   brandCaption: {
-    fontSize: 9.5,
+    fontSize: 9,
     fontWeight: '700',
     color: '#A49AA0',
-    letterSpacing: 2.5,
-    marginTop: 4,
+    letterSpacing: 2.2,
+    marginTop: 3,
   },
   heading: {
-    marginBottom: 18,
+    marginBottom: 14,
   },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
     color: '#29232A',
     letterSpacing: -0.6,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 13.5,
+    fontSize: 13,
     color: '#8B8289',
-    lineHeight: 20,
+    lineHeight: 19,
   },
   form: {
     width: '100%',
   },
   label: {
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '700',
     color: '#393039',
-    marginBottom: 6,
-    marginTop: 4,
+    marginBottom: 5,
+    marginTop: 2,
   },
   inputContainer: {
-    height: 50,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -268,7 +273,7 @@ const styles = StyleSheet.create({
     borderColor: '#F0E8E3',
     borderRadius: 15,
     paddingHorizontal: 14,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   inputIcon: {
     marginRight: 10,
@@ -280,13 +285,13 @@ const styles = StyleSheet.create({
     color: '#29232A',
   },
   button: {
-    height: 52,
+    height: 50,
     backgroundColor: '#FF6B35',
     borderRadius: 15,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 6,
     gap: 10,
     shadowColor: '#FF6B35',
     shadowOffset: { width: 0, height: 4 },
@@ -310,7 +315,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 18,
+    marginTop: 16,
+    paddingVertical: 4,
   },
   footerText: {
     fontSize: 13,
@@ -326,7 +332,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
-    marginTop: 14,
+    marginTop: 12,
+    marginBottom: 20,
   },
   bottomNoteText: {
     fontSize: 11,
