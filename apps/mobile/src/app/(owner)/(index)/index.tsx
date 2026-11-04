@@ -19,30 +19,27 @@ import { api } from '@/lib/axios';
 import { RestaurantType, Order } from '@food-delivery/types';
 import { useRestaurantSocket } from '@/hooks/use-order-socket';
 import { restaurantAmount, voucherSubsidy } from '@/lib/order-amounts';
-import { BURGER_COLORS } from '@/constants/theme';
-import { useLanguage } from '@/context/language-context';
-import { LanguageSwitch } from '@/components/language-switch';
 
 const COLORS = {
-  background: BURGER_COLORS.background,
-  surface: BURGER_COLORS.surface,
-  primary: BURGER_COLORS.primary,
-  primaryLight: BURGER_COLORS.primaryLight,
-  text: BURGER_COLORS.text,
-  muted: BURGER_COLORS.muted,
-  border: BURGER_COLORS.border,
-  green: BURGER_COLORS.success,
-  greenLight: BURGER_COLORS.successLight,
-  blue: '#2563EB',
-  blueLight: '#DBEAFE',
-  yellow: '#B45309',
-  yellowLight: BURGER_COLORS.cheeseLight,
-  purple: '#7C3AED',
-  purpleLight: '#EDE9FE',
-  red: BURGER_COLORS.danger,
-  redLight: BURGER_COLORS.dangerLight,
-  gray: BURGER_COLORS.muted,
-  grayLight: BURGER_COLORS.surfaceMuted,
+  background: '#FFF9F5',
+  surface: '#FFFFFF',
+  primary: '#FF6B35',
+  primaryLight: '#FFF0E8',
+  text: '#29232A',
+  muted: '#8B8289',
+  border: '#F0E8E3',
+  green: '#16A36A',
+  greenLight: '#E8F8F0',
+  blue: '#3478F6',
+  blueLight: '#EAF1FF',
+  yellow: '#D99000',
+  yellowLight: '#FFF4D6',
+  purple: '#8256D0',
+  purpleLight: '#F0E9FF',
+  red: '#E5484D',
+  redLight: '#FDEBEC',
+  gray: '#77717A',
+  grayLight: '#F0EEF1',
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -63,21 +60,20 @@ const STATUS_BACKGROUNDS: Record<string, string> = {
   CANCELLED: COLORS.redLight,
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  CONFIRMED: 'Đã xác nhận',
+  PREPARING: 'Đang chuẩn bị',
+  READY: 'Chờ tài xế',
+  PICKED_UP: 'Đang giao',
+  DELIVERED: 'Đã giao',
+  CANCELLED: 'Đã hủy',
+};
+
 const TAB_BAR_OFFSET = 88;
 
 export default function OwnerHomeScreen() {
-  const { tr } = useLanguage();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
-
-  const statusLabels: Record<string, string> = {
-    CONFIRMED: tr('Đã xác nhận', 'Confirmed'),
-    PREPARING: tr('Đang chuẩn bị', 'Preparing'),
-    READY: tr('Chờ tài xế', 'Ready for Driver'),
-    PICKED_UP: tr('Đang giao', 'Delivering'),
-    DELIVERED: tr('Đã giao', 'Delivered'),
-    CANCELLED: tr('Đã hủy', 'Cancelled'),
-  };
 
   const {
     data: restaurant,
@@ -136,12 +132,9 @@ export default function OwnerHomeScreen() {
       }),
     onError: (error: any) => {
       Alert.alert(
-        tr('Không thể cập nhật', 'Unable to update'),
+        'Không thể cập nhật',
         error?.response?.data?.message ??
-          tr(
-            'Không thể thay đổi trạng thái nhà hàng. Vui lòng thử lại.',
-            'Could not change restaurant status. Please try again.',
-          ),
+          'Không thể thay đổi trạng thái nhà hàng. Vui lòng thử lại.',
       );
     },
   });
@@ -174,12 +167,9 @@ export default function OwnerHomeScreen() {
         );
       }
       Alert.alert(
-        tr('Lỗi cập nhật đơn hàng', 'Order update failed'),
+        'Lỗi cập nhật đơn hàng',
         error?.response?.data?.message ??
-          tr(
-            'Không thể cập nhật trạng thái đơn hàng.',
-            'Could not update order status.',
-          ),
+          'Không thể cập nhật trạng thái đơn hàng.',
       );
     },
     onSettled: () =>
@@ -202,8 +192,8 @@ export default function OwnerHomeScreen() {
         <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>
           {isLoading
-            ? tr('Đang tải thông tin nhà hàng...', 'Loading restaurant info...')
-            : tr('Đang chuyển đến trang tạo nhà hàng...', 'Redirecting to setup...')}
+            ? 'Đang tải thông tin nhà hàng...'
+            : 'Đang chuyển đến trang tạo nhà hàng...'}
         </Text>
       </SafeAreaView>
     );
@@ -240,9 +230,7 @@ export default function OwnerHomeScreen() {
           }
         >
           <Text style={styles.actionButtonText}>
-            {isUpdating
-              ? tr('Đang cập nhật...', 'Updating...')
-              : tr('Bắt đầu chuẩn bị', 'Start Preparing')}
+            {isUpdating ? 'Đang cập nhật...' : 'Bắt đầu chuẩn bị'}
           </Text>
           {!isUpdating && <Text style={styles.actionArrow}>→</Text>}
         </Pressable>
@@ -267,9 +255,7 @@ export default function OwnerHomeScreen() {
           }
         >
           <Text style={styles.actionButtonText}>
-            {isUpdating
-              ? tr('Đang cập nhật...', 'Updating...')
-              : tr('Đánh dấu đã chuẩn bị xong', 'Mark as Ready')}
+            {isUpdating ? 'Đang cập nhật...' : 'Đánh dấu đã chuẩn bị xong'}
           </Text>
           {!isUpdating && <Text style={styles.actionArrow}>✓</Text>}
         </Pressable>
@@ -291,9 +277,7 @@ export default function OwnerHomeScreen() {
       >
         <View style={styles.orderHeader}>
           <View style={styles.orderIdentity}>
-            <Text style={styles.orderLabel}>
-              {tr('ĐƠN HÀNG', 'ORDER')}
-            </Text>
+            <Text style={styles.orderLabel}>ĐƠN HÀNG</Text>
             <Text style={styles.orderId}>
               #{order.id.slice(0, 8).toUpperCase()}
             </Text>
@@ -309,7 +293,7 @@ export default function OwnerHomeScreen() {
               style={[styles.statusDot, { backgroundColor: statusColor }]}
             />
             <Text style={[styles.statusText, { color: statusColor }]}>
-              {statusLabels[order.status] ?? order.status}
+              {STATUS_LABELS[order.status] ?? order.status}
             </Text>
           </View>
         </View>
@@ -322,9 +306,7 @@ export default function OwnerHomeScreen() {
           </View>
 
           <View style={styles.addressContent}>
-            <Text style={styles.detailLabel}>
-              {tr('Địa chỉ giao hàng', 'Delivery address')}
-            </Text>
+            <Text style={styles.detailLabel}>Địa chỉ giao hàng</Text>
             <Text style={styles.orderAddress} numberOfLines={2}>
               {order.deliveryAddress}
             </Text>
@@ -333,18 +315,14 @@ export default function OwnerHomeScreen() {
 
         <View style={styles.orderFooter}>
           <View>
-            <Text style={styles.detailLabel}>
-              {tr('Nhà hàng nhận', 'Restaurant payout')}
-            </Text>
+            <Text style={styles.detailLabel}>Nhà hàng nhận</Text>
             <Text style={styles.orderTotal}>
               ${restaurantAmount(order).toFixed(2)}
             </Text>
             {voucherSubsidy(order) > 0 ? (
               <Text style={styles.subsidyNote}>
-                {tr(
-                  `Khách dùng voucher ${order.voucherCode ?? ''} · app bù $${voucherSubsidy(order).toFixed(2)}`,
-                  `Customer voucher ${order.voucherCode ?? ''} · platform subsidy $${voucherSubsidy(order).toFixed(2)}`,
-                )}
+                Khách dùng voucher {order.voucherCode ?? ''} · app bù $
+                {voucherSubsidy(order).toFixed(2)}
               </Text>
             ) : null}
           </View>
@@ -382,21 +360,16 @@ export default function OwnerHomeScreen() {
           <View>
             <View style={styles.pageHeader}>
               <View style={styles.headerTextContainer}>
-                <Text style={styles.greeting}>
-                  {tr('KÊNH NHÀ HÀNG', 'MERCHANT PORTAL')}
-                </Text>
-                <Text style={styles.pageTitle}>
-                  {tr('Quản lý đơn hàng', 'Order Management')}
-                </Text>
+                <Text style={styles.greeting}>KÊNH NHÀ HÀNG</Text>
+                <Text style={styles.pageTitle}>Quản lý đơn hàng</Text>
                 <Text style={styles.pageSubtitle}>
-                  {tr(
-                    'Theo dõi và xử lý đơn hàng của bạn',
-                    'Track and fulfill incoming food orders',
-                  )}
+                  Theo dõi và xử lý đơn hàng của bạn
                 </Text>
               </View>
 
-              <LanguageSwitch />
+              <View style={styles.headerIcon}>
+                <Text style={styles.headerEmoji}>🍽️</Text>
+              </View>
             </View>
 
             <View style={styles.restaurantCard}>
@@ -408,9 +381,7 @@ export default function OwnerHomeScreen() {
                 </View>
 
                 <View style={styles.restaurantInfo}>
-                  <Text style={styles.restaurantLabel}>
-                    {tr('NHÀ HÀNG CỦA BẠN', 'YOUR RESTAURANT')}
-                  </Text>
+                  <Text style={styles.restaurantLabel}>NHÀ HÀNG CỦA BẠN</Text>
                   <Text style={styles.restaurantName} numberOfLines={2}>
                     {restaurant.name}
                   </Text>
@@ -436,14 +407,19 @@ export default function OwnerHomeScreen() {
                       ]}
                     >
                       {restaurant.isOpen
-                        ? tr('Đang nhận đơn', 'Accepting Orders')
-                        : tr('Đang tạm đóng cửa', 'Temporarily Closed')}
+                        ? 'Đang nhận đơn'
+                        : 'Đang tạm đóng cửa'}
                     </Text>
                   </View>
                 </View>
 
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityLabel={
+                    restaurant.isOpen
+                      ? 'Đóng cửa nhà hàng'
+                      : 'Mở cửa nhà hàng'
+                  }
                   disabled={isTogglingOpen}
                   style={({ pressed }) => [
                     styles.openToggle,
@@ -456,23 +432,15 @@ export default function OwnerHomeScreen() {
                   onPress={() => {
                     Alert.alert(
                       restaurant.isOpen
-                        ? tr('Tạm đóng cửa nhà hàng?', 'Close restaurant?')
-                        : tr('Mở cửa nhà hàng?', 'Open restaurant?'),
+                        ? 'Tạm đóng cửa nhà hàng?'
+                        : 'Mở cửa nhà hàng?',
                       restaurant.isOpen
-                        ? tr(
-                            'Nhà hàng sẽ tạm ngừng nhận đơn mới.',
-                            'Your restaurant will stop receiving new orders.',
-                          )
-                        : tr(
-                            'Nhà hàng sẽ có thể nhận đơn hàng mới.',
-                            'Your restaurant will start receiving new orders.',
-                          ),
+                        ? 'Nhà hàng sẽ tạm ngừng nhận đơn mới.'
+                        : 'Nhà hàng sẽ có thể nhận đơn hàng mới.',
                       [
-                        { text: tr('Hủy', 'Cancel'), style: 'cancel' },
+                        { text: 'Hủy', style: 'cancel' },
                         {
-                          text: restaurant.isOpen
-                            ? tr('Đóng cửa', 'Close')
-                            : tr('Mở cửa', 'Open'),
+                          text: restaurant.isOpen ? 'Đóng cửa' : 'Mở cửa',
                           onPress: () => toggleOpen(),
                         },
                       ],
@@ -481,10 +449,10 @@ export default function OwnerHomeScreen() {
                 >
                   <Text style={styles.openToggleText}>
                     {isTogglingOpen
-                      ? tr('Đang lưu...', 'Saving...')
+                      ? 'Đang lưu...'
                       : restaurant.isOpen
-                        ? tr('Đóng cửa', 'Close')
-                        : tr('Mở cửa', 'Open')}
+                        ? 'Đóng cửa'
+                        : 'Mở cửa'}
                   </Text>
                 </Pressable>
               </View>
@@ -500,10 +468,7 @@ export default function OwnerHomeScreen() {
               >
                 <Text style={styles.editButtonIcon}>✎</Text>
                 <Text style={styles.editButtonText}>
-                  {tr(
-                    'Chỉnh sửa thông tin nhà hàng',
-                    'Edit restaurant information',
-                  )}
+                  Chỉnh sửa thông tin nhà hàng
                 </Text>
                 <Text style={styles.editButtonArrow}>›</Text>
               </Pressable>
@@ -520,9 +485,7 @@ export default function OwnerHomeScreen() {
                   <Text style={styles.statEmoji}>📋</Text>
                 </View>
                 <Text style={styles.statNumber}>{activeOrders.length}</Text>
-                <Text style={styles.statLabel}>
-                  {tr('Đơn đang xử lý', 'Active orders')}
-                </Text>
+                <Text style={styles.statLabel}>Đơn đang xử lý</Text>
               </View>
 
               <View style={styles.statCard}>
@@ -535,22 +498,15 @@ export default function OwnerHomeScreen() {
                   <Text style={styles.statEmoji}>✓</Text>
                 </View>
                 <Text style={styles.statNumber}>{pastOrders.length}</Text>
-                <Text style={styles.statLabel}>
-                  {tr('Đơn đã kết thúc', 'Completed orders')}
-                </Text>
+                <Text style={styles.statLabel}>Đơn đã kết thúc</Text>
               </View>
             </View>
 
             <View style={styles.sectionHeader}>
               <View>
-                <Text style={styles.sectionTitle}>
-                  {tr('Đơn hàng hiện tại', 'Active Orders')}
-                </Text>
+                <Text style={styles.sectionTitle}>Đơn hàng hiện tại</Text>
                 <Text style={styles.sectionSubtitle}>
-                  {tr(
-                    'Các đơn cần theo dõi và xử lý',
-                    'Orders requiring preparation or pickup',
-                  )}
+                  Các đơn cần theo dõi và xử lý
                 </Text>
               </View>
 
@@ -565,16 +521,11 @@ export default function OwnerHomeScreen() {
         ListEmptyComponent={
           <View style={styles.emptyCard}>
             <View style={styles.emptyIcon}>
-              <Text style={styles.emptyEmoji}>🍔</Text>
+              <Text style={styles.emptyEmoji}>🛍️</Text>
             </View>
-            <Text style={styles.emptyTitle}>
-              {tr('Chưa có đơn hàng mới', 'No active orders')}
-            </Text>
+            <Text style={styles.emptyTitle}>Chưa có đơn hàng mới</Text>
             <Text style={styles.emptyDescription}>
-              {tr(
-                'Khi khách hàng đặt món, đơn hàng sẽ xuất hiện tại đây.',
-                'When customers place an order, it will appear right here.',
-              )}
+              Khi khách hàng đặt món, đơn hàng sẽ xuất hiện tại đây.
             </Text>
           </View>
         }
@@ -585,14 +536,9 @@ export default function OwnerHomeScreen() {
             <View style={styles.pastOrdersSection}>
               <View style={styles.sectionHeader}>
                 <View>
-                  <Text style={styles.sectionTitle}>
-                    {tr('Đơn hàng trước đây', 'Recent Past Orders')}
-                  </Text>
+                  <Text style={styles.sectionTitle}>Đơn hàng trước đây</Text>
                   <Text style={styles.sectionSubtitle}>
-                    {tr(
-                      'Tối đa 5 đơn gần nhất trong danh sách',
-                      'Showing up to 5 recent orders',
-                    )}
+                    Tối đa 5 đơn gần nhất trong danh sách
                   </Text>
                 </View>
               </View>
@@ -629,45 +575,56 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   listContent: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
   },
   pageHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 14,
-    paddingBottom: 18,
-    gap: 12,
+    paddingTop: 12,
+    paddingBottom: 20,
   },
   headerTextContainer: {
     flex: 1,
+    paddingRight: 12,
   },
   greeting: {
     color: COLORS.primary,
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.4,
-    marginBottom: 4,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    marginBottom: 6,
   },
   pageTitle: {
     color: COLORS.text,
     fontSize: 25,
-    fontWeight: '900',
+    fontWeight: '800',
     letterSpacing: -0.6,
   },
   pageSubtitle: {
     color: COLORS.muted,
-    fontSize: 12,
-    marginTop: 4,
-    lineHeight: 18,
+    fontSize: 13,
+    marginTop: 6,
+    lineHeight: 19,
+  },
+  headerIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerEmoji: {
+    fontSize: 27,
   },
   restaurantCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: 22,
+    padding: 17,
     borderWidth: 1,
     borderColor: COLORS.border,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   restaurantTopRow: {
     flexDirection: 'row',
@@ -675,17 +632,17 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   restaurantAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
+    width: 54,
+    height: 54,
+    borderRadius: 17,
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   restaurantAvatarText: {
     color: COLORS.primary,
-    fontSize: 22,
-    fontWeight: '900',
+    fontSize: 24,
+    fontWeight: '800',
   },
   restaurantInfo: {
     flex: 1,
@@ -694,14 +651,14 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 0.8,
-    marginBottom: 3,
+    letterSpacing: 1,
+    marginBottom: 4,
   },
   restaurantName: {
     color: COLORS.text,
     fontSize: 16,
     fontWeight: '800',
-    marginBottom: 4,
+    marginBottom: 5,
   },
   openStatusRow: {
     flexDirection: 'row',
@@ -719,8 +676,8 @@ const styles = StyleSheet.create({
   },
   openToggle: {
     paddingHorizontal: 11,
-    paddingVertical: 9,
-    borderRadius: 11,
+    paddingVertical: 10,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -738,15 +695,15 @@ const styles = StyleSheet.create({
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 14,
-    paddingTop: 12,
+    marginTop: 17,
+    paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
-    gap: 8,
+    gap: 9,
   },
   editButtonIcon: {
     color: COLORS.primary,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
   },
   editButtonText: {
@@ -757,66 +714,66 @@ const styles = StyleSheet.create({
   },
   editButtonArrow: {
     color: COLORS.muted,
-    fontSize: 22,
-    lineHeight: 24,
+    fontSize: 25,
+    lineHeight: 27,
   },
   statsRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 22,
+    marginBottom: 25,
   },
   statCard: {
     flex: 1,
     backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    padding: 14,
+    borderRadius: 19,
+    padding: 15,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
   statIcon: {
-    width: 34,
-    height: 34,
+    width: 35,
+    height: 35,
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 11,
   },
   statEmoji: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
     color: COLORS.green,
   },
   statNumber: {
     color: COLORS.text,
-    fontSize: 24,
-    fontWeight: '900',
+    fontSize: 25,
+    fontWeight: '800',
   },
   statLabel: {
     color: COLORS.muted,
     fontSize: 11,
-    marginTop: 3,
+    marginTop: 4,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 13,
   },
   sectionTitle: {
     color: COLORS.text,
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
   },
   sectionSubtitle: {
     color: COLORS.muted,
     fontSize: 12,
-    marginTop: 3,
+    marginTop: 4,
   },
   countBadge: {
-    minWidth: 32,
-    height: 32,
+    minWidth: 33,
+    height: 33,
     paddingHorizontal: 9,
-    borderRadius: 11,
+    borderRadius: 12,
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -824,29 +781,29 @@ const styles = StyleSheet.create({
   countBadgeText: {
     color: COLORS.primary,
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   emptyCard: {
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: 20,
-    paddingHorizontal: 24,
-    paddingVertical: 28,
+    borderRadius: 22,
+    paddingHorizontal: 25,
+    paddingVertical: 30,
     borderWidth: 1,
     borderColor: COLORS.border,
-    marginBottom: 22,
+    marginBottom: 24,
   },
   emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 21,
+    width: 68,
+    height: 68,
+    borderRadius: 23,
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   emptyEmoji: {
-    fontSize: 28,
+    fontSize: 30,
   },
   emptyTitle: {
     color: COLORS.text,
@@ -857,20 +814,20 @@ const styles = StyleSheet.create({
   emptyDescription: {
     color: COLORS.muted,
     fontSize: 13,
-    lineHeight: 19,
+    lineHeight: 20,
     textAlign: 'center',
-    marginTop: 6,
+    marginTop: 7,
   },
   orderSeparator: {
-    height: 10,
+    height: 12,
   },
   orderCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    padding: 15,
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   pastOrderCard: {
     opacity: 0.92,
@@ -888,8 +845,8 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 1,
-    marginBottom: 3,
+    letterSpacing: 1.1,
+    marginBottom: 4,
   },
   orderId: {
     color: COLORS.text,
@@ -901,8 +858,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 9,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingVertical: 7,
+    borderRadius: 10,
   },
   statusText: {
     fontSize: 10,
@@ -911,7 +868,7 @@ const styles = StyleSheet.create({
   orderDivider: {
     height: 1,
     backgroundColor: COLORS.border,
-    marginVertical: 12,
+    marginVertical: 14,
   },
   addressRow: {
     flexDirection: 'row',
@@ -919,18 +876,18 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   addressIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 11,
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   addressIconText: {
     color: COLORS.primary,
-    fontSize: 19,
+    fontSize: 22,
     fontWeight: '700',
-    lineHeight: 22,
+    lineHeight: 25,
   },
   addressContent: {
     flex: 1,
@@ -939,7 +896,7 @@ const styles = StyleSheet.create({
   detailLabel: {
     color: COLORS.muted,
     fontSize: 11,
-    marginBottom: 3,
+    marginBottom: 5,
   },
   orderAddress: {
     color: COLORS.text,
@@ -953,8 +910,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
-    marginTop: 12,
-    paddingTop: 11,
+    marginTop: 14,
+    paddingTop: 12,
   },
   subsidyNote: {
     color: COLORS.green,
@@ -964,18 +921,18 @@ const styles = StyleSheet.create({
   },
   orderTotal: {
     color: COLORS.primary,
-    fontSize: 18,
-    fontWeight: '900',
+    fontSize: 19,
+    fontWeight: '800',
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginTop: 12,
+    marginTop: 14,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 13,
+    borderRadius: 13,
   },
   prepareButton: {
     backgroundColor: COLORS.primary,
@@ -990,16 +947,16 @@ const styles = StyleSheet.create({
   },
   actionArrow: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
   },
   pressed: {
-    opacity: 0.88,
+    opacity: 0.75,
   },
   disabledButton: {
     opacity: 0.55,
   },
   pastOrdersSection: {
-    marginTop: 14,
+    marginTop: 15,
   },
 });

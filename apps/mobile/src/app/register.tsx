@@ -12,15 +12,8 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/auth-context';
-<<<<<<< HEAD
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-=======
-import { useLanguage } from '@/context/language-context';
-import { LanguageSwitch } from '@/components/language-switch';
-import { BURGER_COLORS } from '@/constants/theme';
->>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
 import { router } from 'expo-router';
 import { UserRole } from '@food-delivery/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,7 +23,6 @@ import { GoogleSignInButton } from '@/components/google-sign-in-button';
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const { register } = useAuth();
-  const { isVi, tr } = useLanguage();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -40,14 +32,7 @@ export default function RegisterScreen() {
 
   async function handleRegister() {
     if (!firstName || !lastName || !email || !password) {
-<<<<<<< HEAD
       return Alert.alert('Thiếu thông tin', 'Vui lòng điền đầy đủ thông tin.');
-=======
-      return Alert.alert(
-        tr('Thiếu thông tin', 'Missing information'),
-        tr('Vui lòng điền đầy đủ các trường.', 'Please fill in all fields.'),
-      );
->>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     }
 
     setIsLoading(true);
@@ -60,17 +45,10 @@ export default function RegisterScreen() {
       const message =
         error?.response?.data?.message ??
         error?.message ??
-<<<<<<< HEAD
         'Đã xảy ra lỗi, vui lòng thử lại.';
 
       Alert.alert(
         'Đăng ký thất bại',
-=======
-        tr('Đã có lỗi xảy ra', 'Something went wrong');
-
-      Alert.alert(
-        tr('Đăng ký thất bại', 'Registration failed'),
->>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
         Array.isArray(message) ? message.join('\n') : String(message),
       );
     } finally {
@@ -80,7 +58,6 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-<<<<<<< HEAD
       <StatusBar barStyle="dark-content" backgroundColor="#FFF9F5" />
 
       <KeyboardAvoidingView
@@ -144,42 +121,9 @@ export default function RegisterScreen() {
                 autoCapitalize="words"
                 returnKeyType="next"
               />
-=======
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={BURGER_COLORS.background}
-      />
-
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Top bar */}
-          <View style={styles.topBar}>
-            <View style={styles.brandInline}>
-              <View style={styles.logoSmall}>
-                <Text style={styles.logoEmoji}>🍔</Text>
-              </View>
-              <View>
-                <Text style={styles.brandName}>
-                  deli<Text style={styles.brandAccent}>burger</Text>
-                </Text>
-                <Text style={styles.brandCaption}>
-                  {tr('TẠO TÀI KHOẢN MỚI', 'CREATE NEW ACCOUNT')}
-                </Text>
-              </View>
->>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
             </View>
-
-            <LanguageSwitch />
           </View>
 
-<<<<<<< HEAD
           <View style={styles.nameField}>
             <Text style={styles.label}>Họ</Text>
 
@@ -199,22 +143,9 @@ export default function RegisterScreen() {
                 returnKeyType="next"
               />
             </View>
-=======
-          {/* Heading */}
-          <View style={styles.heading}>
-            <Text style={styles.title}>
-              {tr('Đăng ký tài khoản', 'Create account')}
-            </Text>
-            <Text style={styles.subtitle}>
-              {tr(
-                'Tham gia ngay để thưởng thức burger và món ngon mỗi ngày.',
-                'Join us and discover a world of delicious burgers and food.',
-              )}
-            </Text>
->>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
           </View>
+        </View>
 
-<<<<<<< HEAD
         {/* Email */}
         <Text style={styles.label}>Địa chỉ email</Text>
 
@@ -285,53 +216,27 @@ export default function RegisterScreen() {
                     isSelected && styles.roleIconActive,
                   ]}
                 >
-=======
-          {/* Form Card */}
-          <View style={styles.formCard}>
-            <View style={styles.nameRow}>
-              <View style={styles.nameField}>
-                <Text style={styles.label}>{tr('Tên', 'First name')}</Text>
-                <View style={styles.inputContainer}>
->>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
                   <Ionicons
-                    name="person-outline"
-                    size={18}
-                    color={BURGER_COLORS.muted}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder={tr('Tên', 'First name')}
-                    placeholderTextColor={BURGER_COLORS.faint}
-                    value={firstName}
-                    onChangeText={setFirstName}
-                    autoCapitalize="words"
-                    returnKeyType="next"
+                    name={r.icon}
+                    size={23}
+                    color={isSelected ? '#FFFFFF' : '#8B8289'}
                   />
                 </View>
-              </View>
 
-              <View style={styles.nameField}>
-                <Text style={styles.label}>{tr('Họ', 'Last name')}</Text>
-                <View style={styles.inputContainer}>
-                  <Ionicons
-                    name="person-outline"
-                    size={18}
-                    color={BURGER_COLORS.muted}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder={tr('Họ', 'Last name')}
-                    placeholderTextColor={BURGER_COLORS.faint}
-                    value={lastName}
-                    onChangeText={setLastName}
-                    autoCapitalize="words"
-                    returnKeyType="next"
-                  />
+                <View style={styles.roleInfo}>
+                  <Text
+                    style={[
+                      styles.roleText,
+                      isSelected && styles.roleTextActive,
+                    ]}
+                  >
+                    {r.label}
+                  </Text>
+                  <Text style={styles.roleSubtitle}>
+                    {r.subtitle}
+                  </Text>
                 </View>
-              </View>
-            </View>
 
-<<<<<<< HEAD
                 <Ionicons
                   name={
                     isSelected
@@ -363,50 +268,17 @@ export default function RegisterScreen() {
           ) : (
             <>
               <Text style={styles.buttonText}>Tạo tài khoản</Text>
-=======
-            <Text style={styles.label}>
-              {tr('Địa chỉ Email', 'Email address')}
-            </Text>
-            <View style={styles.inputContainer}>
->>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
               <Ionicons
-                name="mail-outline"
-                size={19}
-                color={BURGER_COLORS.muted}
+                name="arrow-forward"
+                size={20}
+                color="#FFFFFF"
               />
-              <TextInput
-                style={styles.input}
-                placeholder={tr('Nhập email của bạn', 'Enter your email')}
-                placeholderTextColor={BURGER_COLORS.faint}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="next"
-              />
-            </View>
+            </>
+          )}
+        </Pressable>
 
-            <Text style={styles.label}>{tr('Mật khẩu', 'Password')}</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={19}
-                color={BURGER_COLORS.muted}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder={tr('Tạo mật khẩu', 'Create a password')}
-                placeholderTextColor={BURGER_COLORS.faint}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoCapitalize="none"
-                returnKeyType="done"
-              />
-            </View>
+        <GoogleSignInButton role={role} />
 
-<<<<<<< HEAD
         {/* Login link card */}
         <Pressable
           style={({ pressed }) => [
@@ -431,120 +303,6 @@ export default function RegisterScreen() {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
-=======
-            {/* Role selector */}
-            <View style={styles.roleHeading}>
-              <Text style={styles.label}>
-                {tr('Chọn vai trò của bạn', 'Choose your role')}
-              </Text>
-              <Text style={styles.required}>
-                {tr('Bắt buộc', 'Required')}
-              </Text>
-            </View>
-
-            <View style={styles.roleContainer}>
-              {ROLES.map((r) => {
-                const isSelected = role === r.value;
-
-                return (
-                  <Pressable
-                    key={r.value}
-                    style={({ pressed }) => [
-                      styles.roleCard,
-                      isSelected && styles.roleCardActive,
-                      pressed && styles.buttonPressed,
-                    ]}
-                    onPress={() => setRole(r.value)}
-                  >
-                    <View
-                      style={[
-                        styles.roleIcon,
-                        isSelected && styles.roleIconActive,
-                      ]}
-                    >
-                      <Ionicons
-                        name={r.icon}
-                        size={20}
-                        color={isSelected ? '#FFFFFF' : BURGER_COLORS.muted}
-                      />
-                    </View>
-
-                    <View style={styles.roleInfo}>
-                      <Text
-                        style={[
-                          styles.roleText,
-                          isSelected && styles.roleTextActive,
-                        ]}
-                      >
-                        {isVi ? r.labelVi : r.label}
-                      </Text>
-                      <Text style={styles.roleSubtitle}>
-                        {isVi ? r.subtitleVi : r.subtitle}
-                      </Text>
-                    </View>
-
-                    <Ionicons
-                      name={
-                        isSelected ? 'radio-button-on' : 'radio-button-off'
-                      }
-                      size={20}
-                      color={
-                        isSelected
-                          ? BURGER_COLORS.primary
-                          : BURGER_COLORS.border
-                      }
-                    />
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.button,
-                pressed && styles.buttonPressed,
-                isLoading && styles.buttonDisabled,
-              ]}
-              onPress={() => {
-                void handleRegister();
-              }}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <>
-                  <Text style={styles.buttonText}>
-                    {tr('Tạo tài khoản', 'Create Account')}
-                  </Text>
-                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-                </>
-              )}
-            </Pressable>
-
-            <GoogleSignInButton role={role} />
-          </View>
-
-          {/* Login link */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              {tr('Đã có tài khoản?', 'Already have an account?')}
-            </Text>
-
-            <Pressable
-              onPress={() => router.back()}
-              hitSlop={10}
-              style={({ pressed }) => pressed && styles.buttonPressed}
-            >
-              <Text style={styles.loginText}>
-                {' '}
-                {tr('Đăng nhập', 'Log In')}
-              </Text>
-            </Pressable>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
->>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     </SafeAreaView>
   );
 }
@@ -552,10 +310,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: BURGER_COLORS.background,
-  },
-  flex: {
-    flex: 1,
+    backgroundColor: '#FFF9F5',
   },
   keyboardView: {
     flex: 1,
@@ -565,73 +320,62 @@ const styles = StyleSheet.create({
   },
   container: {
     flexGrow: 1,
-    paddingHorizontal: 22,
-    paddingTop: 14,
+    paddingHorizontal: 24,
+    paddingTop: 30,
     paddingBottom: 28,
   },
-  topBar: {
-    flexDirection: 'row',
+  brand: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 25,
   },
-  brandInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  logoSmall: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: BURGER_COLORS.primary,
+  logo: {
+    width: 62,
+    height: 62,
+    borderRadius: 21,
+    backgroundColor: '#FF6B35',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  logoEmoji: {
-    fontSize: 22,
+    marginBottom: 9,
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   brandName: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: BURGER_COLORS.text,
-    letterSpacing: -0.5,
+    fontSize: 27,
+    fontWeight: '800',
+    color: '#29232A',
+    letterSpacing: -0.8,
   },
   brandAccent: {
-    color: BURGER_COLORS.primary,
+    color: '#FF6B35',
   },
   brandCaption: {
     fontSize: 9,
-    fontWeight: '800',
-    color: BURGER_COLORS.muted,
-    letterSpacing: 1,
-    marginTop: 2,
+    fontWeight: '700',
+    color: '#A49AA0',
+    letterSpacing: 2.5,
+    marginTop: 4,
   },
   heading: {
-    marginBottom: 16,
+    marginBottom: 22,
   },
   title: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: BURGER_COLORS.text,
-    letterSpacing: -0.6,
-    marginBottom: 4,
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#29232A',
+    letterSpacing: -0.7,
+    marginBottom: 7,
   },
   subtitle: {
     fontSize: 13,
-    color: BURGER_COLORS.muted,
-    lineHeight: 19,
-  },
-  formCard: {
-    backgroundColor: BURGER_COLORS.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: BURGER_COLORS.border,
-    padding: 16,
+    color: '#8B8289',
+    lineHeight: 20,
   },
   nameRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
   nameField: {
     flex: 1,
@@ -640,68 +384,73 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: BURGER_COLORS.text,
-    marginBottom: 6,
+    color: '#393039',
+    marginBottom: 9,
   },
   inputContainer: {
-    height: 48,
+    minHeight: 53,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: BURGER_COLORS.background,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: BURGER_COLORS.border,
-    borderRadius: 13,
-    paddingHorizontal: 12,
-    marginBottom: 14,
-    gap: 8,
+    borderColor: '#F0E8E3',
+    borderRadius: 15,
+    paddingHorizontal: 13,
+    marginBottom: 17,
+  },
+  inputIcon: {
+    marginRight: 10,
   },
   input: {
     flex: 1,
     minWidth: 0,
-    height: '100%',
+    height: 51,
     fontSize: 13,
-    color: BURGER_COLORS.text,
+    color: '#29232A',
+    paddingVertical: 0,
+    marginLeft: 8,
   },
   roleHeading: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 2,
-    marginBottom: 8,
+    marginBottom: 11,
   },
   required: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
-    color: BURGER_COLORS.faint,
+    color: '#A49AA0',
   },
   roleContainer: {
-    gap: 8,
-    marginBottom: 16,
+    gap: 10,
+    marginBottom: 21,
   },
   roleCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 11,
-    borderRadius: 14,
+    padding: 12,
+    borderRadius: 15,
     borderWidth: 1,
-    borderColor: BURGER_COLORS.border,
-    backgroundColor: BURGER_COLORS.background,
+    borderColor: '#F0E8E3',
+    backgroundColor: '#FFFFFF',
+    minHeight: 72,
   },
   roleCardActive: {
-    borderColor: BURGER_COLORS.primary,
-    backgroundColor: BURGER_COLORS.primaryLight,
+    borderColor: '#FF6B35',
+    backgroundColor: '#FFF0E8',
   },
   roleIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 11,
-    backgroundColor: BURGER_COLORS.surfaceMuted,
+    width: 43,
+    height: 43,
+    borderRadius: 13,
+    backgroundColor: '#F7F3F0',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 12,
   },
   roleIconActive: {
-    backgroundColor: BURGER_COLORS.primary,
+    backgroundColor: '#FF6B35',
   },
   roleInfo: {
     flex: 1,
@@ -709,41 +458,46 @@ const styles = StyleSheet.create({
   roleText: {
     fontSize: 13,
     fontWeight: '700',
-    color: BURGER_COLORS.text,
-    marginBottom: 2,
+    color: '#393039',
+    marginBottom: 4,
   },
   roleTextActive: {
-    color: BURGER_COLORS.primaryDark,
+    color: '#E85B28',
   },
   roleSubtitle: {
     fontSize: 11,
-    color: BURGER_COLORS.muted,
+    color: '#8B8289',
   },
   button: {
-    height: 52,
-    backgroundColor: BURGER_COLORS.primary,
-    borderRadius: 14,
+    minHeight: 55,
+    backgroundColor: '#FF6B35',
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 4,
   },
   buttonPressed: {
-    opacity: 0.88,
+    opacity: 0.85,
+    transform: [{ scale: 0.99 }],
   },
   buttonDisabled: {
-    opacity: 0.65,
+    opacity: 0.7,
   },
   buttonText: {
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   loginCard: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-<<<<<<< HEAD
     gap: 6,
     marginTop: 18,
     paddingVertical: 13,
@@ -778,17 +532,5 @@ const styles = StyleSheet.create({
   bottomNoteText: {
     fontSize: 10,
     color: '#A49AA0',
-=======
-    marginTop: 20,
-  },
-  footerText: {
-    fontSize: 13,
-    color: BURGER_COLORS.muted,
-  },
-  loginText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: BURGER_COLORS.primary,
->>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
 });

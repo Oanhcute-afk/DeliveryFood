@@ -11,29 +11,36 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '@/lib/axios';
 import { Order, RestaurantType } from '@food-delivery/types';
 import { restaurantAmount, voucherSubsidy } from '@/lib/order-amounts';
-import { BURGER_COLORS } from '@/constants/theme';
-import { useLanguage } from '@/context/language-context';
-import { LanguageSwitch } from '@/components/language-switch';
 
 type RestaurantOrder = Order & { items: { id: string }[] };
 
 const COLORS = {
-  primary: BURGER_COLORS.primary,
-  background: BURGER_COLORS.background,
-  surface: BURGER_COLORS.surface,
-  text: BURGER_COLORS.text,
-  muted: BURGER_COLORS.muted,
-  border: BURGER_COLORS.border,
-  green: BURGER_COLORS.success,
+  primary: '#FF6B35',
+  background: '#FFF9F5',
+  surface: '#FFFFFF',
+  text: '#29232A',
+  muted: '#8B8289',
+  border: '#F0E8E3',
+  green: '#22A06B',
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  CONFIRMED: '#2563EB',
-  PREPARING: '#7C3AED',
+  CONFIRMED: '#3B82F6',
+  PREPARING: '#8B5CF6',
   READY: '#0891B2',
-  PICKED_UP: BURGER_COLORS.primary,
-  DELIVERED: BURGER_COLORS.success,
-  CANCELLED: BURGER_COLORS.danger,
+  PICKED_UP: '#FF6B35',
+  DELIVERED: '#22A06B',
+  CANCELLED: '#EF4444',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Chờ xác nhận',
+  CONFIRMED: 'Đã xác nhận',
+  PREPARING: 'Đang chuẩn bị',
+  READY: 'Sẵn sàng',
+  PICKED_UP: 'Đang giao',
+  DELIVERED: 'Đã giao',
+  CANCELLED: 'Đã hủy',
 };
 
 function formatMoney(value: number | string) {
@@ -44,18 +51,6 @@ function formatMoney(value: number | string) {
 }
 
 export default function OwnerAnalyticsScreen() {
-  const { tr, isVi } = useLanguage();
-
-  const statusLabels: Record<string, string> = {
-    PENDING: tr('Chờ xác nhận', 'Pending'),
-    CONFIRMED: tr('Đã xác nhận', 'Confirmed'),
-    PREPARING: tr('Đang chuẩn bị', 'Preparing'),
-    READY: tr('Sẵn sàng', 'Ready'),
-    PICKED_UP: tr('Đang giao', 'Delivering'),
-    DELIVERED: tr('Đã giao', 'Delivered'),
-    CANCELLED: tr('Đã hủy', 'Cancelled'),
-  };
-
   const {
     data: restaurant,
     isLoading: restaurantLoading,
@@ -94,20 +89,6 @@ export default function OwnerAnalyticsScreen() {
     [todayOrders],
   );
 
-  // Thống kê nhanh ở Frontend từ danh sách đơn hiện có; không gọi API mới.
-  const pendingCount = useMemo(
-    () => todayOrders.filter((order) => order.status === 'PENDING').length,
-    [todayOrders],
-  );
-
-  const preparingCount = useMemo(
-    () =>
-      todayOrders.filter(
-        (order) => order.status === 'CONFIRMED' || order.status === 'PREPARING',
-      ).length,
-    [todayOrders],
-  );
-
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
 
@@ -129,9 +110,7 @@ export default function OwnerAnalyticsScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>
-            {tr('Đang tải thống kê...', 'Loading analytics...')}
-          </Text>
+          <Text style={styles.loadingText}>Đang tải thống kê...</Text>
         </View>
       </SafeAreaView>
     );
@@ -151,15 +130,11 @@ export default function OwnerAnalyticsScreen() {
         ListHeaderComponent={
           <View>
             <View style={styles.header}>
-              <View style={styles.headerLeft}>
-                <Text style={styles.eyebrow}>
-                  {tr('TỔNG QUAN NHÀ HÀNG', 'RESTAURANT ANALYTICS')}
-                </Text>
-                <Text style={styles.title}>
-                  {tr('Thống kê hôm nay', "Today's Performance")}
-                </Text>
+              <View>
+                <Text style={styles.eyebrow}>TỔNG QUAN NHÀ HÀNG</Text>
+                <Text style={styles.title}>Thống kê hôm nay</Text>
                 <Text style={styles.date}>
-                  {new Date().toLocaleDateString(isVi ? 'vi-VN' : 'en-US', {
+                  {new Date().toLocaleDateString('vi-VN', {
                     weekday: 'long',
                     day: 'numeric',
                     month: 'long',
@@ -168,19 +143,16 @@ export default function OwnerAnalyticsScreen() {
                 </Text>
               </View>
 
-              <LanguageSwitch />
+              <View style={styles.headerIcon}>
+                <Text style={styles.headerEmoji}>📊</Text>
+              </View>
             </View>
 
             {isError ? (
               <View style={styles.errorCard}>
-                <Text style={styles.errorTitle}>
-                  {tr('Không tải được thống kê', 'Unable to load analytics')}
-                </Text>
+                <Text style={styles.errorTitle}>Không tải được thống kê</Text>
                 <Text style={styles.errorDescription}>
-                  {tr(
-                    'Vui lòng kéo xuống để thử tải lại dữ liệu.',
-                    'Pull down to refresh and try again.',
-                  )}
+                  Vui lòng kéo xuống để thử tải lại dữ liệu.
                 </Text>
               </View>
             ) : (
@@ -192,7 +164,7 @@ export default function OwnerAnalyticsScreen() {
                     </View>
                     <View style={styles.revenueHeading}>
                       <Text style={styles.revenueCaption}>
-                        {tr('DOANH THU HÔM NAY', "TODAY'S REVENUE")}
+                        DOANH THU HÔM NAY
                       </Text>
                       <Text style={styles.revenueAmount}>
                         {formatMoney(totalRevenue)}
@@ -205,10 +177,10 @@ export default function OwnerAnalyticsScreen() {
                   <View style={styles.revenueBottom}>
                     <View>
                       <Text style={styles.revenueSmallLabel}>
-                        {tr('Tổng số đơn', 'Total orders')}
+                        Tổng số đơn
                       </Text>
                       <Text style={styles.revenueSmallValue}>
-                        {todayOrders.length} {tr('đơn', 'orders')}
+                        {todayOrders.length} đơn
                       </Text>
                     </View>
 
@@ -216,60 +188,29 @@ export default function OwnerAnalyticsScreen() {
 
                     <View>
                       <Text style={styles.revenueSmallLabel}>
-                        {tr('Đơn đã giao', 'Delivered')}
+                        Đơn đã giao
                       </Text>
                       <Text style={styles.revenueSmallValue}>
-                        {
-                          todayOrders.filter(
-                            (order) => order.status === 'DELIVERED',
-                          ).length
-                        }{' '}
-                        {tr('đơn', 'orders')}
+                        {todayOrders.filter(
+                          (order) => order.status === 'DELIVERED',
+                        ).length}{' '}
+                        đơn
                       </Text>
                     </View>
-                  </View>
-                </View>
-
-                <View style={styles.quickStatsRow}>
-                  <View style={styles.quickStatCard}>
-                    <View style={styles.quickStatLabelRow}>
-                      <Text style={styles.quickStatEmoji}>⏳</Text>
-                      <Text style={styles.quickStatLabel}>
-                        {tr('Chờ xác nhận', 'Pending')}
-                      </Text>
-                    </View>
-                    <Text style={styles.quickStatValue}>{pendingCount}</Text>
-                    <Text style={styles.quickStatHint}>
-                      {tr('Đơn cần tiếp nhận', 'Awaiting confirmation')}
-                    </Text>
-                  </View>
-                  <View style={styles.quickStatCard}>
-                    <View style={styles.quickStatLabelRow}>
-                      <Text style={styles.quickStatEmoji}>👨‍🍳</Text>
-                      <Text style={styles.quickStatLabel}>
-                        {tr('Đã nhận / đang làm', 'Accepted / preparing')}
-                      </Text>
-                    </View>
-                    <Text style={styles.quickStatValue}>{preparingCount}</Text>
-                    <Text style={styles.quickStatHint}>
-                      {tr('Đơn đang xử lý', 'In progress')}
-                    </Text>
                   </View>
                 </View>
 
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>
-                    {tr('Trạng thái đơn hàng', 'Order Breakdown')}
-                  </Text>
+                  <Text style={styles.sectionTitle}>Trạng thái đơn hàng</Text>
                   <Text style={styles.sectionCount}>
-                    {statusCounts.length} {tr('trạng thái', 'statuses')}
+                    {statusCounts.length} trạng thái
                   </Text>
                 </View>
 
                 {statusCounts.length > 0 ? (
                   <View style={styles.statusCard}>
                     {statusCounts.map(([status, count], index) => {
-                      const color = STATUS_COLORS[status] ?? BURGER_COLORS.muted;
+                      const color = STATUS_COLORS[status] ?? '#999999';
 
                       return (
                         <View
@@ -295,7 +236,7 @@ export default function OwnerAnalyticsScreen() {
                           </View>
 
                           <Text style={styles.statusLabel}>
-                            {statusLabels[status] ?? status}
+                            {STATUS_LABELS[status] ?? status}
                           </Text>
 
                           <View
@@ -320,15 +261,13 @@ export default function OwnerAnalyticsScreen() {
                 ) : (
                   <View style={styles.emptyStatusCard}>
                     <Text style={styles.emptyStatusText}>
-                      {tr('Chưa có đơn hàng nào hôm nay.', 'No orders recorded today.')}
+                      Chưa có đơn hàng nào hôm nay.
                     </Text>
                   </View>
                 )}
 
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>
-                    {tr('Đơn hàng hôm nay', "Today's Orders")}
-                  </Text>
+                  <Text style={styles.sectionTitle}>Đơn hàng hôm nay</Text>
                   <View style={styles.orderCountBadge}>
                     <Text style={styles.orderCountText}>
                       {todayOrders.length}
@@ -340,7 +279,7 @@ export default function OwnerAnalyticsScreen() {
           </View>
         }
         renderItem={({ item }) => {
-          const color = STATUS_COLORS[item.status] ?? BURGER_COLORS.muted;
+          const color = STATUS_COLORS[item.status] ?? '#999999';
 
           return (
             <View style={styles.orderCard}>
@@ -351,10 +290,10 @@ export default function OwnerAnalyticsScreen() {
                   </View>
                   <View>
                     <Text style={styles.orderId}>
-                      {tr('Đơn', 'Order')} #{item.id.slice(0, 8).toUpperCase()}
+                      Đơn #{item.id.slice(0, 8).toUpperCase()}
                     </Text>
                     <Text style={styles.orderItemCount}>
-                      {item.items.length} {tr('món', 'items')}
+                      {item.items.length} món
                     </Text>
                   </View>
                 </View>
@@ -366,7 +305,7 @@ export default function OwnerAnalyticsScreen() {
                   ]}
                 >
                   <Text style={[styles.statusText, { color }]}>
-                    {statusLabels[item.status] ?? item.status}
+                    {STATUS_LABELS[item.status] ?? item.status}
                   </Text>
                 </View>
               </View>
@@ -375,15 +314,11 @@ export default function OwnerAnalyticsScreen() {
 
               <View style={styles.orderFooter}>
                 <View>
-                  <Text style={styles.orderTotalLabel}>
-                    {tr('Nhà hàng nhận', 'Restaurant payout')}
-                  </Text>
+                  <Text style={styles.orderTotalLabel}>Nhà hàng nhận</Text>
                   {voucherSubsidy(item) > 0 ? (
                     <Text style={styles.subsidyNote}>
-                      {tr(
-                        `Khách dùng voucher ${item.voucherCode ?? ''} · app bù ${formatMoney(voucherSubsidy(item))}`,
-                        `Voucher ${item.voucherCode ?? ''} · platform subsidy ${formatMoney(voucherSubsidy(item))}`,
-                      )}
+                      Khách dùng voucher {item.voucherCode ?? ''} · app bù{' '}
+                      {formatMoney(voucherSubsidy(item))}
                     </Text>
                   ) : null}
                 </View>
@@ -398,16 +333,11 @@ export default function OwnerAnalyticsScreen() {
           !isError ? (
             <View style={styles.emptyOrders}>
               <View style={styles.emptyIllustration}>
-                <Text style={styles.emptyEmoji}>🍔</Text>
+                <Text style={styles.emptyEmoji}>🍽️</Text>
               </View>
-              <Text style={styles.emptyTitle}>
-                {tr('Chưa có đơn hàng', 'No orders today')}
-              </Text>
+              <Text style={styles.emptyTitle}>Chưa có đơn hàng</Text>
               <Text style={styles.emptyDescription}>
-                {tr(
-                  'Đơn hàng phát sinh hôm nay sẽ xuất hiện tại đây.',
-                  'Orders placed today will appear here.',
-                )}
+                Đơn hàng phát sinh hôm nay sẽ xuất hiện tại đây.
               </Text>
             </View>
           ) : null
@@ -423,8 +353,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   listContent: {
-    paddingHorizontal: 18,
-    paddingTop: 14,
+    paddingHorizontal: 20,
+    paddingTop: 12,
     paddingBottom: 36,
     flexGrow: 1,
   },
@@ -440,38 +370,50 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
-    gap: 12,
-  },
-  headerLeft: {
-    flex: 1,
+    marginBottom: 22,
   },
   eyebrow: {
     color: COLORS.primary,
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.4,
-    marginBottom: 4,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    marginBottom: 7,
   },
   title: {
-    fontSize: 26,
-    fontWeight: '900',
+    fontSize: 27,
+    fontWeight: '800',
     color: COLORS.text,
     letterSpacing: -0.6,
   },
   date: {
     color: COLORS.muted,
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 13,
+    marginTop: 7,
     textTransform: 'capitalize',
+  },
+  headerIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: '#FFEBE1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerEmoji: {
+    fontSize: 25,
   },
   revenueCard: {
     backgroundColor: COLORS.primary,
-    borderRadius: 22,
-    padding: 20,
-    marginBottom: 24,
+    borderRadius: 24,
+    padding: 22,
+    marginBottom: 28,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 5,
   },
   revenueTop: {
     flexDirection: 'row',
@@ -479,36 +421,36 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   revenueIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 50,
+    height: 50,
+    borderRadius: 17,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   revenueEmoji: {
-    fontSize: 24,
+    fontSize: 25,
   },
   revenueHeading: {
     flex: 1,
   },
   revenueCaption: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 10,
+    color: '#FFE9DD',
+    fontSize: 11,
     fontWeight: '800',
     letterSpacing: 1,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   revenueAmount: {
     color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '900',
+    fontSize: 29,
+    fontWeight: '800',
     letterSpacing: -0.5,
   },
   revenueDivider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    marginVertical: 16,
+    backgroundColor: 'rgba(255,255,255,0.28)',
+    marginVertical: 20,
   },
   revenueBottom: {
     flexDirection: 'row',
@@ -516,70 +458,31 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
   },
   revenueSmallLabel: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 11,
-    marginBottom: 4,
+    color: '#FFE9DD',
+    fontSize: 12,
+    marginBottom: 6,
   },
   revenueSmallValue: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
   },
   revenueBottomDivider: {
     width: 1,
-    height: 32,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  quickStatsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  quickStatCard: {
-    flex: 1,
-    minWidth: 0,
-    padding: 14,
-    borderRadius: 18,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  quickStatLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 10,
-  },
-  quickStatEmoji: {
-    fontSize: 17,
-  },
-  quickStatLabel: {
-    flex: 1,
-    color: COLORS.muted,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  quickStatValue: {
-    color: COLORS.primary,
-    fontSize: 27,
-    fontWeight: '900',
-    marginBottom: 3,
-  },
-  quickStatHint: {
-    color: COLORS.muted,
-    fontSize: 11,
-    lineHeight: 16,
+    height: 34,
+    backgroundColor: 'rgba(255,255,255,0.28)',
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   sectionTitle: {
     color: COLORS.text,
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
+    letterSpacing: -0.3,
   },
   sectionCount: {
     color: COLORS.muted,
@@ -587,51 +490,51 @@ const styles = StyleSheet.create({
   },
   statusCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    paddingHorizontal: 15,
+    borderRadius: 20,
+    paddingHorizontal: 16,
     paddingVertical: 4,
     borderWidth: 1,
     borderColor: COLORS.border,
-    marginBottom: 24,
+    marginBottom: 28,
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 11,
+    paddingVertical: 12,
     gap: 12,
   },
   statusRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: '#F6F0EC',
   },
   statusIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 11,
+    width: 34,
+    height: 34,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
   },
   statusLabel: {
     flex: 1,
     color: COLORS.text,
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
   },
   statusCountBadge: {
-    minWidth: 30,
-    height: 28,
-    paddingHorizontal: 8,
-    borderRadius: 9,
+    minWidth: 32,
+    height: 30,
+    paddingHorizontal: 9,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   statusCount: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
   },
   emptyStatusCard: {
@@ -639,8 +542,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: 18,
-    padding: 18,
-    marginBottom: 24,
+    padding: 20,
+    marginBottom: 28,
   },
   emptyStatusText: {
     color: COLORS.muted,
@@ -654,7 +557,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: BURGER_COLORS.primaryLight,
+    backgroundColor: '#FFEBE1',
   },
   orderCountText: {
     color: COLORS.primary,
@@ -663,9 +566,9 @@ const styles = StyleSheet.create({
   },
   orderCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    padding: 15,
-    marginBottom: 10,
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
@@ -682,15 +585,15 @@ const styles = StyleSheet.create({
     gap: 11,
   },
   orderIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 13,
-    backgroundColor: BURGER_COLORS.primaryLight,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: '#FFF0E8',
     alignItems: 'center',
     justifyContent: 'center',
   },
   orderEmoji: {
-    fontSize: 19,
+    fontSize: 20,
   },
   orderId: {
     color: COLORS.text,
@@ -699,22 +602,23 @@ const styles = StyleSheet.create({
   },
   orderItemCount: {
     color: COLORS.muted,
-    fontSize: 11,
-    marginTop: 3,
+    fontSize: 12,
+    marginTop: 4,
   },
   statusBadge: {
-    borderRadius: 999,
+    borderRadius: 10,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 7,
+    maxWidth: 145,
   },
   statusText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
   },
   orderDivider: {
     height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 12,
+    backgroundColor: '#F4EDE8',
+    marginVertical: 14,
   },
   orderFooter: {
     flexDirection: 'row',
@@ -727,7 +631,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   subsidyNote: {
-    color: COLORS.green,
+    color: '#16A36A',
     fontSize: 11,
     fontWeight: '700',
     marginTop: 2,
@@ -735,51 +639,51 @@ const styles = StyleSheet.create({
   orderTotal: {
     color: COLORS.primary,
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   emptyOrders: {
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingTop: 26,
-    paddingBottom: 32,
+    paddingTop: 30,
+    paddingBottom: 36,
   },
   emptyIllustration: {
-    width: 78,
-    height: 78,
-    borderRadius: 26,
-    backgroundColor: BURGER_COLORS.primaryLight,
+    width: 84,
+    height: 84,
+    borderRadius: 28,
+    backgroundColor: '#FFEBE1',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 18,
   },
   emptyEmoji: {
-    fontSize: 34,
+    fontSize: 38,
   },
   emptyTitle: {
     color: COLORS.text,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   emptyDescription: {
     color: COLORS.muted,
     fontSize: 13,
     textAlign: 'center',
-    lineHeight: 19,
+    lineHeight: 20,
   },
   errorCard: {
     backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: BURGER_COLORS.dangerLight,
+    borderColor: '#FECACA',
     borderRadius: 18,
-    padding: 18,
-    marginBottom: 18,
+    padding: 20,
+    marginBottom: 20,
   },
   errorTitle: {
-    color: BURGER_COLORS.danger,
+    color: '#DC2626',
     fontSize: 15,
     fontWeight: '800',
-    marginBottom: 5,
+    marginBottom: 6,
   },
   errorDescription: {
     color: COLORS.muted,
