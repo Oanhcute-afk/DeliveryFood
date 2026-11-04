@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -55,7 +55,15 @@ export default function DriverActiveScreen() {
     refetchInterval: 4000,
   });
 
-  const activeOrder = activeOrders[0] ?? null;
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+
+  const activeOrder = useMemo(() => {
+    if (selectedOrderId) {
+      const found = activeOrders.find((o) => o.id === selectedOrderId);
+      if (found) return found;
+    }
+    return activeOrders[0] ?? null;
+  }, [activeOrders, selectedOrderId]);
 
   function stopTracking() {
     locationWatchRef.current?.remove();
@@ -309,6 +317,48 @@ export default function DriverActiveScreen() {
           </View>
         </View>
 
+        {/* Bộ chọn đơn khi tài xế có nhiều đơn đang giao */}
+        {activeOrders.length > 1 && (
+          <View style={styles.orderSelectorContainer}>
+            <Text style={styles.orderSelectorLabel}>
+              Đang giao ({activeOrders.length} đơn) - Chạm để chọn đơn:
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.orderSelectorScroll}
+            >
+              {activeOrders.map((ord) => {
+                const isSelected = ord.id === activeOrder?.id;
+                return (
+                  <Pressable
+                    key={ord.id}
+                    style={[
+                      styles.orderSelectorTab,
+                      isSelected && styles.orderSelectorTabActive,
+                    ]}
+                    onPress={() => setSelectedOrderId(ord.id)}
+                  >
+                    <Ionicons
+                      name={isSelected ? 'bicycle' : 'bicycle-outline'}
+                      size={16}
+                      color={isSelected ? '#FFFFFF' : '#FF6B35'}
+                    />
+                    <Text
+                      style={[
+                        styles.orderSelectorTabText,
+                        isSelected && styles.orderSelectorTabTextActive,
+                      ]}
+                    >
+                      Đơn #{ord.id.slice(0, 8).toUpperCase()}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Trạng thái giao hàng */}
         <View style={styles.statusBanner}>
           <View style={styles.statusIcon}>
@@ -527,7 +577,8 @@ export default function DriverActiveScreen() {
       <OrderChatModal
         visible={isChatVisible}
         onClose={() => setIsChatVisible(false)}
-        orderId={activeOrder.id}
+        orderId={activeOrder?.id ?? ''}
+        currentUserName={user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : 'Tài xế'}
         currentUserRole="DRIVER"
         currentUserId={user?.id}
         otherPartyName={customerName}
@@ -1037,5 +1088,46 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
     color: '#8B8289',
+  },
+  orderSelectorContainer: {
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#F0E8E3',
+  },
+  orderSelectorLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8B8289',
+    marginBottom: 8,
+  },
+  orderSelectorScroll: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  orderSelectorTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: '#FFF0E8',
+    borderWidth: 1,
+    borderColor: '#FCD8C8',
+  },
+  orderSelectorTabActive: {
+    backgroundColor: '#FF6B35',
+    borderColor: '#FF6B35',
+  },
+  orderSelectorTabText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FF6B35',
+  },
+  orderSelectorTabTextActive: {
+    color: '#FFFFFF',
   },
 });
