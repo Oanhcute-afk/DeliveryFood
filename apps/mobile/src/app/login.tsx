@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -11,12 +12,14 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/auth-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { GoogleSignInButton } from '@/components/google-sign-in-button';
 
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,11 +55,23 @@ export default function LoginScreen() {
     >
       <StatusBar barStyle="dark-content" backgroundColor="#FFF9F5" />
 
-      <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          {
+            paddingTop: Math.max(insets.top, 16) + 10,
+            paddingBottom: Math.max(insets.bottom, 16) + 16,
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={false}
+      >
         {/* Brand */}
         <View style={styles.brand}>
           <View style={styles.logo}>
-            <Ionicons name="fast-food" size={35} color="#FFFFFF" />
+            <Ionicons name="fast-food" size={30} color="#FFFFFF" />
           </View>
 
           <Text style={styles.brandName}>
@@ -82,7 +97,7 @@ export default function LoginScreen() {
           <View style={styles.inputContainer}>
             <Ionicons
               name="mail-outline"
-              size={21}
+              size={20}
               color="#99929A"
               style={styles.inputIcon}
             />
@@ -103,7 +118,7 @@ export default function LoginScreen() {
           <View style={styles.inputContainer}>
             <Ionicons
               name="lock-closed-outline"
-              size={21}
+              size={20}
               color="#99929A"
               style={styles.inputIcon}
             />
@@ -136,7 +151,7 @@ export default function LoginScreen() {
                 <Text style={styles.buttonText}>Đăng nhập</Text>
                 <Ionicons
                   name="arrow-forward"
-                  size={20}
+                  size={19}
                   color="#FFFFFF"
                 />
               </>
@@ -163,14 +178,14 @@ export default function LoginScreen() {
         <View style={styles.bottomNote}>
           <Ionicons
             name="heart"
-            size={13}
+            size={12}
             color="#FF6B35"
           />
           <Text style={styles.bottomNoteText}>
             Dành trọn tâm huyết cho tín đồ ẩm thực
           </Text>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -181,83 +196,82 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF9F5',
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 26,
-    paddingVertical: 32,
+    paddingHorizontal: 24,
   },
   brand: {
     alignItems: 'center',
-    marginBottom: 38,
+    marginBottom: 18,
   },
   logo: {
-    width: 76,
-    height: 76,
-    borderRadius: 25,
+    width: 62,
+    height: 62,
+    borderRadius: 20,
     backgroundColor: '#FF6B35',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 10,
     shadowColor: '#FF6B35',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
-    shadowRadius: 14,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 4,
   },
   brandName: {
-    fontSize: 31,
+    fontSize: 28,
     fontWeight: '800',
     color: '#29232A',
-    letterSpacing: -1,
+    letterSpacing: -0.8,
   },
   brandAccent: {
     color: '#FF6B35',
   },
   brandCaption: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '700',
     color: '#A49AA0',
-    letterSpacing: 3,
-    marginTop: 5,
+    letterSpacing: 2.5,
+    marginTop: 4,
   },
   heading: {
-    marginBottom: 28,
+    marginBottom: 18,
   },
   title: {
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: '800',
     color: '#29232A',
-    letterSpacing: -0.8,
-    marginBottom: 10,
+    letterSpacing: -0.6,
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13.5,
     color: '#8B8289',
-    lineHeight: 22,
+    lineHeight: 20,
   },
   form: {
     width: '100%',
   },
   label: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700',
     color: '#393039',
-    marginBottom: 10,
-    marginTop: 5,
+    marginBottom: 6,
+    marginTop: 4,
   },
   inputContainer: {
-    height: 58,
+    height: 50,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#F0E8E3',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    marginBottom: 20,
+    borderRadius: 15,
+    paddingHorizontal: 14,
+    marginBottom: 14,
   },
   inputIcon: {
-    marginRight: 12,
+    marginRight: 10,
   },
   input: {
     flex: 1,
@@ -266,19 +280,19 @@ const styles = StyleSheet.create({
     color: '#29232A',
   },
   button: {
-    height: 58,
+    height: 52,
     backgroundColor: '#FF6B35',
-    borderRadius: 17,
+    borderRadius: 15,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
-    gap: 12,
+    marginTop: 8,
+    gap: 10,
     shadowColor: '#FF6B35',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 3,
   },
   buttonPressed: {
     opacity: 0.85,
@@ -288,7 +302,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
   },
@@ -296,7 +310,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 30,
+    marginTop: 18,
   },
   footerText: {
     fontSize: 13,
@@ -312,7 +326,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
-    marginTop: 35,
+    marginTop: 14,
   },
   bottomNoteText: {
     fontSize: 11,

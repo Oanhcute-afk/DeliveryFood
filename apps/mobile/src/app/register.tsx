@@ -13,6 +13,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { useAuth } from '@/context/auth-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { UserRole } from '@food-delivery/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +21,7 @@ import { ROLES } from '@/constants/roles';
 import { GoogleSignInButton } from '@/components/google-sign-in-button';
 
 export default function RegisterScreen() {
+  const insets = useSafeAreaInsets();
   const { register } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -62,9 +64,16 @@ export default function RegisterScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#FFF9F5" />
 
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[
+          styles.container,
+          {
+            paddingTop: Math.max(insets.top, 16) + 10,
+            paddingBottom: Math.max(insets.bottom, 16) + 16,
+          },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        bounces={true}
       >
         {/* Brand */}
         <View style={styles.brand}>

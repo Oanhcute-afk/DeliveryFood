@@ -2,6 +2,7 @@ import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StripeProvider } from '@stripe/stripe-react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AuthProvider, useAuth } from '@/context/auth-context';
@@ -47,15 +48,17 @@ function RootNavigator() {
 
 export default function TabLayout() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <StripeProvider
-        publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!}
-      >
-        <AuthProvider>
-          <AnimatedSplashOverlay />
-          <RootNavigator />
-        </AuthProvider>
-      </StripeProvider>
-    </QueryClientProvider>
+    <SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        <StripeProvider
+          publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!}
+        >
+          <AuthProvider>
+            <AnimatedSplashOverlay />
+            <RootNavigator />
+          </AuthProvider>
+        </StripeProvider>
+      </QueryClientProvider>
+    </SafeAreaProvider>
   );
 }

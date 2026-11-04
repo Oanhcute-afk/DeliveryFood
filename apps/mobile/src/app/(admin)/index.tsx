@@ -54,7 +54,11 @@ export default function AdminOverviewScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -273,10 +277,11 @@ function BarList({ rows }: { rows: { label: string; value: number }[] }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  scroll: { flex: 1 },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: TAB_BAR_OFFSET + 20,
+    paddingTop: 16,
+    paddingBottom: 28,
   },
   loader: { marginTop: 40 },
   account: {
@@ -338,7 +343,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   tile: {
-    width: '48.5%',
+    width: '48%',
     flexGrow: 1,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
