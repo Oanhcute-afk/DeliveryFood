@@ -94,20 +94,6 @@ export default function OwnerAnalyticsScreen() {
     [todayOrders],
   );
 
-  // Thống kê nhanh ở Frontend từ danh sách đơn hiện có; không gọi API mới.
-  const pendingCount = useMemo(
-    () => todayOrders.filter((order) => order.status === 'PENDING').length,
-    [todayOrders],
-  );
-
-  const preparingCount = useMemo(
-    () =>
-      todayOrders.filter(
-        (order) => order.status === 'CONFIRMED' || order.status === 'PREPARING',
-      ).length,
-    [todayOrders],
-  );
-
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
 
@@ -225,33 +211,6 @@ export default function OwnerAnalyticsScreen() {
                         {tr('đơn', 'orders')}
                       </Text>
                     </View>
-                  </View>
-                </View>
-
-                <View style={styles.quickStatsRow}>
-                  <View style={styles.quickStatCard}>
-                    <View style={styles.quickStatLabelRow}>
-                      <Text style={styles.quickStatEmoji}>⏳</Text>
-                      <Text style={styles.quickStatLabel}>
-                        {tr('Chờ xác nhận', 'Pending')}
-                      </Text>
-                    </View>
-                    <Text style={styles.quickStatValue}>{pendingCount}</Text>
-                    <Text style={styles.quickStatHint}>
-                      {tr('Đơn cần tiếp nhận', 'Awaiting confirmation')}
-                    </Text>
-                  </View>
-                  <View style={styles.quickStatCard}>
-                    <View style={styles.quickStatLabelRow}>
-                      <Text style={styles.quickStatEmoji}>👨‍🍳</Text>
-                      <Text style={styles.quickStatLabel}>
-                        {tr('Đã nhận / đang làm', 'Accepted / preparing')}
-                      </Text>
-                    </View>
-                    <Text style={styles.quickStatValue}>{preparingCount}</Text>
-                    <Text style={styles.quickStatHint}>
-                      {tr('Đơn đang xử lý', 'In progress')}
-                    </Text>
                   </View>
                 </View>
 
@@ -527,46 +486,6 @@ const styles = StyleSheet.create({
     width: 1,
     height: 32,
     backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  quickStatsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  quickStatCard: {
-    flex: 1,
-    minWidth: 0,
-    padding: 14,
-    borderRadius: 18,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  quickStatLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 10,
-  },
-  quickStatEmoji: {
-    fontSize: 17,
-  },
-  quickStatLabel: {
-    flex: 1,
-    color: COLORS.muted,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  quickStatValue: {
-    color: COLORS.primary,
-    fontSize: 27,
-    fontWeight: '900',
-    marginBottom: 3,
-  },
-  quickStatHint: {
-    color: COLORS.muted,
-    fontSize: 11,
-    lineHeight: 16,
   },
   sectionHeader: {
     flexDirection: 'row',

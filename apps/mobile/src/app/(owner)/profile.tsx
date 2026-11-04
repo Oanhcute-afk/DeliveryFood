@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { router } from 'expo-router';
 import {
   ActivityIndicator,
   Alert,
@@ -131,42 +130,6 @@ export default function ProfileScreen() {
                 tr('Thành viên', 'Member')}
             </Text>
           </View>
-        </View>
-
-        <Text style={styles.sectionTitle}>
-          {tr('Truy cập nhanh', 'Quick Actions')}
-        </Text>
-        <View style={styles.quickActions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={tr('Mở quản lý đơn hàng', 'Open order management')}
-            onPress={() => router.navigate('/(owner)/(index)')}
-            style={({ pressed }) => [styles.quickActionCard, pressed && styles.pressed]}
-          >
-            <View style={styles.quickActionIcon}>
-              <Text style={styles.quickActionEmoji}>📦</Text>
-            </View>
-            <Text style={styles.quickActionTitle}>{tr('Đơn hàng', 'Orders')}</Text>
-            <Text style={styles.quickActionDescription}>
-              {tr('Xem và xử lý đơn', 'View and manage')}
-            </Text>
-            <Text style={styles.quickActionArrow}>→</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={tr('Mở quản lý thực đơn', 'Open menu management')}
-            onPress={() => router.navigate('/(owner)/menu')}
-            style={({ pressed }) => [styles.quickActionCard, pressed && styles.pressed]}
-          >
-            <View style={styles.quickActionIcon}>
-              <Text style={styles.quickActionEmoji}>🍽️</Text>
-            </View>
-            <Text style={styles.quickActionTitle}>{tr('Thực đơn', 'Menu')}</Text>
-            <Text style={styles.quickActionDescription}>
-              {tr('Quản lý món ăn', 'Manage dishes')}
-            </Text>
-            <Text style={styles.quickActionArrow}>→</Text>
-          </Pressable>
         </View>
 
         <Text style={styles.sectionTitle}>
@@ -352,50 +315,6 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 12,
     fontWeight: '800',
-  },
-  quickActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 22,
-  },
-  quickActionCard: {
-    flex: 1,
-    minWidth: 0,
-    backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 15,
-  },
-  quickActionIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primaryLight,
-    marginBottom: 10,
-  },
-  quickActionEmoji: {
-    fontSize: 20,
-  },
-  quickActionTitle: {
-    color: COLORS.text,
-    fontSize: 15,
-    fontWeight: '800',
-    marginBottom: 3,
-  },
-  quickActionDescription: {
-    color: COLORS.muted,
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  quickActionArrow: {
-    alignSelf: 'flex-end',
-    color: COLORS.primary,
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: 3,
   },
   langWrap: {
     marginBottom: 22,
