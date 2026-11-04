@@ -11,9 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LanguageSwitch } from '@/components/language-switch';
 import { useAuth } from '@/context/auth-context';
-import { useLanguage } from '@/context/language-context';
 import {
   adminApi,
   errorMessage,
@@ -29,25 +27,24 @@ import {
 
 const TAB_BAR_OFFSET = 88;
 
-const ROLE_LABELS: Record<string, { vi: string; en: string }> = {
-  CUSTOMER: { vi: 'Khách hàng', en: 'Customers' },
-  RESTAURANT_OWNER: { vi: 'Chủ nhà hàng', en: 'Restaurant Owners' },
-  DRIVER: { vi: 'Tài xế', en: 'Drivers' },
+const ROLE_LABELS: Record<string, string> = {
+  CUSTOMER: 'Khách hàng',
+  RESTAURANT_OWNER: 'Chủ nhà hàng',
+  DRIVER: 'Tài xế',
 };
 
-const STATUS_LABELS: Record<string, { vi: string; en: string }> = {
-  PENDING: { vi: 'Chờ thanh toán', en: 'Pending Payment' },
-  CONFIRMED: { vi: 'Đã xác nhận', en: 'Confirmed' },
-  PREPARING: { vi: 'Đang nấu', en: 'Preparing' },
-  READY: { vi: 'Chờ lấy hàng', en: 'Ready for Pickup' },
-  PICKED_UP: { vi: 'Đang giao', en: 'Out for Delivery' },
-  DELIVERED: { vi: 'Đã giao', en: 'Delivered' },
-  CANCELLED: { vi: 'Đã huỷ', en: 'Cancelled' },
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Chờ thanh toán',
+  CONFIRMED: 'Đã xác nhận',
+  PREPARING: 'Đang nấu',
+  READY: 'Chờ lấy hàng',
+  PICKED_UP: 'Đang giao',
+  DELIVERED: 'Đã giao',
+  CANCELLED: 'Đã huỷ',
 };
 
 export default function AdminOverviewScreen() {
   const { user, logout } = useAuth();
-  const { tr } = useLanguage();
   const { data, isLoading, isRefetching, refetch, error } = useQuery({
     queryKey: ['admin-overview'],
     queryFn: adminApi.overview,
@@ -57,7 +54,11 @@ export default function AdminOverviewScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -67,12 +68,9 @@ export default function AdminOverviewScreen() {
         }
       >
         <ScreenHeader
-          title={tr('Tổng quan', 'Overview')}
-          subtitle={tr(
-            'Hoạt động của toàn bộ ứng dụng',
-            'Platform-wide activity and metrics',
-          )}
-          emoji="🍔"
+          title="Tổng quan"
+          subtitle="Hoạt động của toàn bộ ứng dụng"
+          emoji="📊"
         />
 
         <Pressable
@@ -83,14 +81,9 @@ export default function AdminOverviewScreen() {
             <Ionicons name="pulse" size={22} color="#FFFFFF" />
           </View>
           <View style={styles.monitorText}>
-            <Text style={styles.monitorTitle}>
-              {tr('Mở trang Monitor', 'Open Live Monitor')}
-            </Text>
+            <Text style={styles.monitorTitle}>Mở trang Monitor</Text>
             <Text style={styles.monitorSubtitle}>
-              {tr(
-                'Lượng truy cập, tốc độ API và lỗi server',
-                'Traffic volume, API latency, and server errors',
-              )}
+              Lượng truy cập, tốc độ API và lỗi server
             </Text>
           </View>
           <Ionicons name="open-outline" size={20} color="#FFFFFF" />
@@ -101,105 +94,74 @@ export default function AdminOverviewScreen() {
         ) : error ? (
           <EmptyState text={errorMessage(error)} />
         ) : data && !data.ok ? (
-          <EmptyState
-            text={tr(
-              `Không đọc được database: ${data.error}`,
-              `Database error: ${data.error}`,
-            )}
-          />
+          <EmptyState text={`Không đọc được database: ${data.error}`} />
         ) : data?.ok ? (
           <>
             <View style={styles.tiles}>
               <Tile
-                label={tr('Người dùng', 'Total Users')}
+                label="Người dùng"
                 value={String(
                   data.users.total - (data.users.byRole.ADMIN ?? 0),
                 )}
-                sub={tr(
-                  `+${data.users.new24h} trong 24 giờ`,
-                  `+${data.users.new24h} in last 24h`,
-                )}
+                sub={`+${data.users.new24h} trong 24 giờ`}
               />
               <Tile
-                label={tr('Tài xế online', 'Online Drivers')}
+                label="Tài xế online"
                 value={String(data.driversOnline)}
-                sub={tr(
-                  `trên ${data.users.byRole.DRIVER ?? 0} tài xế`,
-                  `of ${data.users.byRole.DRIVER ?? 0} drivers`,
-                )}
+                sub={`trên ${data.users.byRole.DRIVER ?? 0} tài xế`}
               />
               <Tile
-                label={tr('Nhà hàng mở cửa', 'Open Restaurants')}
+                label="Nhà hàng mở cửa"
                 value={String(data.restaurants.open)}
-                sub={tr(
-                  `trên ${data.restaurants.total} nhà hàng`,
-                  `of ${data.restaurants.total} restaurants`,
-                )}
+                sub={`trên ${data.restaurants.total} nhà hàng`}
               />
               <Tile
-                label={tr('Đơn đã thanh toán', 'Paid Orders (24h)')}
+                label="Đơn đã thanh toán"
                 value={String(data.orders.paid24h)}
-                sub={tr(
-                  `${data.orders.paid7d} đơn trong 7 ngày`,
-                  `${data.orders.paid7d} orders in 7 days`,
-                )}
+                sub={`${data.orders.paid7d} đơn trong 7 ngày`}
               />
               <Tile
-                label={tr('Doanh thu 24 giờ', 'Revenue (24h)')}
+                label="Doanh thu 24 giờ"
                 value={formatUsd(data.orders.revenue24h)}
-                sub={tr(
-                  `${formatUsd(data.orders.revenue7d)} / 7 ngày`,
-                  `${formatUsd(data.orders.revenue7d)} / 7 days`,
-                )}
+                sub={`${formatUsd(data.orders.revenue7d)} / 7 ngày`}
               />
               <Tile
-                label={tr('App bù voucher 24 giờ', 'Voucher Spend (24h)')}
+                label="App bù voucher 24 giờ"
                 value={formatUsd(data.orders.voucherCost24h)}
-                sub={tr(
-                  `${formatUsd(data.orders.voucherCost7d)} / 7 ngày`,
-                  `${formatUsd(data.orders.voucherCost7d)} / 7 days`,
-                )}
+                sub={`${formatUsd(data.orders.voucherCost7d)} / 7 ngày`}
               />
               <Tile
-                label={tr('Đăng nhập Google', 'Google Sign-In')}
+                label="Đăng nhập Google"
                 value={
                   data.users.googleLinked == null
                     ? '–'
                     : String(data.users.googleLinked)
                 }
-                sub={tr('tài khoản đã liên kết', 'linked accounts')}
+                sub="tài khoản đã liên kết"
               />
             </View>
 
             <Card style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                {tr('Số đơn mỗi ngày', 'Daily Orders')}
-              </Text>
-              <Text style={styles.sectionDesc}>
-                {tr('7 ngày gần nhất', 'Last 7 days')}
-              </Text>
+              <Text style={styles.sectionTitle}>Số đơn mỗi ngày</Text>
+              <Text style={styles.sectionDesc}>7 ngày gần nhất</Text>
               <DailyBars days={data.orders.perDay} />
             </Card>
 
             <Card style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                {tr('Người dùng theo vai trò', 'Users by Role')}
-              </Text>
+              <Text style={styles.sectionTitle}>Người dùng theo vai trò</Text>
               <BarList
                 rows={Object.keys(ROLE_LABELS).map((key) => ({
-                  label: tr(ROLE_LABELS[key].vi, ROLE_LABELS[key].en),
+                  label: ROLE_LABELS[key],
                   value: data.users.byRole[key] ?? 0,
                 }))}
               />
             </Card>
 
             <Card style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                {tr('Đơn hàng theo trạng thái', 'Orders by Status')}
-              </Text>
+              <Text style={styles.sectionTitle}>Đơn hàng theo trạng thái</Text>
               <BarList
                 rows={Object.keys(STATUS_LABELS).map((key) => ({
-                  label: tr(STATUS_LABELS[key].vi, STATUS_LABELS[key].en),
+                  label: STATUS_LABELS[key],
                   value: data.orders.byStatus[key] ?? 0,
                 }))}
               />
@@ -207,18 +169,12 @@ export default function AdminOverviewScreen() {
           </>
         ) : null}
 
-        <View style={styles.languageWrap}>
-          <LanguageSwitch variant="card" />
-        </View>
-
         <Card style={styles.account}>
           <View style={styles.accountIcon}>
             <Ionicons name="shield-checkmark" size={20} color="#FFFFFF" />
           </View>
           <View style={styles.accountInfo}>
-            <Text style={styles.accountLabel}>
-              {tr('Quản trị viên', 'Administrator')}
-            </Text>
+            <Text style={styles.accountLabel}>Quản trị viên</Text>
             <Text style={styles.accountEmail} numberOfLines={1}>
               {user?.email}
             </Text>
@@ -226,15 +182,12 @@ export default function AdminOverviewScreen() {
           <Pressable
             onPress={() =>
               Alert.alert(
-                tr('Đăng xuất?', 'Sign out?'),
-                tr(
-                  'Bạn sẽ cần đăng nhập lại để quản trị.',
-                  'You will need to sign in again to access admin tools.',
-                ),
+                'Đăng xuất?',
+                'Bạn sẽ cần đăng nhập lại để quản trị.',
                 [
-                  { text: tr('Huỷ', 'Cancel'), style: 'cancel' },
+                  { text: 'Huỷ', style: 'cancel' },
                   {
-                    text: tr('Đăng xuất', 'Sign Out'),
+                    text: 'Đăng xuất',
                     style: 'destructive',
                     onPress: () => void logout(),
                   },
@@ -244,9 +197,7 @@ export default function AdminOverviewScreen() {
             style={({ pressed }) => [styles.logout, pressed && styles.pressed]}
           >
             <Ionicons name="log-out-outline" size={18} color={COLORS.red} />
-            <Text style={styles.logoutText}>
-              {tr('Đăng xuất', 'Sign Out')}
-            </Text>
+            <Text style={styles.logoutText}>Đăng xuất</Text>
           </Pressable>
         </Card>
       </ScrollView>
@@ -326,21 +277,18 @@ function BarList({ rows }: { rows: { label: string; value: number }[] }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  scroll: { flex: 1 },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: TAB_BAR_OFFSET + 20,
+    paddingTop: 16,
+    paddingBottom: 28,
   },
   loader: { marginTop: 40 },
-  languageWrap: {
-    marginTop: 4,
-    marginBottom: 12,
-  },
   account: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginTop: 2,
+    marginTop: 6,
   },
   accountIcon: {
     width: 40,
@@ -363,7 +311,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.redLight,
   },
   logoutText: { fontSize: 13, fontWeight: '800', color: COLORS.red },
-  pressed: { opacity: 0.88 },
+  pressed: { opacity: 0.85 },
   monitor: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -395,7 +343,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   tile: {
-    width: '48.5%',
+    width: '48%',
     flexGrow: 1,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
@@ -432,14 +380,14 @@ const styles = StyleSheet.create({
   barTrack: { flex: 1, width: '100%', justifyContent: 'flex-end' },
   barFill: {
     width: '100%',
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#E85B28',
     borderTopLeftRadius: 4,
     borderTopRightRadius: 4,
   },
   barLabel: { fontSize: 10, color: COLORS.faint, marginTop: 6 },
   list: { gap: 10, marginTop: 12 },
   listRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  listLabel: { width: 116, fontSize: 13, color: COLORS.textSoft },
+  listLabel: { width: 104, fontSize: 13, color: COLORS.textSoft },
   listTrack: {
     flex: 1,
     height: 10,
@@ -447,7 +395,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryLight,
     overflow: 'hidden',
   },
-  listFill: { height: '100%', borderRadius: 5, backgroundColor: COLORS.primary },
+  listFill: { height: '100%', borderRadius: 5, backgroundColor: '#E85B28' },
   listValue: {
     width: 40,
     textAlign: 'right',

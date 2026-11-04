@@ -47,13 +47,18 @@ export class OrdersController {
 
   @Patch(':id/status')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.RESTAURANT_OWNER, UserRole.DRIVER)
+  @Roles(UserRole.RESTAURANT_OWNER, UserRole.DRIVER, UserRole.CUSTOMER)
   updateStatus(
     @Param('id') id: string,
     @Request() req: AuthRequest,
     @Body() dto: UpdateStatusDto,
   ) {
-    return this.ordersService.updateStatus(id, dto.status, req.user);
+    return this.ordersService.updateStatus(
+      id,
+      dto.status,
+      req.user,
+      dto.cancelReason,
+    );
   }
 
   @Get(':id')

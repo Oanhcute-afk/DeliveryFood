@@ -1,6 +1,6 @@
 export default {
   expo: {
-    name: 'mobile',
+    name: 'deliFood',
     slug: 'mobile',
     version: '1.0.0',
     orientation: 'portrait',
@@ -9,14 +9,14 @@ export default {
     userInterfaceStyle: 'automatic',
 
     ios: {
-      icon: './assets/expo.icon',
+      icon: './assets/images/icon.png',
       bundleIdentifier: 'com.oanh.fooddelivery',
     },
 
     android: {
-      package: 'com.oanh.fooddelivery',
+      package: 'com.loopoen.fooddelivery',
       adaptiveIcon: {
-        backgroundColor: '#E6F4FE',
+        backgroundColor: '#FF6B35',
         foregroundImage: './assets/images/android-icon-foreground.png',
         backgroundImage: './assets/images/android-icon-background.png',
         monochromeImage: './assets/images/android-icon-monochrome.png',
@@ -38,10 +38,10 @@ export default {
       [
         'expo-splash-screen',
         {
-          backgroundColor: '#208AEF',
+          backgroundColor: '#FF6B35',
           android: {
             image: './assets/images/splash-icon.png',
-            imageWidth: 76,
+            imageWidth: 160,
           },
         },
       ],
@@ -56,18 +56,19 @@ export default {
         'expo-location',
         {
           locationWhenInUsePermission:
-            'Allow Food Delivery to use your location for delivery tracking.',
+            'Allow deliFood to use your location for delivery tracking.',
           locationAlwaysPermission:
-            'Allow Food Delivery to track your location in the background while delivering.',
+            'Allow deliFood to track your location in the background while delivering.',
         },
       ],
     ],
 
-        experiments: {
+    experiments: {
       typedRoutes: true,
       reactCompiler: true,
     },
 
+    // Project EAS: https://expo.dev/accounts/oanhcute-afk/projects/mobile
     owner: 'oanhcute-afk',
     extra: {
       eas: {

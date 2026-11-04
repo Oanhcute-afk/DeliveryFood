@@ -35,6 +35,11 @@ export class MenuController {
     return this.menuService.createCategory(req.user.sub, dto);
   }
 
+  @Get('categories')
+  getAllCategories() {
+    return this.menuService.getAllPublicCategories();
+  }
+
   @Get('categories/:restaurantId')
   getCategories(@Param('restaurantId') restaurantId: string) {
     return this.menuService.getCategories(restaurantId);

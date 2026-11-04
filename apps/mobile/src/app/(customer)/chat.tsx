@@ -21,79 +21,57 @@ import {
   type ChatCard,
   type ChatMessage,
 } from '@/lib/chat-api';
-import { BURGER_COLORS } from '@/constants/theme';
-import { useLanguage } from '@/context/language-context';
-import { LanguageSwitch } from '@/components/language-switch';
 
 const COLORS = {
-  background: BURGER_COLORS.background,
-  white: BURGER_COLORS.surface,
-  primary: BURGER_COLORS.primary,
-  primaryDark: BURGER_COLORS.primaryDark,
-  primaryLight: BURGER_COLORS.primaryLight,
-  text: BURGER_COLORS.text,
-  textSoft: BURGER_COLORS.textSoft,
-  muted: BURGER_COLORS.muted,
-  faint: BURGER_COLORS.faint,
-  border: BURGER_COLORS.border,
-  green: BURGER_COLORS.success,
-  red: BURGER_COLORS.danger,
+  background: '#FFF9F5',
+  white: '#FFFFFF',
+  primary: '#FF6B35',
+  primaryDark: '#D94D20',
+  primaryLight: '#FFF0E8',
+  text: '#29232A',
+  textSoft: '#4A4249',
+  muted: '#8B8289',
+  faint: '#A49AA0',
+  border: '#F0E8E3',
+  green: '#16A34A',
+  red: '#E5484D',
 };
 
-const WELCOME_ID = 'welcome';
+const WELCOME: ChatMessage = {
+  id: 'welcome',
+  role: 'assistant',
+  text: 'Xin chào! Mình là **Deli** 👋\nMình có thể gợi ý món bán chạy, quán được đánh giá cao, quán gần bạn hoặc voucher đang có. Hôm nay bạn muốn ăn gì?',
+};
+
+const SUGGESTIONS = [
+  { label: '🔥 Món bán chạy nhất', text: 'Món nào đang bán chạy nhất?' },
+  {
+    label: '⭐ Quán đánh giá cao',
+    text: 'Quán nào được đánh giá tốt nhất?',
+  },
+  { label: '📍 Quán gần tôi', text: 'Có quán nào ngon gần tôi không?' },
+  { label: '🎟️ Voucher đang có', text: 'Đang có voucher nào không?' },
+  { label: '💸 Món dưới $5', text: 'Gợi ý món ngon dưới $5' },
+];
 
 const NEARBY_PATTERN = /gần|quanh đây|xung quanh|near/i;
+
+const areaLabel = (area: ChatArea) =>
+  [area.district ?? area.subregion, area.city ?? area.region]
+    .filter(Boolean)
+    .join(', ') || 'Vị trí hiện tại';
 
 let nextId = 0;
 const newId = () => `m${Date.now()}-${nextId++}`;
 
 export default function ChatScreen() {
-  const { tr } = useLanguage();
-
-  const welcomeMessage: ChatMessage = {
-    id: WELCOME_ID,
-    role: 'assistant',
-    text: tr(
-      'Xin chào! Mình là **Deli** 👋\nMình có thể gợi ý món bán chạy, quán được đánh giá cao, quán gần bạn hoặc voucher đang có. Hôm nay bạn muốn ăn gì?',
-      'Hello! I am **Deli** 👋\nI can recommend best-selling burgers & dishes, top-rated restaurants, nearby spots, or active vouchers. What are you craving today?',
-    ),
-  };
-
-  const suggestions = [
-    {
-      label: tr('🔥 Món bán chạy nhất', '🔥 Best sellers'),
-      text: tr('Món nào đang bán chạy nhất?', 'What are the best-selling dishes?'),
-    },
-    {
-      label: tr('⭐ Quán đánh giá cao', '⭐ Top rated spots'),
-      text: tr('Quán nào được đánh giá tốt nhất?', 'Which restaurants have the highest ratings?'),
-    },
-    {
-      label: tr('📍 Quán gần tôi', '📍 Near me'),
-      text: tr('Có quán nào ngon gần tôi không?', 'Are there any good restaurants near me?'),
-    },
-    {
-      label: tr('🎟️ Voucher đang có', '🎟️ Active vouchers'),
-      text: tr('Đang có voucher nào không?', 'Are there any active vouchers right now?'),
-    },
-    {
-      label: tr('💸 Món dưới $5', '💸 Under $5'),
-      text: tr('Gợi ý món ngon dưới $5', 'Suggest delicious dishes under $5'),
-    },
-  ];
-
-  const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage]);
+  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [area, setArea] = useState<ChatArea | null>(null);
   const [locating, setLocating] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
-
-  const areaLabel = (a: ChatArea) =>
-    [a.district ?? a.subregion, a.city ?? a.region]
-      .filter(Boolean)
-      .join(', ') || tr('Vị trí hiện tại', 'Current location');
 
   async function locate() {
     setLocating(true);
@@ -124,10 +102,11 @@ export default function ChatScreen() {
     setSending(true);
 
     try {
+      // Khách hỏi "gần đây" mà chưa có vị trí → xin quyền vị trí trước
       const location =
         area ?? (NEARBY_PATTERN.test(content) ? await locate() : null);
       const res = await chatApi.send(
-        next.filter((m) => m.id !== WELCOME_ID),
+        next.filter((m) => m.id !== WELCOME.id),
         location ?? undefined,
       );
       setMessages((prev) => [
@@ -144,10 +123,7 @@ export default function ChatScreen() {
       setError(
         typeof message === 'string'
           ? message
-          : tr(
-              'Không kết nối được trợ lý. Bạn thử lại nhé!',
-              'Could not reach assistant. Please try again!',
-            ),
+          : 'Không kết nối được trợ lý. Bạn thử lại nhé!',
       );
     } finally {
       setSending(false);
@@ -157,6 +133,7 @@ export default function ChatScreen() {
   function retry() {
     const lastUser = [...messages].reverse().find((m) => m.role === 'user');
     if (!lastUser) return;
+    // Gửi lại câu hỏi cuối (bỏ bản cũ để không bị lặp)
     void send(
       lastUser.text,
       messages.filter((m) => m.id !== lastUser.id),
@@ -165,7 +142,7 @@ export default function ChatScreen() {
 
   function openRestaurant(card: ChatCard) {
     router.push({
-      pathname: '/(customer)/(home)/restaurant/[id]',
+      pathname: '/(customer)/(tabs)/(home)/restaurant/[id]',
       params: { id: card.restaurantId },
     });
   }
@@ -179,20 +156,16 @@ export default function ChatScreen() {
           onPress={() => router.back()}
           hitSlop={10}
           style={styles.back}
-          accessibilityLabel={tr('Quay lại', 'Back')}
+          accessibilityLabel="Quay lại"
         >
           <Ionicons name="chevron-back" size={24} color={COLORS.text} />
         </Pressable>
         <View style={styles.avatar}>
-          <Ionicons name="sparkles" size={18} color="#FFFFFF" />
+          <Ionicons name="sparkles" size={20} color="#FFFFFF" />
         </View>
         <View style={styles.headerText}>
-          <Text style={styles.title} numberOfLines={1}>
-            {tr('Trợ lý Deli', 'Deli AI Assistant')}
-          </Text>
-          <Text style={styles.subtitle} numberOfLines={1}>
-            {tr('Tư vấn món ngon bằng AI', 'AI food recommendations')}
-          </Text>
+          <Text style={styles.title}>Trợ lý Deli</Text>
+          <Text style={styles.subtitle}>Tư vấn món ngon bằng AI</Text>
         </View>
         <Pressable
           onPress={() => void locate()}
@@ -202,14 +175,14 @@ export default function ChatScreen() {
             area && styles.locationChipActive,
             pressed && styles.pressed,
           ]}
-          accessibilityLabel={tr('Dùng vị trí hiện tại', 'Use current location')}
+          accessibilityLabel="Dùng vị trí hiện tại"
         >
           {locating ? (
             <ActivityIndicator size="small" color={COLORS.primary} />
           ) : (
             <Ionicons
               name={area ? 'location' : 'location-outline'}
-              size={14}
+              size={15}
               color={area ? COLORS.primaryDark : COLORS.muted}
             />
           )}
@@ -217,10 +190,9 @@ export default function ChatScreen() {
             style={[styles.locationText, area && styles.locationTextActive]}
             numberOfLines={1}
           >
-            {area ? areaLabel(area) : tr('Vị trí', 'Location')}
+            {area ? areaLabel(area) : 'Bật vị trí'}
           </Text>
         </Pressable>
-        <LanguageSwitch />
       </View>
 
       <KeyboardAvoidingView
@@ -236,48 +208,41 @@ export default function ChatScreen() {
             scrollRef.current?.scrollToEnd({ animated: true })
           }
         >
-          {messages.map((m) => {
-            const displayText =
-              m.id === WELCOME_ID ? welcomeMessage.text : m.text;
-            return (
-              <View key={m.id}>
-                <View
-                  style={[
-                    styles.bubble,
-                    m.role === 'user' ? styles.userBubble : styles.botBubble,
-                  ]}
-                >
-                  <RichText
-                    text={displayText}
-                    color={m.role === 'user' ? '#FFFFFF' : COLORS.text}
-                  />
-                </View>
-                {m.cards?.length ? (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.cards}
-                  >
-                    {m.cards.map((card) => (
-                      <SuggestionCard
-                        key={card.id}
-                        card={card}
-                        closedLabel={tr('Đóng cửa', 'Closed')}
-                        onPress={() => openRestaurant(card)}
-                      />
-                    ))}
-                  </ScrollView>
-                ) : null}
+          {messages.map((m) => (
+            <View key={m.id}>
+              <View
+                style={[
+                  styles.bubble,
+                  m.role === 'user' ? styles.userBubble : styles.botBubble,
+                ]}
+              >
+                <RichText
+                  text={m.text}
+                  color={m.role === 'user' ? '#FFFFFF' : COLORS.text}
+                />
               </View>
-            );
-          })}
+              {m.cards?.length ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.cards}
+                >
+                  {m.cards.map((card) => (
+                    <SuggestionCard
+                      key={card.id}
+                      card={card}
+                      onPress={() => openRestaurant(card)}
+                    />
+                  ))}
+                </ScrollView>
+              ) : null}
+            </View>
+          ))}
 
           {sending ? (
             <View style={[styles.bubble, styles.botBubble, styles.typing]}>
               <ActivityIndicator size="small" color={COLORS.primary} />
-              <Text style={styles.typingText}>
-                {tr('Deli đang tìm món cho bạn…', 'Deli is finding dishes for you…')}
-              </Text>
+              <Text style={styles.typingText}>Deli đang tìm món cho bạn…</Text>
             </View>
           ) : null}
 
@@ -286,14 +251,14 @@ export default function ChatScreen() {
               <Ionicons name="alert-circle" size={18} color={COLORS.red} />
               <Text style={styles.errorText}>{error}</Text>
               <Pressable onPress={retry} hitSlop={8}>
-                <Text style={styles.retry}>{tr('Thử lại', 'Retry')}</Text>
+                <Text style={styles.retry}>Thử lại</Text>
               </Pressable>
             </View>
           ) : null}
 
           {showSuggestions ? (
             <View style={styles.suggestions}>
-              {suggestions.map((s) => (
+              {SUGGESTIONS.map((s) => (
                 <Pressable
                   key={s.label}
                   onPress={() => void send(s.text)}
@@ -314,7 +279,7 @@ export default function ChatScreen() {
             style={styles.input}
             value={input}
             onChangeText={setInput}
-            placeholder={tr('Hỏi Deli về món ăn…', 'Ask Deli about dishes…')}
+            placeholder="Hỏi Deli về món ăn…"
             placeholderTextColor={COLORS.faint}
             multiline
             maxLength={500}
@@ -328,16 +293,13 @@ export default function ChatScreen() {
               (!input.trim() || sending) && styles.sendDisabled,
               pressed && styles.pressed,
             ]}
-            accessibilityLabel={tr('Gửi', 'Send')}
+            accessibilityLabel="Gửi"
           >
             <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
           </Pressable>
         </View>
         <Text style={styles.disclaimer}>
-          {tr(
-            'Câu trả lời do AI tạo, dựa trên dữ liệu món ăn trong app.',
-            'AI-generated responses based on in-app menu data.',
-          )}
+          Câu trả lời do AI tạo, dựa trên dữ liệu món ăn trong app.
         </Text>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -375,11 +337,9 @@ function RichText({ text, color }: { text: string; color: string }) {
 
 function SuggestionCard({
   card,
-  closedLabel,
   onPress,
 }: {
   card: ChatCard;
-  closedLabel: string;
   onPress: () => void;
 }) {
   return (
@@ -396,7 +356,7 @@ function SuggestionCard({
       ) : (
         <View style={[styles.cardImage, styles.cardPlaceholder]}>
           <Text style={styles.cardEmoji}>
-            {card.type === 'item' ? '🍔' : '🏪'}
+            {card.type === 'item' ? '🍲' : '🏪'}
           </Text>
         </View>
       )}
@@ -417,7 +377,7 @@ function SuggestionCard({
             <Text style={styles.cardRating}>★ {card.rating.toFixed(1)}</Text>
           ) : null}
           {!card.isOpen ? (
-            <Text style={styles.cardClosed}>{closedLabel}</Text>
+            <Text style={styles.cardClosed}>Đóng cửa</Text>
           ) : null}
         </View>
       </View>
@@ -428,11 +388,11 @@ function SuggestionCard({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   flex: { flex: 1 },
-  pressed: { opacity: 0.88 },
+  pressed: { opacity: 0.85 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderBottomWidth: 1,
@@ -441,23 +401,23 @@ const styles = StyleSheet.create({
   },
   back: { padding: 4 },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerText: { flex: 1, minWidth: 0 },
-  title: { fontSize: 15, fontWeight: '900', color: COLORS.text },
+  title: { fontSize: 16, fontWeight: '900', color: COLORS.text },
   subtitle: { fontSize: 11, color: COLORS.muted, marginTop: 1 },
   locationChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    maxWidth: 115,
+    maxWidth: 140,
     height: 32,
-    paddingHorizontal: 9,
+    paddingHorizontal: 10,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -522,13 +482,13 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   cardPrice: { fontSize: 13, fontWeight: '900', color: COLORS.primaryDark },
-  cardRating: { fontSize: 11, fontWeight: '800', color: '#D97706' },
+  cardRating: { fontSize: 11, fontWeight: '800', color: '#D99000' },
   cardClosed: { fontSize: 10, fontWeight: '800', color: COLORS.red },
   error: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: BURGER_COLORS.dangerLight,
+    backgroundColor: '#FDECEC',
     borderRadius: 14,
     padding: 12,
   },
@@ -545,7 +505,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.primary,
     backgroundColor: COLORS.white,
   },
   suggestionText: {

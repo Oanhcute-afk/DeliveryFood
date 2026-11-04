@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -12,14 +11,39 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { api } from '@/lib/axios';
 import { Order } from '@food-delivery/types';
-import { BURGER_COLORS } from '@/constants/theme';
-import { useLanguage } from '@/context/language-context';
-import { LanguageSwitch } from '@/components/language-switch';
-
-type DeliveryFilter = 'ALL' | 'IN_PROGRESS' | 'DELIVERED' | 'CANCELLED';
 
 type DriverOrder = Order & {
   restaurant: { id: string; name: string };
+};
+
+const STATUS_CONFIG: Record<
+  string,
+  { label: string; color: string; background: string; emoji: string }
+> = {
+  READY: {
+    label: 'Chờ lấy hàng',
+    color: '#B7791F',
+    background: '#FFF4D9',
+    emoji: '📦',
+  },
+  PICKED_UP: {
+    label: 'Đang giao',
+    color: '#FF6B35',
+    background: '#FFF0E8',
+    emoji: '🛵',
+  },
+  DELIVERED: {
+    label: 'Đã giao',
+    color: '#168653',
+    background: '#E9F8EF',
+    emoji: '✓',
+  },
+  CANCELLED: {
+    label: 'Đã hủy',
+    color: '#DC2626',
+    background: '#FEF2F2',
+    emoji: '×',
+  },
 };
 
 function DeliveryCard({
@@ -29,53 +53,19 @@ function DeliveryCard({
   order: DriverOrder;
   onPress?: () => void;
 }) {
-  const { tr, isVi } = useLanguage();
+  const status =
+    STATUS_CONFIG[order.status] ?? {
+      label: order.status,
+      color: '#8B8289',
+      background: '#F5F0EC',
+      emoji: '•',
+    };
 
-  const statusConfig: Record<
-    string,
-    { label: string; color: string; background: string; emoji: string }
-  > = {
-    READY: {
-      label: tr('Chờ lấy hàng', 'Ready for Pickup'),
-      color: '#B45309',
-      background: BURGER_COLORS.cheeseLight,
-      emoji: '📦',
-    },
-    PICKED_UP: {
-      label: tr('Đang giao', 'Delivering'),
-      color: BURGER_COLORS.primary,
-      background: BURGER_COLORS.primaryLight,
-      emoji: '🛵',
-    },
-    DELIVERED: {
-      label: tr('Đã giao', 'Delivered'),
-      color: BURGER_COLORS.success,
-      background: BURGER_COLORS.successLight,
-      emoji: '✓',
-    },
-    CANCELLED: {
-      label: tr('Đã hủy', 'Cancelled'),
-      color: BURGER_COLORS.danger,
-      background: BURGER_COLORS.dangerLight,
-      emoji: '×',
-    },
-  };
-
-  const status = statusConfig[order.status] ?? {
-    label: order.status,
-    color: BURGER_COLORS.muted,
-    background: BURGER_COLORS.surfaceMuted,
-    emoji: '•',
-  };
-
-  const date = new Date(order.createdAt).toLocaleDateString(
-    isVi ? 'vi-VN' : 'en-US',
-    {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    },
-  );
+  const date = new Date(order.createdAt).toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 
   const isActive = order.status === 'PICKED_UP';
 
@@ -89,20 +79,23 @@ function DeliveryCard({
       onPress={onPress}
       disabled={!isActive}
       accessibilityRole={isActive ? 'button' : undefined}
+      accessibilityLabel={
+        isActive
+          ? `Mở đơn đang giao từ ${order.restaurant.name}`
+          : `Đơn hàng từ ${order.restaurant.name}, ${status.label}`
+      }
     >
       {isActive ? <View style={styles.activeAccent} /> : null}
 
       <View style={styles.cardHeader}>
         <View style={styles.restaurantIcon}>
-          <Text style={styles.restaurantEmoji}>🍔</Text>
+          <Text style={styles.restaurantEmoji}>🍴</Text>
         </View>
 
         <View style={styles.restaurantInfo}>
-          <Text style={styles.restaurantLabel}>
-            {tr('NHÀ HÀNG', 'RESTAURANT')}
-          </Text>
+          <Text style={styles.restaurantLabel}>NHÀ HÀNG</Text>
           <Text style={styles.restaurant} numberOfLines={1}>
-            {order.restaurant?.name ?? tr('Nhà hàng', 'Restaurant')}
+            {order.restaurant.name}
           </Text>
         </View>
 
@@ -126,9 +119,7 @@ function DeliveryCard({
           <Text style={styles.addressEmoji}>📍</Text>
         </View>
         <View style={styles.addressContent}>
-          <Text style={styles.addressLabel}>
-            {tr('GIAO ĐẾN', 'DELIVER TO')}
-          </Text>
+          <Text style={styles.addressLabel}>GIAO ĐẾN</Text>
           <Text style={styles.address} numberOfLines={2}>
             {order.deliveryAddress}
           </Text>
@@ -144,9 +135,7 @@ function DeliveryCard({
         </View>
 
         <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>
-            {tr('Tổng đơn', 'Order total')}
-          </Text>
+          <Text style={styles.totalLabel}>Tổng đơn</Text>
           <Text style={styles.total}>
             ${Number(order.totalAmount).toFixed(2)}
           </Text>
@@ -155,9 +144,7 @@ function DeliveryCard({
 
       {isActive ? (
         <View style={styles.tapHintContainer}>
-          <Text style={styles.tapHint}>
-            {tr('Xem hành trình giao hàng', 'View active delivery route')}
-          </Text>
+          <Text style={styles.tapHint}>Xem hành trình giao hàng</Text>
           <Text style={styles.tapArrow}>›</Text>
         </View>
       ) : null}
@@ -166,9 +153,12 @@ function DeliveryCard({
 }
 
 export default function DriverHistoryScreen() {
-  const { tr } = useLanguage();
-  const [selectedFilter, setSelectedFilter] = useState<DeliveryFilter>('ALL');
-  const { data: orders = [], isLoading } = useQuery<DriverOrder[]>({
+  const {
+    data: orders = [],
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useQuery<DriverOrder[]>({
     queryKey: ['driver-orders'],
     queryFn: () => api.get<DriverOrder[]>('/orders/mine').then((r) => r.data),
   });
@@ -185,46 +175,14 @@ export default function DriverHistoryScreen() {
     (order) => order.status === 'PICKED_UP',
   ).length;
 
-  // Bộ lọc chỉ thay đổi danh sách hiển thị, không ảnh hưởng dữ liệu/API.
-  const cancelledCount = orders.filter(
-    (order) => order.status === 'CANCELLED',
-  ).length;
-  const filters: { key: DeliveryFilter; label: string; count: number }[] = [
-    { key: 'ALL', label: tr('Tất cả', 'All'), count: orders.length },
-    {
-      key: 'IN_PROGRESS',
-      label: tr('Đang xử lý', 'In progress'),
-      count: inProgressCount,
-    },
-    {
-      key: 'DELIVERED',
-      label: tr('Đã giao', 'Delivered'),
-      count: deliveredCount,
-    },
-    {
-      key: 'CANCELLED',
-      label: tr('Đã hủy', 'Cancelled'),
-      count: cancelledCount,
-    },
-  ];
-  const filteredOrders = orders.filter((order) => {
-    if (selectedFilter === 'ALL') return true;
-    if (selectedFilter === 'IN_PROGRESS') {
-      return order.status === 'READY' || order.status === 'PICKED_UP';
-    }
-    return order.status === selectedFilter;
-  });
-
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centered}>
           <View style={styles.loadingIcon}>
-            <ActivityIndicator size="large" color={BURGER_COLORS.primary} />
+            <ActivityIndicator size="large" color="#FF6B35" />
           </View>
-          <Text style={styles.loadingText}>
-            {tr('Đang tải lịch sử giao hàng...', 'Loading delivery history...')}
-          </Text>
+          <Text style={styles.loadingText}>Đang tải lịch sử giao hàng...</Text>
         </View>
       </SafeAreaView>
     );
@@ -233,39 +191,36 @@ export default function DriverHistoryScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <FlatList
-        data={filteredOrders}
+        data={orders}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
+        refreshing={isRefetching}
+        onRefresh={() => void refetch()}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           <View>
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.headerTextContainer}>
-                <Text style={styles.eyebrow}>
-                  {tr('TRUNG TÂM TÀI XẾ', 'DRIVER HUB')}
-                </Text>
-                <Text style={styles.title}>
-                  {tr('Lịch sử giao hàng', 'Delivery History')}
-                </Text>
+                <Text style={styles.eyebrow}>TRUNG TÂM TÀI XẾ</Text>
+                <Text style={styles.title}>Lịch sử giao hàng</Text>
                 <Text style={styles.subtitle}>
-                  {tr(
-                    'Theo dõi các đơn hàng và thành quả giao hàng của bạn.',
-                    'Track your completed trips and delivery performance.',
-                  )}
+                  Theo dõi các đơn hàng và thành quả giao hàng của bạn.
                 </Text>
               </View>
 
-              <LanguageSwitch />
+              <View style={styles.headerIcon}>
+                <Text style={styles.headerEmoji}>🛵</Text>
+              </View>
             </View>
 
             {/* Thống kê */}
             <View style={styles.statsHeader}>
-              <Text style={styles.sectionTitle}>
-                {tr('Tổng quan', 'Overview')}
-              </Text>
+              <Text style={styles.sectionTitle}>Tổng quan</Text>
               <Text style={styles.statsCaption}>
-                {orders.length} {tr('đơn hàng', 'orders')}
+                {orders.length} đơn hàng
               </Text>
             </View>
 
@@ -277,9 +232,8 @@ export default function DriverHistoryScreen() {
                 <Text style={styles.summaryValueLight}>
                   {inProgressCount}
                 </Text>
-                <Text style={styles.summaryLabelLight}>
-                  {tr('Đang xử lý', 'In Progress')}
-                </Text>
+                <Text style={styles.summaryLabelLight}>Đang xử lý</Text>
+                <View style={styles.summaryBottomLine} />
               </View>
 
               <View style={[styles.summaryCard, styles.completedCard]}>
@@ -287,71 +241,24 @@ export default function DriverHistoryScreen() {
                   <Text style={styles.summaryEmoji}>✓</Text>
                 </View>
                 <Text style={styles.summaryValue}>{deliveredCount}</Text>
-                <Text style={styles.summaryLabel}>
-                  {tr('Đã hoàn thành', 'Completed')}
-                </Text>
+                <Text style={styles.summaryLabel}>Đã hoàn thành</Text>
+                <View style={styles.completedBottomLine} />
               </View>
-            </View>
-
-            {/* Bộ lọc trực quan theo trạng thái đơn giao */}
-            <View style={styles.filtersRow}>
-              {filters.map((filter) => {
-                const isSelected = selectedFilter === filter.key;
-                return (
-                  <Pressable
-                    key={filter.key}
-                    onPress={() => setSelectedFilter(filter.key)}
-                    style={({ pressed }) => [
-                      styles.filterChip,
-                      isSelected && styles.filterChipSelected,
-                      pressed && styles.filterChipPressed,
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={`${filter.label}: ${filter.count}`}
-                  >
-                    <Text
-                      style={[
-                        styles.filterChipText,
-                        isSelected && styles.filterChipTextSelected,
-                      ]}
-                    >
-                      {filter.label}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.filterCount,
-                        isSelected && styles.filterCountSelected,
-                      ]}
-                    >
-                      {filter.count}
-                    </Text>
-                  </Pressable>
-                );
-              })}
             </View>
 
             {/* Danh sách đơn */}
             <View style={styles.listHeader}>
               <View>
-                <Text style={styles.sectionTitle}>
-                  {tr('Các đơn hàng', 'All Deliveries')}
-                </Text>
+                <Text style={styles.sectionTitle}>Các đơn hàng</Text>
                 <Text style={styles.listSubtitle}>
                   {activeCount > 0
-                    ? tr(
-                        `${activeCount} đơn đang trên đường giao`,
-                        `${activeCount} active delivery in progress`,
-                      )
-                    : tr(
-                        'Danh sách các đơn được giao cho bạn',
-                        'Orders assigned to your account',
-                      )}
+                    ? `${activeCount} đơn đang trên đường giao`
+                    : 'Danh sách các đơn được giao cho bạn'}
                 </Text>
               </View>
 
               <View style={styles.orderCountBadge}>
-                <Text style={styles.orderCountText}>{filteredOrders.length}</Text>
+                <Text style={styles.orderCountText}>{orders.length}</Text>
               </View>
             </View>
           </View>
@@ -361,21 +268,10 @@ export default function DriverHistoryScreen() {
             <View style={styles.emptyIllustration}>
               <Text style={styles.emptyEmoji}>📦</Text>
             </View>
-            <Text style={styles.emptyTitle}>
-              {orders.length === 0
-                ? tr('Chưa có đơn giao hàng', 'No deliveries yet')
-                : tr('Không có đơn phù hợp', 'No matching deliveries')}
-            </Text>
+            <Text style={styles.emptyTitle}>Chưa có đơn giao hàng</Text>
             <Text style={styles.emptySubText}>
-              {orders.length === 0
-                ? tr(
-                    'Các đơn hàng được giao cho bạn sẽ xuất hiện tại đây.',
-                    'Orders assigned to you will appear here.',
-                  )
-                : tr(
-                    'Hãy chọn trạng thái khác để xem các đơn hàng.',
-                    'Select another status to see your deliveries.',
-                  )}
+              Các đơn hàng được giao cho bạn sẽ xuất hiện tại đây. Hãy kiểm tra
+              lại sau nhé!
             </Text>
           </View>
         }
@@ -397,20 +293,22 @@ export default function DriverHistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BURGER_COLORS.background,
+    backgroundColor: '#FFF9F5',
   },
   listContent: {
     paddingHorizontal: 18,
-    paddingTop: 14,
+    paddingTop: 18,
     paddingBottom: 32,
     flexGrow: 1,
   },
+
+  // Header
   header: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
-    marginBottom: 22,
+    marginBottom: 27,
   },
   headerTextContainer: {
     flex: 1,
@@ -418,60 +316,77 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 10,
     fontWeight: '900',
-    color: BURGER_COLORS.primary,
-    letterSpacing: 1.4,
-    marginBottom: 4,
+    color: '#FF6B35',
+    letterSpacing: 1.5,
+    marginBottom: 8,
   },
   title: {
-    fontSize: 26,
+    fontSize: 27,
+    lineHeight: 34,
     fontWeight: '900',
-    color: BURGER_COLORS.text,
-    letterSpacing: -0.6,
+    color: '#29232A',
+    letterSpacing: -0.7,
   },
   subtitle: {
     fontSize: 12,
-    lineHeight: 18,
-    color: BURGER_COLORS.muted,
-    marginTop: 4,
+    lineHeight: 19,
+    color: '#8B8289',
+    marginTop: 8,
   },
+  headerIcon: {
+    width: 66,
+    height: 66,
+    borderRadius: 22,
+    backgroundColor: '#FFF0E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerEmoji: {
+    fontSize: 34,
+  },
+
+  // Thống kê
   statsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 13,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: BURGER_COLORS.text,
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#29232A',
   },
   statsCaption: {
-    fontSize: 12,
-    color: BURGER_COLORS.muted,
+    fontSize: 11,
+    color: '#8B8289',
     fontWeight: '600',
   },
   summaryRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 29,
   },
   summaryCard: {
     flex: 1,
-    borderRadius: 18,
+    minHeight: 151,
+    borderRadius: 20,
     padding: 15,
+    overflow: 'hidden',
+    position: 'relative',
   },
   progressCard: {
-    backgroundColor: BURGER_COLORS.primary,
+    backgroundColor: '#FF6B35',
   },
   completedCard: {
-    backgroundColor: BURGER_COLORS.surface,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: BURGER_COLORS.border,
+    borderColor: '#F0E8E3',
   },
   summaryIcon: {
     width: 36,
     height: 36,
-    borderRadius: 11,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -480,120 +395,101 @@ const styles = StyleSheet.create({
   summaryIconCompleted: {
     width: 36,
     height: 36,
-    borderRadius: 11,
-    backgroundColor: BURGER_COLORS.successLight,
+    borderRadius: 12,
+    backgroundColor: '#E9F8EF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
   },
   summaryEmoji: {
-    fontSize: 17,
-    color: BURGER_COLORS.success,
+    fontSize: 18,
+    color: '#168653',
     fontWeight: '900',
   },
   summaryValueLight: {
-    fontSize: 26,
+    fontSize: 29,
     fontWeight: '900',
     color: '#FFFFFF',
   },
   summaryLabelLight: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.88)',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.85)',
     fontWeight: '600',
     marginTop: 2,
   },
   summaryValue: {
-    fontSize: 26,
+    fontSize: 29,
     fontWeight: '900',
-    color: BURGER_COLORS.text,
+    color: '#29232A',
   },
   summaryLabel: {
-    fontSize: 12,
-    color: BURGER_COLORS.muted,
+    fontSize: 11,
+    color: '#8B8289',
     fontWeight: '600',
     marginTop: 2,
   },
-  filtersRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 18,
+  summaryBottomLine: {
+    position: 'absolute',
+    height: 4,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 999,
-    backgroundColor: BURGER_COLORS.surface,
-    borderWidth: 1,
-    borderColor: BURGER_COLORS.border,
+  completedBottomLine: {
+    position: 'absolute',
+    height: 4,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#22A06B',
   },
-  filterChipSelected: {
-    backgroundColor: BURGER_COLORS.primary,
-    borderColor: BURGER_COLORS.primary,
-  },
-  filterChipPressed: {
-    opacity: 0.8,
-  },
-  filterChipText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: BURGER_COLORS.textSoft,
-  },
-  filterChipTextSelected: {
-    color: '#FFFFFF',
-  },
-  filterCount: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: BURGER_COLORS.primary,
-  },
-  filterCountSelected: {
-    color: '#FFFFFF',
-  },
+
+  // Danh sách
   listHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   listSubtitle: {
-    fontSize: 12,
-    color: BURGER_COLORS.muted,
-    marginTop: 3,
-    padding:1
+    fontSize: 11,
+    color: '#8B8289',
+    marginTop: 5,
   },
   orderCountBadge: {
-    minWidth: 34,
-    height: 34,
+    minWidth: 35,
+    height: 35,
     paddingHorizontal: 9,
-    borderRadius: 11,
-    backgroundColor: BURGER_COLORS.primaryLight,
+    borderRadius: 12,
+    backgroundColor: '#FFF0E8',
     alignItems: 'center',
     justifyContent: 'center',
   },
   orderCountText: {
-    color: BURGER_COLORS.primary,
+    color: '#FF6B35',
     fontSize: 13,
     fontWeight: '900',
   },
+
+  // Thẻ đơn hàng
   card: {
     position: 'relative',
-    backgroundColor: BURGER_COLORS.surface,
-    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 19,
     padding: 15,
-    marginBottom: 12,
+    marginBottom: 13,
     borderWidth: 1,
-    borderColor: BURGER_COLORS.border,
+    borderColor: '#F0E8E3',
     overflow: 'hidden',
   },
   cardActive: {
-    borderColor: BURGER_COLORS.primary,
+    borderColor: '#FFB18F',
+    backgroundColor: '#FFFEFD',
   },
   cardPressed: {
-    opacity: 0.88,
+    opacity: 0.8,
+    transform: [{ scale: 0.99 }],
   },
   activeAccent: {
     position: 'absolute',
@@ -601,7 +497,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     width: 4,
-    backgroundColor: BURGER_COLORS.primary,
+    backgroundColor: '#FF6B35',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -609,15 +505,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   restaurantIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 13,
-    backgroundColor: BURGER_COLORS.primaryLight,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: '#FFF0E8',
     alignItems: 'center',
     justifyContent: 'center',
   },
   restaurantEmoji: {
-    fontSize: 19,
+    fontSize: 20,
   },
   restaurantInfo: {
     flex: 1,
@@ -625,23 +521,23 @@ const styles = StyleSheet.create({
   },
   restaurantLabel: {
     fontSize: 9,
-    color: BURGER_COLORS.muted,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    marginBottom: 2,
+    color: '#A1989E',
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 4,
   },
   restaurant: {
     fontSize: 14,
-    fontWeight: '800',
-    color: BURGER_COLORS.text,
+    fontWeight: '900',
+    color: '#29232A',
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 6,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
   },
   statusEmoji: {
     fontSize: 11,
@@ -651,17 +547,19 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
   },
+
+  // Địa chỉ
   addressRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    marginTop: 14,
+    marginTop: 17,
   },
   addressIcon: {
     width: 30,
     height: 30,
-    borderRadius: 9,
-    backgroundColor: BURGER_COLORS.surfaceMuted,
+    borderRadius: 10,
+    backgroundColor: '#FFF9F5',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -670,27 +568,29 @@ const styles = StyleSheet.create({
   },
   addressContent: {
     flex: 1,
-    paddingTop: 1,
+    paddingTop: 2,
   },
   addressLabel: {
     fontSize: 9,
-    color: BURGER_COLORS.muted,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    marginBottom: 3,
+    color: '#A1989E',
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    marginBottom: 5,
   },
   address: {
     fontSize: 12,
-    color: BURGER_COLORS.textSoft,
-    lineHeight: 18,
-    fontWeight: '600',
+    color: '#514850',
+    lineHeight: 19,
+    fontWeight: '500',
   },
   cardDivider: {
     height: 1,
-    backgroundColor: BURGER_COLORS.border,
-    marginTop: 13,
-    marginBottom: 10,
+    backgroundColor: '#F3ECE7',
+    marginTop: 15,
+    marginBottom: 12,
   },
+
+  // Chân thẻ
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -707,7 +607,7 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 11,
-    color: BURGER_COLORS.muted,
+    color: '#8B8289',
     fontWeight: '600',
   },
   totalContainer: {
@@ -715,34 +615,36 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 10,
-    color: BURGER_COLORS.muted,
-    marginBottom: 2,
+    color: '#A1989E',
+    marginBottom: 3,
   },
   total: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '900',
-    color: BURGER_COLORS.primary,
+    color: '#FF6B35',
   },
   tapHintContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: BURGER_COLORS.primaryLight,
+    backgroundColor: '#FFF0E8',
     borderRadius: 10,
-    marginTop: 12,
+    marginTop: 14,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 9,
   },
   tapHint: {
     fontSize: 11,
     fontWeight: '800',
-    color: BURGER_COLORS.primary,
+    color: '#FF6B35',
   },
   tapArrow: {
-    fontSize: 20,
-    lineHeight: 21,
-    color: BURGER_COLORS.primary,
+    fontSize: 22,
+    lineHeight: 23,
+    color: '#FF6B35',
   },
+
+  // Đang tải
   centered: {
     flex: 1,
     alignItems: 'center',
@@ -750,52 +652,54 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   loadingIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 24,
-    backgroundColor: BURGER_COLORS.primaryLight,
+    width: 76,
+    height: 76,
+    borderRadius: 25,
+    backgroundColor: '#FFF0E8',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 17,
   },
   loadingText: {
     fontSize: 13,
-    color: BURGER_COLORS.muted,
+    color: '#8B8289',
     fontWeight: '700',
   },
+
+  // Chưa có đơn
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 22,
-    paddingVertical: 36,
-    backgroundColor: BURGER_COLORS.surface,
+    paddingVertical: 40,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: BURGER_COLORS.border,
-    borderRadius: 18,
+    borderColor: '#F0E8E3',
+    borderRadius: 20,
   },
   emptyIllustration: {
-    width: 80,
-    height: 80,
-    borderRadius: 26,
-    backgroundColor: BURGER_COLORS.primaryLight,
+    width: 88,
+    height: 88,
+    borderRadius: 28,
+    backgroundColor: '#FFF0E8',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 19,
   },
   emptyEmoji: {
-    fontSize: 38,
+    fontSize: 43,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: BURGER_COLORS.text,
+    fontSize: 17,
+    fontWeight: '900',
+    color: '#29232A',
     textAlign: 'center',
   },
   emptySubText: {
     fontSize: 12,
-    color: BURGER_COLORS.muted,
-    lineHeight: 19,
+    color: '#8B8289',
+    lineHeight: 20,
     textAlign: 'center',
-    marginTop: 6,
+    marginTop: 9,
   },
 });

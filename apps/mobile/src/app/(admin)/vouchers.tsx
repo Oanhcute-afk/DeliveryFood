@@ -22,7 +22,6 @@ import {
   VoucherDiscountType,
   type VoucherDiscountType as DiscountType,
 } from '@food-delivery/types';
-import { useLanguage } from '@/context/language-context';
 import {
   adminApi,
   errorMessage,
@@ -40,50 +39,27 @@ import {
 
 const TAB_BAR_OFFSET = 88;
 
+// Thời hạn chọn nhanh thay cho date picker
 const EXPIRY_OPTIONS = [
-  { vi: '1 ngày', en: '1 day', days: 1 },
-  { vi: '3 ngày', en: '3 days', days: 3 },
-  { vi: '7 ngày', en: '7 days', days: 7 },
-  { vi: '30 ngày', en: '30 days', days: 30 },
-  { vi: 'Không hạn', en: 'No expiry', days: null },
+  { label: '1 ngày', days: 1 },
+  { label: '3 ngày', days: 3 },
+  { label: '7 ngày', days: 7 },
+  { label: '30 ngày', days: 30 },
+  { label: 'Không hạn', days: null },
 ] as const;
 
-function statusOf(
-  v: AdminVoucher,
-  tr: (vi: string, en: string) => string,
-) {
+function statusOf(v: AdminVoucher) {
   if (!v.isActive)
-    return {
-      key: 'inactive',
-      label: tr('Đã tắt', 'Inactive'),
-      color: COLORS.muted,
-      bg: COLORS.surfaceAlt,
-    };
+    return { label: 'Đã tắt', color: COLORS.muted, bg: '#F0EEF1' };
   if (v.isExpired)
-    return {
-      key: 'expired',
-      label: tr('Hết hạn', 'Expired'),
-      color: COLORS.red,
-      bg: COLORS.redLight,
-    };
+    return { label: 'Hết hạn', color: COLORS.red, bg: COLORS.redLight };
   if (v.usageLimit != null && v.usedCount >= v.usageLimit)
-    return {
-      key: 'exhausted',
-      label: tr('Hết lượt', 'Exhausted'),
-      color: COLORS.red,
-      bg: COLORS.redLight,
-    };
-  return {
-    key: 'running',
-    label: tr('Đang chạy', 'Active'),
-    color: COLORS.green,
-    bg: COLORS.greenLight,
-  };
+    return { label: 'Hết lượt', color: COLORS.red, bg: COLORS.redLight };
+  return { label: 'Đang chạy', color: COLORS.green, bg: COLORS.greenLight };
 }
 
 export default function AdminVouchersScreen() {
   const queryClient = useQueryClient();
-  const { tr } = useLanguage();
   const [showForm, setShowForm] = useState(false);
 
   const { data, isLoading, isRefetching, refetch, error } = useQuery({
@@ -96,12 +72,11 @@ export default function AdminVouchersScreen() {
       adminApi.setVoucherActive(id, isActive),
     onSuccess: () =>
       void queryClient.invalidateQueries({ queryKey: ['admin-vouchers'] }),
-    onError: (err) =>
-      Alert.alert(tr('Không thực hiện được', 'Action failed'), errorMessage(err)),
+    onError: (err) => Alert.alert('Không thực hiện được', errorMessage(err)),
   });
 
   const runningCount = data?.filter(
-    (v) => statusOf(v, tr).key === 'running',
+    (v) => statusOf(v).label === 'Đang chạy',
   ).length;
 
   return (
@@ -110,6 +85,9 @@ export default function AdminVouchersScreen() {
         data={data ?? []}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -120,11 +98,8 @@ export default function AdminVouchersScreen() {
         ListHeaderComponent={
           <>
             <ScreenHeader
-              title={tr('Voucher', 'Vouchers')}
-              subtitle={tr(
-                'Tạo mã giảm giá để kích cầu đặt món',
-                'Create promo codes to boost food orders',
-              )}
+              title="Voucher"
+              subtitle="Tạo mã giảm giá để kích cầu đặt món"
               emoji="🎟️"
             />
             <Pressable
@@ -135,16 +110,11 @@ export default function AdminVouchersScreen() {
               ]}
             >
               <Ionicons name="add-circle" size={22} color="#FFFFFF" />
-              <Text style={styles.createText}>
-                {tr('Tạo voucher mới', 'Create New Voucher')}
-              </Text>
+              <Text style={styles.createText}>Tạo voucher mới</Text>
             </Pressable>
             {data ? (
               <Text style={styles.summary}>
-                {tr(
-                  `${data.length} voucher · ${runningCount} đang chạy`,
-                  `${data.length} vouchers · ${runningCount} active`,
-                )}
+                {data.length} voucher · {runningCount} đang chạy
               </Text>
             ) : null}
           </>
@@ -155,13 +125,11 @@ export default function AdminVouchersScreen() {
           ) : error ? (
             <EmptyState text={errorMessage(error)} />
           ) : (
-            <EmptyState
-              text={tr('Chưa có voucher nào', 'No vouchers created yet')}
-            />
+            <EmptyState text="Chưa có voucher nào" />
           )
         }
         renderItem={({ item }) => {
-          const status = statusOf(item, tr);
+          const status = statusOf(item);
           const toggling =
             toggleMutation.isPending &&
             toggleMutation.variables?.id === item.id;
@@ -190,14 +158,9 @@ export default function AdminVouchersScreen() {
 
               <View style={styles.footer}>
                 <Text style={styles.usage}>
-                  {tr(
-                    `Đã dùng ${item.usedCount}${
-                      item.usageLimit != null ? ` / ${item.usageLimit}` : ''
-                    } lượt · ${item.perUserLimit} lượt/khách`,
-                    `Used ${item.usedCount}${
-                      item.usageLimit != null ? ` / ${item.usageLimit}` : ''
-                    } times · ${item.perUserLimit} per user`,
-                  )}
+                  Đã dùng {item.usedCount}
+                  {item.usageLimit != null ? ` / ${item.usageLimit}` : ''} lượt
+                  · {item.perUserLimit} lượt/khách
                 </Text>
                 {toggling ? (
                   <ActivityIndicator color={COLORS.primary} />
@@ -207,7 +170,7 @@ export default function AdminVouchersScreen() {
                     onValueChange={(isActive) =>
                       toggleMutation.mutate({ id: item.id, isActive })
                     }
-                    trackColor={{ false: COLORS.border, true: COLORS.primary }}
+                    trackColor={{ false: '#E3DCD8', true: COLORS.primary }}
                     thumbColor="#FFFFFF"
                   />
                 )}
@@ -238,7 +201,6 @@ function CreateVoucherModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
-  const { tr } = useLanguage();
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
   const [type, setType] = useState<DiscountType>(VoucherDiscountType.PERCENT);
@@ -267,18 +229,11 @@ function CreateVoucherModal({
       reset();
       onCreated();
       Alert.alert(
-        tr('Đã tạo voucher', 'Voucher Created'),
-        tr(
-          `${voucher.code} đang chạy. Khách hàng sẽ thấy thông báo voucher mới khi mở app.`,
-          `${voucher.code} is now active. Customers will be notified when they open the app.`,
-        ),
+        'Đã tạo voucher',
+        `${voucher.code} đang chạy. Khách hàng sẽ thấy thông báo voucher mới khi mở app.`,
       );
     },
-    onError: (err) =>
-      Alert.alert(
-        tr('Không tạo được voucher', 'Could not create voucher'),
-        errorMessage(err),
-      ),
+    onError: (err) => Alert.alert('Không tạo được voucher', errorMessage(err)),
   });
 
   const num = (s: string) => Number(s.replace(',', '.'));
@@ -286,22 +241,13 @@ function CreateVoucherModal({
   function submit() {
     const discountValue = num(value);
     if (!code.trim() || !title.trim()) {
-      return Alert.alert(
-        tr('Thiếu thông tin', 'Missing Information'),
-        tr('Nhập mã và tên voucher.', 'Please enter voucher code and title.'),
-      );
+      return Alert.alert('Thiếu thông tin', 'Nhập mã và tên voucher.');
     }
     if (!(discountValue > 0)) {
-      return Alert.alert(
-        tr('Mức giảm không hợp lệ', 'Invalid Discount'),
-        tr('Nhập số lớn hơn 0.', 'Enter a value greater than 0.'),
-      );
+      return Alert.alert('Mức giảm không hợp lệ', 'Nhập số lớn hơn 0.');
     }
     if (type === VoucherDiscountType.PERCENT && discountValue > 100) {
-      return Alert.alert(
-        tr('Mức giảm không hợp lệ', 'Invalid Discount'),
-        tr('Giảm tối đa 100%.', 'Maximum percentage discount is 100%.'),
-      );
+      return Alert.alert('Mức giảm không hợp lệ', 'Giảm tối đa 100%.');
     }
 
     createMutation.mutate({
@@ -330,35 +276,31 @@ function CreateVoucherModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        style={styles.modal}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>
-            {tr('Tạo voucher', 'Create Voucher')}
-          </Text>
-          <Pressable onPress={onClose} hitSlop={10}>
-            <Ionicons name="close" size={26} color={COLORS.text} />
-          </Pressable>
-        </View>
-
-        <ScrollView
-          contentContainerStyle={styles.form}
-          keyboardShouldPersistTaps="handled"
+      <SafeAreaView style={styles.modal} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          style={styles.modal}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <Field
-            label={tr('Mã voucher', 'Voucher Code')}
-            hint={tr(
-              '3-20 ký tự: chữ, số, _ hoặc -',
-              '3-20 characters: letters, numbers, _ or -',
-            )}
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Tạo voucher</Text>
+            <Pressable onPress={onClose} hitSlop={10}>
+              <Ionicons name="close" size={26} color={COLORS.text} />
+            </Pressable>
+          </View>
+
+          <ScrollView
+            contentContainerStyle={styles.form}
+            showsVerticalScrollIndicator={false}
+            bounces={true}
+            alwaysBounceVertical={true}
+            keyboardShouldPersistTaps="handled"
           >
+          <Field label="Mã voucher" hint="3-20 ký tự: chữ, số, _ hoặc -">
             <TextInput
               style={styles.input}
               value={code}
               onChangeText={(t) => setCode(t.toUpperCase())}
-              placeholder={tr('VD: GIAM20', 'e.g. BURGER20')}
+              placeholder="VD: GIAM20"
               placeholderTextColor={COLORS.faint}
               autoCapitalize="characters"
               autoCorrect={false}
@@ -366,37 +308,22 @@ function CreateVoucherModal({
             />
           </Field>
 
-          <Field
-            label={tr('Tên voucher', 'Voucher Title')}
-            hint={tr(
-              'Khách hàng sẽ thấy tên này',
-              'Customers will see this title',
-            )}
-          >
+          <Field label="Tên voucher" hint="Khách hàng sẽ thấy tên này">
             <TextInput
               style={styles.input}
               value={title}
               onChangeText={setTitle}
-              placeholder={tr(
-                'VD: Giảm 20% cho đơn cuối tuần',
-                'e.g. 20% off weekend burger feast',
-              )}
+              placeholder="VD: Giảm 20% cho đơn cuối tuần"
               placeholderTextColor={COLORS.faint}
               maxLength={80}
             />
           </Field>
 
-          <Field label={tr('Loại giảm giá', 'Discount Type')}>
+          <Field label="Loại giảm giá">
             <View style={styles.segment}>
               {[
-                {
-                  key: VoucherDiscountType.PERCENT,
-                  label: tr('Theo %', 'Percentage (%)'),
-                },
-                {
-                  key: VoucherDiscountType.FIXED,
-                  label: tr('Số tiền ($)', 'Fixed Amount ($)'),
-                },
+                { key: VoucherDiscountType.PERCENT, label: 'Theo %' },
+                { key: VoucherDiscountType.FIXED, label: 'Số tiền ($)' },
               ].map((opt) => (
                 <Pressable
                   key={opt.key}
@@ -422,9 +349,7 @@ function CreateVoucherModal({
           <View style={styles.row}>
             <Field
               label={
-                type === VoucherDiscountType.PERCENT
-                  ? tr('Giảm (%)', 'Discount (%)')
-                  : tr('Giảm ($)', 'Discount ($)')
+                type === VoucherDiscountType.PERCENT ? 'Giảm (%)' : 'Giảm ($)'
               }
               style={styles.half}
             >
@@ -438,15 +363,12 @@ function CreateVoucherModal({
               />
             </Field>
             {type === VoucherDiscountType.PERCENT ? (
-              <Field
-                label={tr('Giảm tối đa ($)', 'Max Discount ($)')}
-                style={styles.half}
-              >
+              <Field label="Giảm tối đa ($)" style={styles.half}>
                 <TextInput
                   style={styles.input}
                   value={maxDiscount}
                   onChangeText={setMaxDiscount}
-                  placeholder={tr('Không giới hạn', 'Unlimited')}
+                  placeholder="Không giới hạn"
                   placeholderTextColor={COLORS.faint}
                   keyboardType="decimal-pad"
                 />
@@ -454,35 +376,29 @@ function CreateVoucherModal({
             ) : null}
           </View>
 
-          <Field label={tr('Đơn tối thiểu ($)', 'Minimum Order ($)')}>
+          <Field label="Đơn tối thiểu ($)">
             <TextInput
               style={styles.input}
               value={minOrder}
               onChangeText={setMinOrder}
-              placeholder={tr('0 = mọi đơn hàng', '0 = all orders')}
+              placeholder="0 = mọi đơn hàng"
               placeholderTextColor={COLORS.faint}
               keyboardType="decimal-pad"
             />
           </Field>
 
           <View style={styles.row}>
-            <Field
-              label={tr('Tổng lượt dùng', 'Total Usage Limit')}
-              style={styles.half}
-            >
+            <Field label="Tổng lượt dùng" style={styles.half}>
               <TextInput
                 style={styles.input}
                 value={usageLimit}
                 onChangeText={setUsageLimit}
-                placeholder={tr('Không giới hạn', 'Unlimited')}
+                placeholder="Không giới hạn"
                 placeholderTextColor={COLORS.faint}
                 keyboardType="number-pad"
               />
             </Field>
-            <Field
-              label={tr('Lượt / khách', 'Per-User Limit')}
-              style={styles.half}
-            >
+            <Field label="Lượt / khách" style={styles.half}>
               <TextInput
                 style={styles.input}
                 value={perUserLimit}
@@ -494,11 +410,11 @@ function CreateVoucherModal({
             </Field>
           </View>
 
-          <Field label={tr('Thời hạn', 'Validity Period')}>
+          <Field label="Thời hạn">
             <View style={styles.chips}>
               {EXPIRY_OPTIONS.map((opt) => (
                 <Pressable
-                  key={opt.en}
+                  key={opt.label}
                   onPress={() => setExpiryDays(opt.days)}
                   style={[
                     styles.chip,
@@ -511,7 +427,7 @@ function CreateVoucherModal({
                       expiryDays === opt.days && styles.chipTextActive,
                     ]}
                   >
-                    {tr(opt.vi, opt.en)}
+                    {opt.label}
                   </Text>
                 </Pressable>
               ))}
@@ -530,13 +446,12 @@ function CreateVoucherModal({
             {createMutation.isPending ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.submitText}>
-                {tr('Tạo voucher', 'Create Voucher')}
-              </Text>
+              <Text style={styles.submitText}>Tạo voucher</Text>
             )}
           </Pressable>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </Modal>
   );
 }
@@ -566,10 +481,10 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: TAB_BAR_OFFSET + 20,
+    paddingBottom: 28,
   },
   loader: { marginTop: 40 },
-  pressed: { opacity: 0.88 },
+  pressed: { opacity: 0.85 },
   createButton: {
     height: 52,
     flexDirection: 'row',
@@ -624,7 +539,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: '#F3ECE7',
   },
   usage: { flex: 1, fontSize: 12, fontWeight: '600', color: COLORS.textSoft },
   modal: { flex: 1, backgroundColor: COLORS.background },
@@ -642,7 +557,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#393039',
     marginBottom: 7,
   },
   hint: { fontSize: 11, color: COLORS.faint, marginTop: 5 },

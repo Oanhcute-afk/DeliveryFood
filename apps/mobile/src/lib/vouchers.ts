@@ -1,6 +1,5 @@
 import type { CustomerVoucher, Voucher } from '@food-delivery/types';
 import { api } from '@/lib/axios';
-import { getCurrentLanguage, trStatic } from '@/context/language-context';
 
 const money = (n: number) => `$${n.toFixed(2).replace(/\.00$/, '')}`;
 
@@ -12,40 +11,26 @@ export function discountShort(
   return v.discountType === 'PERCENT' ? `${value}%` : money(value);
 }
 
-/** "Giảm 20%, tối đa $5" / "20% off, up to $5" */
+/** "Giảm 20%, tối đa $5" */
 export function discountText(v: Voucher) {
   const max =
     v.discountType === 'PERCENT' && v.maxDiscount != null
-      ? trStatic(
-          `, tối đa ${money(Number(v.maxDiscount))}`,
-          `, max ${money(Number(v.maxDiscount))}`,
-        )
+      ? `, tối đa ${money(Number(v.maxDiscount))}`
       : '';
-  return trStatic(
-    `Giảm ${discountShort(v)}${max}`,
-    `Save ${discountShort(v)}${max}`,
-  );
+  return `Giảm ${discountShort(v)}${max}`;
 }
 
-/** "Đơn từ $10 · HSD 30/11" / "Min order $10 · Exp 30/11" */
+/** "Đơn từ $10 · HSD 30/11" */
 export function conditionText(v: Voucher) {
   const parts: string[] = [];
   const min = Number(v.minOrderAmount);
-  parts.push(
-    min > 0
-      ? trStatic(`Đơn từ ${money(min)}`, `Min. order ${money(min)}`)
-      : trStatic('Mọi đơn hàng', 'All orders'),
-  );
+  parts.push(min > 0 ? `Đơn từ ${money(min)}` : 'Mọi đơn hàng');
   if (v.expiresAt) {
-    const locale = getCurrentLanguage() === 'vi' ? 'vi-VN' : 'en-US';
     parts.push(
-      `${trStatic('HSD', 'Exp')} ${new Date(v.expiresAt).toLocaleDateString(
-        locale,
-        {
-          day: '2-digit',
-          month: '2-digit',
-        },
-      )}`,
+      `HSD ${new Date(v.expiresAt).toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+      })}`,
     );
   }
   return parts.join(' · ');

@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { desc, eq, inArray, SQL } from 'drizzle-orm';
+import { desc, eq, inArray, or, SQL } from 'drizzle-orm';
 import { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import * as schema from '../db/schema';
 import { OrderStatus, UserRole } from '@food-delivery/types';
@@ -104,7 +104,19 @@ export class OrdersService {
   }
 
   async findByDriver(driverId: string) {
-    return this.findOrdersWithDetails(eq(schema.orders.driverId, driverId));
+    // Hiển thị các đơn đã gán cho tài xế này CÙNG VỚI mọi đơn READY đang chờ tài xế nhận
+    const orders = await this.findOrdersWithDetails(
+      or(
+        eq(schema.orders.driverId, driverId),
+        eq(schema.orders.status, 'READY'),
+      )!,
+    );
+
+    return orders.filter(
+      (o) =>
+        o.status !== 'READY' ||
+        !this.driverService.hasDriverDeclined(o.id, driverId),
+    );
   }
 
   // routes to customer or driver query based on JWT role
@@ -129,16 +141,13 @@ export class OrdersService {
       (user.role === UserRole.CUSTOMER && order.customerId === user.sub) ||
       (user.role === UserRole.RESTAURANT_OWNER &&
         (await this.isOwnerOfRestaurant(user.sub, order.restaurantId))) ||
-      (user.role === UserRole.DRIVER && order.driverId === user.sub);
+      (user.role === UserRole.DRIVER &&
+        (order.driverId === user.sub || order.status === 'READY'));
 
     if (!canView) throw new NotFoundException('Order not found');
 
-    const items = await this.db
-      .select()
-      .from(schema.orderItems)
-      .where(eq(schema.orderItems.orderId, id));
-
-    return { ...order, items };
+    const [enriched] = await this.enrichOrders([order]);
+    return enriched;
   }
 
   async findByRestaurant(ownerId: string) {
@@ -158,6 +167,7 @@ export class OrdersService {
     orderId: string,
     newStatus: OrderStatus,
     user: { sub: string; role: string },
+    cancelReason?: string,
   ) {
     const [order] = await this.db
       .select()
@@ -167,6 +177,15 @@ export class OrdersService {
     if (!order) throw new NotFoundException('Order not found');
 
     this.validateTransition(order.status, newStatus, user.role);
+
+    if (user.role === UserRole.CUSTOMER) {
+      if (order.customerId !== user.sub) {
+        throw new ForbiddenException('Đơn hàng này không thuộc về bạn');
+      }
+      if (!cancelReason?.trim()) {
+        throw new BadRequestException('Vui lòng chọn lý do hủy đơn hàng');
+      }
+    }
 
     if (user.role === UserRole.RESTAURANT_OWNER) {
       const [restaurant] = await this.db
@@ -181,13 +200,30 @@ export class OrdersService {
       }
     }
 
-    if (user.role === UserRole.DRIVER && order.driverId !== user.sub) {
-      throw new ForbiddenException('This order is not assigned to you');
+    if (user.role === UserRole.DRIVER) {
+      // Với đơn đang ở trạng thái READY chuyển sang PICKED_UP, cho phép bất kỳ tài xế nào nhận đơn
+      if (order.status !== 'READY' && order.driverId !== user.sub) {
+        throw new ForbiddenException('This order is not assigned to you');
+      }
+    }
+
+    const updateValues: Partial<typeof schema.orders.$inferInsert> = {
+      status: newStatus,
+      updatedAt: new Date(),
+    };
+
+    if (newStatus === 'CANCELLED' && cancelReason?.trim()) {
+      updateValues.cancelReason = cancelReason.trim();
+    }
+
+    if (user.role === UserRole.DRIVER && newStatus === 'PICKED_UP') {
+      updateValues.driverId = user.sub;
+      this.driverService.clearOrderDeclines(orderId);
     }
 
     const [updated] = await this.db
       .update(schema.orders)
-      .set({ status: newStatus, updatedAt: new Date() })
+      .set(updateValues)
       .where(eq(schema.orders.id, orderId))
       .returning();
 
@@ -205,6 +241,10 @@ export class OrdersService {
     newStatus: string,
     role: string,
   ) {
+    const customerTransitions: Record<string, string[]> = {
+      PENDING: ['CANCELLED'],
+    };
+
     const ownerTransitions: Record<string, string[]> = {
       CONFIRMED: ['PREPARING', 'CANCELLED'],
       PREPARING: ['READY', 'CANCELLED'],
@@ -216,11 +256,13 @@ export class OrdersService {
     };
 
     const allowed =
-      role === UserRole.RESTAURANT_OWNER
-        ? (ownerTransitions[currentStatus] ?? [])
-        : role === UserRole.DRIVER
-          ? (driverTransitions[currentStatus] ?? [])
-          : [];
+      role === UserRole.CUSTOMER
+        ? (customerTransitions[currentStatus] ?? [])
+        : role === UserRole.RESTAURANT_OWNER
+          ? (ownerTransitions[currentStatus] ?? [])
+          : role === UserRole.DRIVER
+            ? (driverTransitions[currentStatus] ?? [])
+            : [];
 
     if (!allowed.includes(newStatus)) {
       throw new BadRequestException(
@@ -249,13 +291,32 @@ export class OrdersService {
       .select({
         id: schema.restaurants.id,
         name: schema.restaurants.name,
+        address: schema.restaurants.address,
+        imageUrl: schema.restaurants.imageUrl,
+        cuisineType: schema.restaurants.cuisineType,
       })
       .from(schema.restaurants)
       .where(inArray(schema.restaurants.id, restaurantIds));
 
     const items = await this.db
-      .select()
+      .select({
+        id: schema.orderItems.id,
+        orderId: schema.orderItems.orderId,
+        menuItemId: schema.orderItems.menuItemId,
+        quantity: schema.orderItems.quantity,
+        unitPrice: schema.orderItems.unitPrice,
+        menuItem: {
+          id: schema.menuItems.id,
+          name: schema.menuItems.name,
+          imageUrl: schema.menuItems.imageUrl,
+          price: schema.menuItems.price,
+        },
+      })
       .from(schema.orderItems)
+      .leftJoin(
+        schema.menuItems,
+        eq(schema.orderItems.menuItemId, schema.menuItems.id),
+      )
       .where(inArray(schema.orderItems.orderId, orderIds));
 
     const restaurantMap = Object.fromEntries(restaurants.map((r) => [r.id, r]));

@@ -12,28 +12,22 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/auth-context';
-import { useLanguage } from '@/context/language-context';
-import { LanguageSwitch } from '@/components/language-switch';
-import { BURGER_COLORS } from '@/constants/theme';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { GoogleSignInButton } from '@/components/google-sign-in-button';
 
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
   const { login } = useAuth();
-  const { tr } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleLogin() {
     if (!email || !password)
-      return Alert.alert(
-        tr('Thiếu thông tin', 'Missing information'),
-        tr('Vui lòng nhập đầy đủ email và mật khẩu.', 'Please fill in all fields.'),
-      );
+      return Alert.alert('Thiếu thông tin', 'Vui lòng nhập đầy đủ email và mật khẩu.');
 
     setIsLoading(true);
 
@@ -43,17 +37,11 @@ export default function LoginScreen() {
     } catch (error: any) {
       if (error?.response?.status === 403) {
         Alert.alert(
-          tr('Tài khoản bị khóa', 'Account locked'),
-          tr(
-            'Tài khoản của bạn đã bị khóa bởi quản trị viên.',
-            'Your account has been locked by an administrator.',
-          ),
+          'Tài khoản đã bị khóa',
+          'Tài khoản của bạn đã bị khóa bởi quản trị viên.',
         );
       } else {
-        Alert.alert(
-          tr('Đăng nhập thất bại', 'Login failed'),
-          tr('Email hoặc mật khẩu không đúng.', 'Invalid email or password.'),
-        );
+        Alert.alert('Đăng nhập thất bại', 'Email hoặc mật khẩu không chính xác.');
       }
     } finally {
       setIsLoading(false);
@@ -62,73 +50,63 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={BURGER_COLORS.background}
-      />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFF9F5" />
 
       <KeyboardAvoidingView
-        style={styles.flex}
+        style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.container}
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.container,
+            {
+              paddingTop: 8,
+              paddingBottom: Math.max(insets.bottom, 24) + 40,
+            },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          bounces={true}
+          overScrollMode="always"
         >
-          {/* Top bar with Brand & Language Switch */}
-          <View style={styles.topBar}>
-            <View style={styles.brandInline}>
-              <View style={styles.logoSmall}>
-                <Text style={styles.logoEmoji}>🍔</Text>
-              </View>
-              <View>
-                <Text style={styles.brandName}>
-                  deli<Text style={styles.brandAccent}>burger</Text>
-                </Text>
-                <Text style={styles.brandCaption}>
-                  {tr('GIAO MÓN NGON TẬN NƠI', 'FRESH BURGERS & MORE')}
-                </Text>
-              </View>
+          {/* Brand */}
+          <View style={styles.brand}>
+            <View style={styles.logo}>
+              <Ionicons name="fast-food" size={26} color="#FFFFFF" />
             </View>
 
-            <LanguageSwitch />
+            <Text style={styles.brandName}>
+              deli<Text style={styles.brandAccent}>food</Text>
+            </Text>
+            <Text style={styles.brandCaption}>
+              MÓN NGON MỖI NGÀY
+            </Text>
           </View>
 
           {/* Heading */}
           <View style={styles.heading}>
-            <View style={styles.tagPill}>
-              <Text style={styles.tagText}>
-                {tr('🍔 NÓNG HỔI MỖI NGÀY', '🍔 FLAME-GRILLED DAILY')}
-              </Text>
-            </View>
-            <Text style={styles.title}>
-              {tr('Chào mừng trở lại!', 'Welcome back!')}
-            </Text>
+            <Text style={styles.title}>Chào mừng trở lại!</Text>
             <Text style={styles.subtitle}>
-              {tr(
-                'Đăng nhập để đặt ngay burger và món ngon gần bạn.',
-                'Sign in to discover delicious burgers and meals near you.',
-              )}
+              Đăng nhập để khám phá những món ăn ngon gần bạn.
             </Text>
           </View>
 
-          {/* Form Card */}
-          <View style={styles.formCard}>
-            <Text style={styles.label}>
-              {tr('Địa chỉ Email', 'Email address')}
-            </Text>
+          {/* Form */}
+          <View style={styles.form}>
+            <Text style={styles.label}>Địa chỉ email</Text>
+
             <View style={styles.inputContainer}>
               <Ionicons
                 name="mail-outline"
                 size={20}
-                color={BURGER_COLORS.muted}
+                color="#99929A"
                 style={styles.inputIcon}
               />
               <TextInput
                 style={styles.input}
-                placeholder={tr('Nhập email của bạn', 'Enter your email')}
-                placeholderTextColor={BURGER_COLORS.faint}
+                placeholder="Nhập địa chỉ email của bạn"
+                placeholderTextColor="#AAA4AA"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -137,18 +115,19 @@ export default function LoginScreen() {
               />
             </View>
 
-            <Text style={styles.label}>{tr('Mật khẩu', 'Password')}</Text>
+            <Text style={styles.label}>Mật khẩu</Text>
+
             <View style={styles.inputContainer}>
               <Ionicons
                 name="lock-closed-outline"
                 size={20}
-                color={BURGER_COLORS.muted}
+                color="#99929A"
                 style={styles.inputIcon}
               />
               <TextInput
                 style={styles.input}
-                placeholder={tr('Nhập mật khẩu', 'Enter your password')}
-                placeholderTextColor={BURGER_COLORS.faint}
+                placeholder="Nhập mật khẩu của bạn"
+                placeholderTextColor="#AAA4AA"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -171,10 +150,12 @@ export default function LoginScreen() {
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <>
-                  <Text style={styles.buttonText}>
-                    {tr('Đăng nhập', 'Sign In')}
-                  </Text>
-                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                  <Text style={styles.buttonText}>Đăng nhập</Text>
+                  <Ionicons
+                    name="arrow-forward"
+                    size={19}
+                    color="#FFFFFF"
+                  />
                 </>
               )}
             </Pressable>
@@ -182,22 +163,31 @@ export default function LoginScreen() {
             <GoogleSignInButton />
           </View>
 
-          {/* Register link */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              {tr('Chưa có tài khoản?', "Don't have an account?")}
-            </Text>
+          {/* Register Card — Dễ bấm, nổi bật, không bị thanh điều hướng che */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.registerCard,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={() => router.push('/register')}
+            accessibilityRole="button"
+            accessibilityLabel="Chưa có tài khoản? Đăng ký ngay"
+            hitSlop={{ top: 12, bottom: 20, left: 16, right: 16 }}
+          >
+            <Text style={styles.footerText}>Chưa có tài khoản?</Text>
+            <Text style={styles.registerText}> Đăng ký ngay</Text>
+            <Ionicons name="arrow-forward-circle" size={18} color="#FF6B35" />
+          </Pressable>
 
-            <Pressable
-              onPress={() => router.push('/register')}
-              hitSlop={10}
-              style={({ pressed }) => pressed && styles.buttonPressed}
-            >
-              <Text style={styles.registerText}>
-                {' '}
-                {tr('Đăng ký ngay', 'Sign Up')}
-              </Text>
-            </Pressable>
+          <View style={styles.bottomNote}>
+            <Ionicons
+              name="heart"
+              size={12}
+              color="#FF6B35"
+            />
+            <Text style={styles.bottomNoteText}>
+              Dành trọn tâm huyết cho tín đồ ẩm thực
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -208,151 +198,163 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: BURGER_COLORS.background,
+    backgroundColor: '#FFF9F5',
   },
-  flex: {
+  keyboardView: {
+    flex: 1,
+  },
+  scrollView: {
     flex: 1,
   },
   container: {
     flexGrow: 1,
-    justifyContent: 'center',
     paddingHorizontal: 22,
-    paddingVertical: 20,
   },
-  topBar: {
-    flexDirection: 'row',
+  brand: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 28,
+    marginTop: 2,
+    marginBottom: 10,
   },
-  brandInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  logoSmall: {
-    width: 48,
-    height: 48,
+  logo: {
+    width: 46,
+    height: 46,
     borderRadius: 15,
-    backgroundColor: BURGER_COLORS.primary,
+    backgroundColor: '#FF6B35',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  logoEmoji: {
-    fontSize: 24,
+    marginBottom: 6,
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 3,
   },
   brandName: {
-    fontSize: 22,
+    fontSize: 25,
     fontWeight: '900',
-    color: BURGER_COLORS.text,
-    letterSpacing: -0.6,
+    color: '#29232A',
+    letterSpacing: -0.8,
   },
   brandAccent: {
-    color: BURGER_COLORS.primary,
+    color: '#FF6B35',
   },
   brandCaption: {
-    fontSize: 9,
+    fontSize: 8.5,
     fontWeight: '800',
-    color: BURGER_COLORS.muted,
-    letterSpacing: 1.2,
+    color: '#A49AA0',
+    letterSpacing: 2,
     marginTop: 2,
   },
   heading: {
-    marginBottom: 22,
-  },
-  tagPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: BURGER_COLORS.cheeseLight,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    marginBottom: 10,
-  },
-  tagText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: BURGER_COLORS.cheeseDark,
-    letterSpacing: 0.6,
+    marginBottom: 12,
   },
   title: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '900',
-    color: BURGER_COLORS.text,
-    letterSpacing: -0.6,
-    marginBottom: 6,
+    color: '#29232A',
+    letterSpacing: -0.5,
+    marginBottom: 3,
   },
   subtitle: {
-    fontSize: 14,
-    color: BURGER_COLORS.muted,
-    lineHeight: 21,
+    fontSize: 12.5,
+    color: '#8B8289',
+    lineHeight: 18,
   },
-  formCard: {
-    backgroundColor: BURGER_COLORS.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: BURGER_COLORS.border,
-    padding: 18,
+  form: {
+    width: '100%',
   },
   label: {
-    fontSize: 13,
+    fontSize: 11.5,
     fontWeight: '700',
-    color: BURGER_COLORS.text,
-    marginBottom: 8,
+    color: '#393039',
+    marginBottom: 4,
+    marginTop: 2,
   },
   inputContainer: {
-    height: 52,
+    height: 46,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: BURGER_COLORS.background,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: BURGER_COLORS.border,
+    borderColor: '#F0E8E3',
     borderRadius: 14,
-    paddingHorizontal: 14,
-    marginBottom: 16,
+    paddingHorizontal: 13,
+    marginBottom: 10,
   },
   inputIcon: {
-    marginRight: 10,
+    marginRight: 9,
   },
   input: {
     flex: 1,
     height: '100%',
     fontSize: 14,
-    color: BURGER_COLORS.text,
+    color: '#29232A',
   },
   button: {
-    height: 52,
-    backgroundColor: BURGER_COLORS.primary,
+    height: 48,
+    backgroundColor: '#FF6B35',
     borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
     gap: 8,
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 3,
   },
   buttonPressed: {
-    opacity: 0.88,
+    opacity: 0.85,
+    transform: [{ scale: 0.99 }],
   },
   buttonDisabled: {
-    opacity: 0.65,
+    opacity: 0.7,
   },
   buttonText: {
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: '800',
     color: '#FFFFFF',
   },
-  footer: {
+  registerCard: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 22,
+    gap: 6,
+    marginTop: 14,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    borderWidth: 1.5,
+    borderColor: '#FFE2D1',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   footerText: {
-    fontSize: 13,
-    color: BURGER_COLORS.muted,
+    fontSize: 13.5,
+    color: '#6B6269',
+    fontWeight: '600',
   },
   registerText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: BURGER_COLORS.primary,
+    fontSize: 13.5,
+    fontWeight: '900',
+    color: '#FF6B35',
+  },
+  bottomNote: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  bottomNoteText: {
+    fontSize: 10.5,
+    color: '#B5ABB2',
   },
 });

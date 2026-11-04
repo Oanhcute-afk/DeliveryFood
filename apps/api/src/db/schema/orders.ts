@@ -39,6 +39,7 @@ export const orders = pgTable('orders', {
     .notNull(),
   voucherId: uuid('voucher_id').references(() => vouchers.id),
   voucherCode: text('voucher_code'),
+  cancelReason: text('cancel_reason'),
   deliveryAddress: text('delivery_address').notNull(),
   stripePaymentIntentId: text('stripe_payment_intent_id'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

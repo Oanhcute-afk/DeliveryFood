@@ -4,6 +4,8 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,9 +18,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { api } from '@/lib/axios';
 import { useImageUploader } from '@/lib/uploadthing';
-import { BURGER_COLORS } from '@/constants/theme';
-import { useLanguage } from '@/context/language-context';
-import { LanguageSwitch } from '@/components/language-switch';
 
 function buildSpecificRestaurantAddress(
   houseNumber: string,
@@ -60,7 +59,6 @@ function buildSpecificRestaurantAddress(
 }
 
 export default function CreateRestaurantScreen() {
-  const { tr } = useLanguage();
   const queryClient = useQueryClient();
 
   const [name, setName] = useState('');
@@ -86,13 +84,10 @@ export default function CreateRestaurantScreen() {
   const { openImagePicker, isUploading } = useImageUploader('restaurantImage', {
     onClientUploadComplete: (res) => {
       setImageUrl(res[0].ufsUrl);
-      Alert.alert(
-        tr('Thành công', 'Success'),
-        tr('Ảnh nhà hàng đã được tải lên.', 'Restaurant photo uploaded.'),
-      );
+      Alert.alert('Thành công', 'Ảnh nhà hàng đã được tải lên.');
     },
     onUploadError: (error) => {
-      Alert.alert(tr('Tải ảnh thất bại', 'Upload failed'), error.message);
+      Alert.alert('Tải ảnh thất bại', error.message);
     },
   });
 
@@ -114,9 +109,8 @@ export default function CreateRestaurantScreen() {
     },
     onError: (e: any) => {
       Alert.alert(
-        tr('Không thể tạo nhà hàng', 'Unable to create restaurant'),
-        e?.response?.data?.message ??
-          tr('Đã xảy ra lỗi. Vui lòng thử lại.', 'An error occurred. Please try again.'),
+        'Không thể tạo nhà hàng',
+        e?.response?.data?.message ?? 'Đã xảy ra lỗi. Vui lòng thử lại.',
       );
     },
   });
@@ -124,11 +118,8 @@ export default function CreateRestaurantScreen() {
   function handleSubmit() {
     if (!name.trim() || !specificAddress || !cuisineType.trim()) {
       Alert.alert(
-        tr('Thiếu thông tin', 'Missing information'),
-        tr(
-          'Vui lòng nhập tên nhà hàng, địa chỉ cụ thể và loại ẩm thực.',
-          'Please enter restaurant name, specific address, and cuisine type.',
-        ),
+        'Thiếu thông tin',
+        'Vui lòng nhập tên nhà hàng, địa chỉ cụ thể (số nhà, số tầng chung cư, tên đường) và loại ẩm thực.',
       );
       return;
     }
@@ -138,334 +129,281 @@ export default function CreateRestaurantScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerTopRow}>
-            <View style={styles.headerIcon}>
-              <Text style={styles.headerEmoji}>🍔</Text>
-            </View>
-            <LanguageSwitch />
-          </View>
-
-          <Text style={styles.eyebrow}>
-            {tr('ĐỐI TÁC NHÀ HÀNG', 'RESTAURANT PARTNER')}
-          </Text>
-          <Text style={styles.title}>
-            {tr('Tạo nhà hàng', 'Create Restaurant')}
-          </Text>
-          <Text style={styles.subtitle}>
-            {tr(
-              'Hãy giới thiệu nhà hàng của bạn để khách hàng dễ dàng tìm thấy.',
-              'Introduce your restaurant so hungry customers can find you.',
-            )}
-          </Text>
+        <ScrollView
+          style={styles.screen}
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          alwaysBounceVertical={true}
+          keyboardShouldPersistTaps="handled"
+        >
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerIcon}>
+          <Text style={styles.headerEmoji}>🍽️</Text>
         </View>
 
-        {/* Ảnh nhà hàng */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
-              {tr('Ảnh nhà hàng', 'Restaurant Photo')}
-            </Text>
-            <Text style={styles.optionalLabel}>
-              {tr('Không bắt buộc', 'Optional')}
-            </Text>
-          </View>
+        <Text style={styles.eyebrow}>FOOD DELIVERY · ĐỐI TÁC</Text>
+        <Text style={styles.title}>Tạo nhà hàng</Text>
+        <Text style={styles.subtitle}>
+          Hãy giới thiệu nhà hàng của bạn để khách hàng dễ dàng tìm thấy.
+        </Text>
+      </View>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.imagePicker,
-              pressed && styles.pressed,
-              isUploading && styles.imagePickerUploading,
-            ]}
-            onPress={() =>
-              void openImagePicker({
-                source: 'library',
-                onInsufficientPermissions: () => {
-                  Alert.alert(
-                    tr('Chưa có quyền truy cập', 'Permission required'),
-                    tr(
-                      'Bạn cần cấp quyền truy cập thư viện ảnh trong phần Cài đặt.',
-                      'Please grant photo library access in Settings.',
-                    ),
-                    [
-                      { text: tr('Để sau', 'Later'), style: 'cancel' },
-                      {
-                        text: tr('Mở Cài đặt', 'Open Settings'),
-                        onPress: () => {
-                          void openSettings();
-                        },
+      {/* Ảnh nhà hàng */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Ảnh nhà hàng</Text>
+          <Text style={styles.optionalLabel}>Không bắt buộc</Text>
+        </View>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.imagePicker,
+            pressed && styles.pressed,
+            isUploading && styles.imagePickerUploading,
+          ]}
+          onPress={() =>
+            void openImagePicker({
+              source: 'library',
+              onInsufficientPermissions: () => {
+                Alert.alert(
+                  'Chưa có quyền truy cập',
+                  'Bạn cần cấp quyền truy cập thư viện ảnh trong phần Cài đặt.',
+                  [
+                    { text: 'Để sau', style: 'cancel' },
+                    {
+                      text: 'Mở Cài đặt',
+                      onPress: () => {
+                        void openSettings();
                       },
-                    ],
-                  );
-                },
-              })
-            }
-            disabled={isUploading}
-            accessibilityRole="button"
-          >
-            {imageUrl ? (
-              <>
-                <Image
-                  source={{ uri: imageUrl }}
-                  style={styles.image}
-                  resizeMode="cover"
-                />
-                <View style={styles.changeImageBadge}>
-                  <Text style={styles.changeImageText}>
-                    {tr('✎ Đổi ảnh', '✎ Change photo')}
-                  </Text>
-                </View>
-              </>
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <View style={styles.uploadIcon}>
-                  {isUploading ? (
-                    <ActivityIndicator color={BURGER_COLORS.primary} size="large" />
-                  ) : (
-                    <Text style={styles.uploadEmoji}>📷</Text>
-                  )}
-                </View>
-
-                <Text style={styles.imagePickerTitle}>
-                  {isUploading
-                    ? tr('Đang tải ảnh lên...', 'Uploading photo...')
-                    : tr('Thêm ảnh nhà hàng', 'Add restaurant photo')}
-                </Text>
-                <Text style={styles.imagePickerText}>
-                  {isUploading
-                    ? tr('Vui lòng chờ trong giây lát', 'Please wait a moment')
-                    : tr('Chạm để chọn ảnh từ thư viện', 'Tap to choose from library')}
-                </Text>
+                    },
+                  ],
+                );
+              },
+            })
+          }
+          disabled={isUploading}
+          accessibilityRole="button"
+          accessibilityLabel="Chọn ảnh nhà hàng"
+        >
+          {imageUrl ? (
+            <>
+              <Image
+                source={{ uri: imageUrl }}
+                style={styles.image}
+                resizeMode="cover"
+              />
+              <View style={styles.changeImageBadge}>
+                <Text style={styles.changeImageText}>✎ Đổi ảnh</Text>
               </View>
-            )}
-          </Pressable>
+            </>
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <View style={styles.uploadIcon}>
+                {isUploading ? (
+                  <ActivityIndicator color="#FF6B35" size="large" />
+                ) : (
+                  <Text style={styles.uploadEmoji}>📷</Text>
+                )}
+              </View>
+
+              <Text style={styles.imagePickerTitle}>
+                {isUploading ? 'Đang tải ảnh lên...' : 'Thêm ảnh nhà hàng'}
+              </Text>
+              <Text style={styles.imagePickerText}>
+                {isUploading
+                  ? 'Vui lòng chờ trong giây lát'
+                  : 'Chạm để chọn ảnh từ thư viện'}
+              </Text>
+            </View>
+          )}
+        </Pressable>
+      </View>
+
+      {/* Thông tin nhà hàng */}
+      <View style={styles.formCard}>
+        <View style={styles.formHeading}>
+          <Text style={styles.formHeadingTitle}>Thông tin cơ bản</Text>
+          <Text style={styles.formHeadingSubtitle}>
+            Các mục có dấu * là bắt buộc
+          </Text>
         </View>
 
-        {/* Thông tin nhà hàng */}
-        <View style={styles.formCard}>
-          <View style={styles.formHeading}>
-            <Text style={styles.formHeadingTitle}>
-              {tr('Thông tin cơ bản', 'Basic Details')}
+        <View style={styles.field}>
+          <Text style={styles.label}>
+            Tên nhà hàng <Text style={styles.required}>*</Text>
+          </Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ví dụ: Nhà hàng Món Ngon"
+            placeholderTextColor="#B1A6AC"
+            value={name}
+            onChangeText={setName}
+            maxLength={100}
+            returnKeyType="next"
+          />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Mô tả nhà hàng</Text>
+          <TextInput
+            style={[styles.input, styles.multilineInput]}
+            placeholder="Giới thiệu món ăn đặc trưng và phong cách của bạn..."
+            placeholderTextColor="#B1A6AC"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            numberOfLines={4}
+            maxLength={1000}
+            textAlignVertical="top"
+          />
+          <Text style={styles.characterCount}>
+            {description.length}/1000
+          </Text>
+        </View>
+
+        <View style={styles.field}>
+          <View style={styles.addressHeaderRow}>
+            <Text style={[styles.label, { marginBottom: 0 }]}>
+              Địa chỉ cụ thể <Text style={styles.required}>*</Text>
             </Text>
-            <Text style={styles.formHeadingSubtitle}>
-              {tr('Các mục có dấu * là bắt buộc', 'Fields marked with * are required')}
-            </Text>
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>
-              {tr('Tên nhà hàng', 'Restaurant Name')}{' '}
-              <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder={tr('Ví dụ: Burger Ngon Sài Gòn', 'e.g. Flame Burger House')}
-              placeholderTextColor={BURGER_COLORS.faint}
-              value={name}
-              onChangeText={setName}
-              maxLength={100}
-              returnKeyType="next"
-            />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>
-              {tr('Mô tả nhà hàng', 'Description')}
-            </Text>
-            <TextInput
-              style={[styles.input, styles.multilineInput]}
-              placeholder={tr(
-                'Giới thiệu món ăn đặc trưng và phong cách của bạn...',
-                'Tell customers about your signature burgers and dishes...',
-              )}
-              placeholderTextColor={BURGER_COLORS.faint}
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={4}
-              maxLength={1000}
-              textAlignVertical="top"
-            />
-            <Text style={styles.characterCount}>
-              {description.length}/1000
-            </Text>
-          </View>
-
-          <View style={styles.field}>
-            <View style={styles.addressHeaderRow}>
-              <Text style={[styles.label, { marginBottom: 0 }]}>
-                {tr('Địa chỉ cụ thể', 'Specific Address')}{' '}
-                <Text style={styles.required}>*</Text>
-              </Text>
-              <View style={styles.gpsBadge}>
-                <Text style={styles.gpsBadgeText}>
-                  {tr('📍 Đã cài GPS', '📍 GPS Ready')}
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.addressSubtitle}>
-              {tr(
-                'Ghi rõ số nhà/mặt bằng, tầng chung cư và tên đường để tài xế & khách dễ tìm',
-                'Enter house/unit number, floor/building, and street name',
-              )}
-            </Text>
-
-            <View style={styles.addressSubCard}>
-              <View style={styles.subField}>
-                <Text style={styles.subLabel}>
-                  {tr('🏠 Số nhà / Ki-ốt / Mặt bằng', '🏠 House / Unit Number')}
-                </Text>
-                <TextInput
-                  style={styles.subInput}
-                  placeholder={tr(
-                    'VD: Số 18 hoặc Ki-ốt Shophouse A02',
-                    'e.g. No. 18 or Unit A02',
-                  )}
-                  placeholderTextColor={BURGER_COLORS.faint}
-                  value={houseNumber}
-                  onChangeText={setHouseNumber}
-                  maxLength={100}
-                  returnKeyType="next"
-                />
-              </View>
-
-              <View style={styles.subField}>
-                <Text style={styles.subLabel}>
-                  {tr(
-                    '🏢 Số tầng / Tòa chung cư (nếu có)',
-                    '🏢 Floor / Building (optional)',
-                  )}
-                </Text>
-                <TextInput
-                  style={styles.subInput}
-                  placeholder={tr(
-                    'VD: Tầng 1, Tòa S2 Chung cư Vinhomes',
-                    'e.g. Floor 1, Tower S2',
-                  )}
-                  placeholderTextColor={BURGER_COLORS.faint}
-                  value={floorBuilding}
-                  onChangeText={setFloorBuilding}
-                  maxLength={120}
-                  returnKeyType="next"
-                />
-              </View>
-
-              <View style={styles.subField}>
-                <Text style={styles.subLabel}>
-                  {tr('🛣️ Tên đường / Ngõ, hẻm', '🛣️ Street / Alley Name')}
-                </Text>
-                <TextInput
-                  style={styles.subInput}
-                  placeholder={tr(
-                    'VD: Đường Nguyễn Huệ, Ngõ 15...',
-                    'e.g. Nguyen Hue Street...',
-                  )}
-                  placeholderTextColor={BURGER_COLORS.faint}
-                  value={streetName}
-                  onChangeText={setStreetName}
-                  maxLength={150}
-                  returnKeyType="next"
-                />
-              </View>
-
-              <View style={styles.subField}>
-                <Text style={styles.subLabel}>
-                  {tr('📝 Ghi chú vị trí thêm (tùy chọn)', '📝 Location Notes (optional)')}
-                </Text>
-                <TextInput
-                  style={styles.subInput}
-                  placeholder={tr(
-                    'VD: Ngay mặt tiền cổng chính, cạnh siêu thị...',
-                    'e.g. Main entrance, next to supermarket...',
-                  )}
-                  placeholderTextColor={BURGER_COLORS.faint}
-                  value={addressNote}
-                  onChangeText={setAddressNote}
-                  maxLength={150}
-                  returnKeyType="next"
-                />
-              </View>
-
-              {specificAddress ? (
-                <View style={styles.addressPreviewBox}>
-                  <Text style={styles.addressPreviewIcon}>📍</Text>
-                  <Text style={styles.addressPreviewText}>
-                    <Text style={styles.addressPreviewLabel}>
-                      {tr('Địa chỉ cụ thể: ', 'Full address: ')}
-                    </Text>
-                    {specificAddress}
-                  </Text>
-                </View>
-              ) : null}
+            <View style={styles.gpsBadge}>
+              <Text style={styles.gpsBadgeText}>📍 Đã cài GPS</Text>
             </View>
           </View>
+          <Text style={styles.addressSubtitle}>
+            Ghi rõ số nhà/mặt bằng, số tầng chung cư và tên đường để tài xế & khách dễ tìm
+          </Text>
 
-          <View style={[styles.field, styles.lastField]}>
-            <Text style={styles.label}>
-              {tr('Loại ẩm thực', 'Cuisine Type')}{' '}
-              <Text style={styles.required}>*</Text>
-            </Text>
-            <View style={styles.inputWithIcon}>
-              <Text style={styles.fieldIcon}>🍔</Text>
+          <View style={styles.addressSubCard}>
+            <View style={styles.subField}>
+              <Text style={styles.subLabel}>🏠 Số nhà / Ki-ốt / Mặt bằng</Text>
               <TextInput
-                style={styles.iconInput}
-                placeholder={tr(
-                  'Ví dụ: Burger, Việt Nam, Ý',
-                  'e.g. Burger, Vietnamese, Italian',
-                )}
-                placeholderTextColor={BURGER_COLORS.faint}
-                value={cuisineType}
-                onChangeText={setCuisineType}
+                style={styles.subInput}
+                placeholder="VD: Số 18 hoặc Ki-ốt Shophouse A02"
+                placeholderTextColor="#B1A6AC"
+                value={houseNumber}
+                onChangeText={setHouseNumber}
                 maxLength={100}
-                returnKeyType="done"
+                returnKeyType="next"
               />
             </View>
-            <Text style={styles.helperText}>
-              {tr(
-                'Mô tả loại món ăn chính mà nhà hàng phục vụ.',
-                'Main type of food served by your restaurant.',
-              )}
-            </Text>
+
+            <View style={styles.subField}>
+              <Text style={styles.subLabel}>
+                🏢 Số tầng / Tòa chung cư (nếu có)
+              </Text>
+              <TextInput
+                style={styles.subInput}
+                placeholder="VD: Tầng 1, Tòa S2 Chung cư Vinhomes"
+                placeholderTextColor="#B1A6AC"
+                value={floorBuilding}
+                onChangeText={setFloorBuilding}
+                maxLength={120}
+                returnKeyType="next"
+              />
+            </View>
+
+            <View style={styles.subField}>
+              <Text style={styles.subLabel}>🛣️ Tên đường / Ngõ, hẻm</Text>
+              <TextInput
+                style={styles.subInput}
+                placeholder="VD: Đường Nguyễn Huệ, Ngõ 15..."
+                placeholderTextColor="#B1A6AC"
+                value={streetName}
+                onChangeText={setStreetName}
+                maxLength={150}
+                returnKeyType="next"
+              />
+            </View>
+
+            <View style={styles.subField}>
+              <Text style={styles.subLabel}>
+                📝 Ghi chú vị trí thêm (tùy chọn)
+              </Text>
+              <TextInput
+                style={styles.subInput}
+                placeholder="VD: Ngay mặt tiền cổng chính, cạnh siêu thị..."
+                placeholderTextColor="#B1A6AC"
+                value={addressNote}
+                onChangeText={setAddressNote}
+                maxLength={150}
+                returnKeyType="next"
+              />
+            </View>
+
+            {specificAddress ? (
+              <View style={styles.addressPreviewBox}>
+                <Text style={styles.addressPreviewIcon}>📍</Text>
+                <Text style={styles.addressPreviewText}>
+                  <Text style={styles.addressPreviewLabel}>
+                    Địa chỉ cụ thể:{' '}
+                  </Text>
+                  {specificAddress}
+                </Text>
+              </View>
+            ) : null}
           </View>
         </View>
 
-        {/* Nút tạo */}
-        <View style={styles.bottomSection}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.button,
-              pressed && styles.buttonPressed,
-              (isPending || isUploading) && styles.buttonDisabled,
-            ]}
-            onPress={handleSubmit}
-            disabled={isPending || isUploading}
-            accessibilityRole="button"
-          >
-            {isPending ? (
-              <>
-                <ActivityIndicator color="#FFFFFF" />
-                <Text style={styles.buttonText}>
-                  {tr('Đang tạo nhà hàng...', 'Creating restaurant...')}
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.buttonText}>
-                  {tr('Tạo nhà hàng', 'Create Restaurant')}
-                </Text>
-                <Text style={styles.buttonArrow}>→</Text>
-              </>
-            )}
-          </Pressable>
+        <View style={[styles.field, styles.lastField]}>
+          <Text style={styles.label}>
+            Loại ẩm thực <Text style={styles.required}>*</Text>
+          </Text>
+          <View style={styles.inputWithIcon}>
+            <Text style={styles.fieldIcon}>🍜</Text>
+            <TextInput
+              style={styles.iconInput}
+              placeholder="Ví dụ: Việt Nam, Ý, Trung Quốc"
+              placeholderTextColor="#B1A6AC"
+              value={cuisineType}
+              onChangeText={setCuisineType}
+              maxLength={100}
+              returnKeyType="done"
+            />
+          </View>
+          <Text style={styles.helperText}>
+            Mô tả loại món ăn chính mà nhà hàng phục vụ.
+          </Text>
         </View>
-      </ScrollView>
+      </View>
+
+      {/* Nút tạo */}
+      <View style={styles.bottomSection}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.button,
+            pressed && styles.buttonPressed,
+            (isPending || isUploading) && styles.buttonDisabled,
+          ]}
+          onPress={handleSubmit}
+          disabled={isPending || isUploading}
+          accessibilityRole="button"
+        >
+          {isPending ? (
+            <>
+              <ActivityIndicator color="#FFFFFF" />
+              <Text style={styles.buttonText}>Đang tạo nhà hàng...</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.buttonText}>Tạo nhà hàng</Text>
+              <Text style={styles.buttonArrow}>→</Text>
+            </>
+          )}
+        </Pressable>
+
+          <Text style={styles.footerText}>
+            Kiểm tra địa chỉ cụ thể và thông tin trước khi tạo nhà hàng.
+          </Text>
+        </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -473,79 +411,80 @@ export default function CreateRestaurantScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: BURGER_COLORS.background,
+    backgroundColor: '#FFF9F5',
   },
   container: {
     flexGrow: 1,
-    paddingHorizontal: 18,
-    paddingTop: 14,
+    paddingHorizontal: 20,
+    paddingTop: 22,
     paddingBottom: 38,
   },
+
+  // Header
   header: {
-    marginBottom: 22,
-  },
-  headerTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 27,
   },
   headerIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
-    backgroundColor: BURGER_COLORS.primaryLight,
+    width: 56,
+    height: 56,
+    borderRadius: 19,
+    backgroundColor: '#FFF0E8',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 16,
   },
   headerEmoji: {
-    fontSize: 25,
+    fontSize: 28,
   },
   eyebrow: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '900',
-    letterSpacing: 1.4,
-    color: BURGER_COLORS.primary,
-    marginBottom: 4,
+    letterSpacing: 1.5,
+    color: '#FF6B35',
+    marginBottom: 7,
   },
   title: {
-    fontSize: 26,
+    fontSize: 29,
+    lineHeight: 36,
     fontWeight: '900',
-    color: BURGER_COLORS.text,
+    color: '#29232A',
     letterSpacing: -0.6,
   },
   subtitle: {
     fontSize: 12,
-    lineHeight: 18,
-    color: BURGER_COLORS.muted,
-    marginTop: 5,
+    lineHeight: 19,
+    color: '#8B8289',
+    marginTop: 8,
+    maxWidth: 330,
   },
+
+  // Ảnh
   section: {
-    marginBottom: 22,
+    marginBottom: 25,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: BURGER_COLORS.text,
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#29232A',
   },
   optionalLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
-    color: BURGER_COLORS.muted,
+    color: '#A1989E',
   },
   imagePicker: {
-    height: 180,
-    borderRadius: 18,
+    height: 190,
+    borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: BURGER_COLORS.border,
+    borderColor: '#F0D9CC',
     borderStyle: 'dashed',
-    backgroundColor: BURGER_COLORS.surface,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -563,26 +502,26 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   uploadIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 17,
-    backgroundColor: BURGER_COLORS.primaryLight,
+    width: 55,
+    height: 55,
+    borderRadius: 18,
+    backgroundColor: '#FFF0E8',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   uploadEmoji: {
-    fontSize: 24,
+    fontSize: 26,
   },
   imagePickerTitle: {
     fontSize: 14,
-    fontWeight: '800',
-    color: BURGER_COLORS.text,
-    marginBottom: 4,
+    fontWeight: '900',
+    color: '#39313A',
+    marginBottom: 5,
   },
   imagePickerText: {
     fontSize: 11,
-    color: BURGER_COLORS.muted,
+    color: '#A1989E',
     textAlign: 'center',
   },
   changeImageBadge: {
@@ -590,9 +529,9 @@ const styles = StyleSheet.create({
     right: 12,
     bottom: 12,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: 'rgba(44, 26, 17, 0.82)',
+    backgroundColor: 'rgba(41, 35, 42, 0.82)',
   },
   changeImageText: {
     fontSize: 11,
@@ -600,30 +539,32 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   pressed: {
-    opacity: 0.88,
+    opacity: 0.8,
   },
+
+  // Form
   formCard: {
-    backgroundColor: BURGER_COLORS.surface,
-    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: BURGER_COLORS.border,
-    padding: 16,
+    borderColor: '#F0E8E3',
+    padding: 18,
   },
   formHeading: {
-    marginBottom: 18,
+    marginBottom: 22,
   },
   formHeadingTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: BURGER_COLORS.text,
+    fontSize: 17,
+    fontWeight: '900',
+    color: '#29232A',
   },
   formHeadingSubtitle: {
     fontSize: 11,
-    color: BURGER_COLORS.muted,
-    marginTop: 3,
+    color: '#A1989E',
+    marginTop: 5,
   },
   field: {
-    marginBottom: 18,
+    marginBottom: 21,
   },
   lastField: {
     marginBottom: 2,
@@ -631,21 +572,21 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '800',
-    color: BURGER_COLORS.text,
-    marginBottom: 8,
+    color: '#39313A',
+    marginBottom: 9,
   },
   required: {
-    color: BURGER_COLORS.primary,
+    color: '#FF6B35',
   },
   addressHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
-    marginBottom: 4,
+    marginBottom: 5,
   },
   gpsBadge: {
-    backgroundColor: BURGER_COLORS.successLight,
+    backgroundColor: '#DCFCE7',
     paddingHorizontal: 9,
     paddingVertical: 3,
     borderRadius: 999,
@@ -653,21 +594,21 @@ const styles = StyleSheet.create({
   gpsBadgeText: {
     fontSize: 11,
     fontWeight: '800',
-    color: BURGER_COLORS.success,
+    color: '#16A34A',
   },
   addressSubtitle: {
     fontSize: 11,
     lineHeight: 16,
-    color: BURGER_COLORS.muted,
-    marginBottom: 10,
+    color: '#8B8289',
+    marginBottom: 11,
   },
   addressSubCard: {
-    backgroundColor: BURGER_COLORS.surfaceMuted,
+    backgroundColor: '#FFFCFA',
     borderWidth: 1,
-    borderColor: BURGER_COLORS.border,
-    borderRadius: 15,
-    padding: 12,
-    gap: 10,
+    borderColor: '#EEE5E0',
+    borderRadius: 16,
+    padding: 13,
+    gap: 11,
   },
   subField: {
     gap: 5,
@@ -675,25 +616,25 @@ const styles = StyleSheet.create({
   subLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: BURGER_COLORS.text,
+    color: '#39313A',
   },
   subInput: {
-    minHeight: 44,
+    minHeight: 45,
     borderWidth: 1,
-    borderColor: BURGER_COLORS.border,
-    borderRadius: 11,
-    backgroundColor: BURGER_COLORS.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    borderColor: '#EEE5E0',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 13,
+    paddingVertical: 10,
     fontSize: 13,
-    color: BURGER_COLORS.text,
+    color: '#29232A',
   },
   addressPreviewBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 7,
-    backgroundColor: BURGER_COLORS.primaryLight,
-    borderRadius: 11,
+    backgroundColor: '#FFF0E8',
+    borderRadius: 12,
     paddingHorizontal: 11,
     paddingVertical: 9,
     marginTop: 2,
@@ -704,90 +645,103 @@ const styles = StyleSheet.create({
   },
   addressPreviewLabel: {
     fontWeight: '800',
-    color: BURGER_COLORS.primary,
+    color: '#FF6B35',
   },
   addressPreviewText: {
     flex: 1,
     fontSize: 12,
     lineHeight: 18,
-    color: BURGER_COLORS.text,
+    color: '#29232A',
   },
   input: {
-    minHeight: 46,
+    minHeight: 49,
     borderWidth: 1,
-    borderColor: BURGER_COLORS.border,
-    borderRadius: 12,
-    backgroundColor: BURGER_COLORS.surfaceMuted,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
+    borderColor: '#EEE5E0',
+    borderRadius: 13,
+    backgroundColor: '#FFFCFA',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 13,
-    color: BURGER_COLORS.text,
+    color: '#29232A',
   },
   multilineInput: {
-    minHeight: 96,
-    paddingTop: 12,
+    minHeight: 105,
+    paddingTop: 13,
   },
   characterCount: {
     fontSize: 10,
-    color: BURGER_COLORS.muted,
+    color: '#A1989E',
     textAlign: 'right',
-    marginTop: 5,
+    marginTop: 6,
   },
   inputWithIcon: {
-    minHeight: 46,
+    minHeight: 49,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: BURGER_COLORS.border,
-    borderRadius: 12,
-    backgroundColor: BURGER_COLORS.surfaceMuted,
+    borderColor: '#EEE5E0',
+    borderRadius: 13,
+    backgroundColor: '#FFFCFA',
     paddingHorizontal: 12,
   },
   fieldIcon: {
     fontSize: 17,
-    marginRight: 8,
+    marginRight: 9,
   },
   iconInput: {
     flex: 1,
-    minHeight: 44,
-    paddingVertical: 9,
+    minHeight: 47,
+    paddingVertical: 10,
     fontSize: 13,
-    color: BURGER_COLORS.text,
+    color: '#29232A',
   },
   helperText: {
-    fontSize: 11,
+    fontSize: 10,
     lineHeight: 15,
-    color: BURGER_COLORS.muted,
-    marginTop: 6,
+    color: '#A1989E',
+    marginTop: 7,
   },
+
+  // Nút tạo nhà hàng
   bottomSection: {
-    marginTop: 20,
+    marginTop: 22,
   },
   button: {
-    minHeight: 52,
+    minHeight: 54,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: BURGER_COLORS.primary,
-    borderRadius: 15,
+    backgroundColor: '#FF6B35',
+    borderRadius: 16,
     paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingVertical: 15,
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 3,
   },
   buttonPressed: {
-    opacity: 0.88,
+    opacity: 0.85,
   },
   buttonDisabled: {
     opacity: 0.65,
   },
   buttonText: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '900',
     color: '#FFFFFF',
   },
   buttonArrow: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#FFFFFF',
+  },
+  footerText: {
+    fontSize: 10,
+    color: '#A1989E',
+    textAlign: 'center',
+    marginTop: 13,
   },
 });

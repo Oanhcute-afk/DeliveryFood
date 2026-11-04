@@ -27,8 +27,8 @@ function firebaseAuth() {
   return getAuth(app);
 }
 
-// Deep link được phép nhận kết quả: Expo Go (exp/exps) và app đã build (mobile)
-const APP_REDIRECT_PROTOCOLS = ['exp:', 'exps:', 'mobile:'];
+// Deep link được phép nhận kết quả: Expo Go (exp/exps) và app đã build (mobile, delifood)
+const APP_REDIRECT_PROTOCOLS = ['exp:', 'exps:', 'mobile:', 'delifood:'];
 
 // Ký state bằng secret riêng để không dùng được như JWT đăng nhập
 const oauthStateSecret = () => `${process.env.JWT_SECRET}:google-oauth-state`;

@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
+const SERVER_URL = (
+  process.env.EXPO_PUBLIC_SERVER_URL?.trim() ||
+  process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/api\/?$/, '') ||
+  'https://deliveryfood-l3dv.onrender.com'
+).replace(/\/+$/, '');
+
 let socket: Socket | null = null;
 let subscriberCount = 0;
 
 function acquireSocket(): Socket {
   if (!socket) {
-    socket = io(`${process.env.EXPO_PUBLIC_SERVER_URL}/orders`, {
+    socket = io(`${SERVER_URL}/orders`, {
       transports: ['websocket'], // force real WebSocket — skip HTTP long-polling
       autoConnect: false, // we connect manually when a screen needs it
     });
