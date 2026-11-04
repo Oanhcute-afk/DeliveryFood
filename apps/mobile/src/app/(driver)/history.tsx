@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -14,6 +15,8 @@ import { Order } from '@food-delivery/types';
 import { BURGER_COLORS } from '@/constants/theme';
 import { useLanguage } from '@/context/language-context';
 import { LanguageSwitch } from '@/components/language-switch';
+
+type DeliveryFilter = 'ALL' | 'IN_PROGRESS' | 'DELIVERED' | 'CANCELLED';
 
 type DriverOrder = Order & {
   restaurant: { id: string; name: string };
@@ -172,6 +175,7 @@ export default function DriverHistoryScreen() {
   } = useQuery<DriverOrder[]>({
 =======
   const { tr } = useLanguage();
+  const [selectedFilter, setSelectedFilter] = useState<DeliveryFilter>('ALL');
   const { data: orders = [], isLoading } = useQuery<DriverOrder[]>({
 >>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     queryKey: ['driver-orders'],
@@ -189,6 +193,36 @@ export default function DriverHistoryScreen() {
   const activeCount = orders.filter(
     (order) => order.status === 'PICKED_UP',
   ).length;
+
+  // Bộ lọc chỉ thay đổi danh sách hiển thị, không ảnh hưởng dữ liệu/API.
+  const cancelledCount = orders.filter(
+    (order) => order.status === 'CANCELLED',
+  ).length;
+  const filters: { key: DeliveryFilter; label: string; count: number }[] = [
+    { key: 'ALL', label: tr('Tất cả', 'All'), count: orders.length },
+    {
+      key: 'IN_PROGRESS',
+      label: tr('Đang xử lý', 'In progress'),
+      count: inProgressCount,
+    },
+    {
+      key: 'DELIVERED',
+      label: tr('Đã giao', 'Delivered'),
+      count: deliveredCount,
+    },
+    {
+      key: 'CANCELLED',
+      label: tr('Đã hủy', 'Cancelled'),
+      count: cancelledCount,
+    },
+  ];
+  const filteredOrders = orders.filter((order) => {
+    if (selectedFilter === 'ALL') return true;
+    if (selectedFilter === 'IN_PROGRESS') {
+      return order.status === 'READY' || order.status === 'PICKED_UP';
+    }
+    return order.status === selectedFilter;
+  });
 
   if (isLoading) {
     return (
@@ -208,7 +242,7 @@ export default function DriverHistoryScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <FlatList
-        data={orders}
+        data={filteredOrders}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         bounces={true}
@@ -272,6 +306,44 @@ export default function DriverHistoryScreen() {
               </View>
             </View>
 
+            {/* Bộ lọc trực quan theo trạng thái đơn giao */}
+            <View style={styles.filtersRow}>
+              {filters.map((filter) => {
+                const isSelected = selectedFilter === filter.key;
+                return (
+                  <Pressable
+                    key={filter.key}
+                    onPress={() => setSelectedFilter(filter.key)}
+                    style={({ pressed }) => [
+                      styles.filterChip,
+                      isSelected && styles.filterChipSelected,
+                      pressed && styles.filterChipPressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`${filter.label}: ${filter.count}`}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        isSelected && styles.filterChipTextSelected,
+                      ]}
+                    >
+                      {filter.label}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.filterCount,
+                        isSelected && styles.filterCountSelected,
+                      ]}
+                    >
+                      {filter.count}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
             {/* Danh sách đơn */}
             <View style={styles.listHeader}>
               <View>
@@ -292,7 +364,7 @@ export default function DriverHistoryScreen() {
               </View>
 
               <View style={styles.orderCountBadge}>
-                <Text style={styles.orderCountText}>{orders.length}</Text>
+                <Text style={styles.orderCountText}>{filteredOrders.length}</Text>
               </View>
             </View>
           </View>
@@ -303,13 +375,20 @@ export default function DriverHistoryScreen() {
               <Text style={styles.emptyEmoji}>📦</Text>
             </View>
             <Text style={styles.emptyTitle}>
-              {tr('Chưa có đơn giao hàng', 'No deliveries yet')}
+              {orders.length === 0
+                ? tr('Chưa có đơn giao hàng', 'No deliveries yet')
+                : tr('Không có đơn phù hợp', 'No matching deliveries')}
             </Text>
             <Text style={styles.emptySubText}>
-              {tr(
-                'Các đơn hàng được giao cho bạn sẽ xuất hiện tại đây.',
-                'Orders assigned to you will appear here.',
-              )}
+              {orders.length === 0
+                ? tr(
+                    'Các đơn hàng được giao cho bạn sẽ xuất hiện tại đây.',
+                    'Orders assigned to you will appear here.',
+                  )
+                : tr(
+                    'Hãy chọn trạng thái khác để xem các đơn hàng.',
+                    'Select another status to see your deliveries.',
+                  )}
             </Text>
           </View>
         }
@@ -446,6 +525,46 @@ const styles = StyleSheet.create({
     color: BURGER_COLORS.muted,
     fontWeight: '600',
     marginTop: 2,
+  },
+  filtersRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 18,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: BURGER_COLORS.surface,
+    borderWidth: 1,
+    borderColor: BURGER_COLORS.border,
+  },
+  filterChipSelected: {
+    backgroundColor: BURGER_COLORS.primary,
+    borderColor: BURGER_COLORS.primary,
+  },
+  filterChipPressed: {
+    opacity: 0.8,
+  },
+  filterChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: BURGER_COLORS.textSoft,
+  },
+  filterChipTextSelected: {
+    color: '#FFFFFF',
+  },
+  filterCount: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: BURGER_COLORS.primary,
+  },
+  filterCountSelected: {
+    color: '#FFFFFF',
   },
   listHeader: {
     flexDirection: 'row',
