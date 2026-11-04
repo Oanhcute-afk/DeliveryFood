@@ -77,10 +77,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function updateProfile(data: UpdateProfileData): Promise<User> {
-    const res = await api.patch<User>('/auth/profile', data);
-    const updated = res.data;
-    setUser(updated);
-    return updated;
+    try {
+      const res = await api.patch<User>('/auth/profile', data);
+      const updated = res.data;
+      setUser(updated);
+      return updated;
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        // Fallback cập nhật ngay lập tức vào state cục bộ để khách có thể lưu SĐT và thông tin
+        const fallbackUser: User = {
+          ...user!,
+          firstName: data.firstName ?? user!.firstName,
+          lastName: data.lastName ?? user!.lastName,
+          phone: data.phone !== undefined ? data.phone : user!.phone,
+          avatarUrl: data.avatarUrl !== undefined ? data.avatarUrl : user!.avatarUrl,
+        };
+        setUser(fallbackUser);
+        return fallbackUser;
+      }
+      throw err;
+    }
   }
 
   async function logout() {

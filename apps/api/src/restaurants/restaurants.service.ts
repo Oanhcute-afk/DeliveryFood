@@ -97,7 +97,7 @@ export class RestaurantsService {
 
     this.logger.log('Cache miss — fetching restaurants from DB');
 
-    const restaurants = this.db
+    const restaurants = await this.db
       .select()
       .from(schema.restaurants)
       .where(eq(schema.restaurants.isOpen, true));

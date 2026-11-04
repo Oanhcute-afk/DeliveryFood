@@ -21,7 +21,9 @@ import { Order } from '@food-delivery/types';
 import {
   useOrderSocket,
   useDriverLocationSocket,
+  useOrderChatSocket,
 } from '@/hooks/use-order-socket';
+import { useAuth } from '@/context/auth-context';
 import { RatingModal } from '@/components/rating-modal';
 import { CancelOrderModal } from '@/components/cancel-order-modal';
 import { OrderChatModal } from '@/components/OrderChatModal';
@@ -297,8 +299,27 @@ export default function OrderConfirmationScreen() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const { user } = useAuth();
   const [isConfirmedReceived, setIsConfirmedReceived] = useState(false);
   const [isChatVisible, setIsChatVisible] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [lastDriverMessage, setLastDriverMessage] = useState<string | null>(null);
+
+  useOrderChatSocket(id ?? null, (msg) => {
+    if (msg && msg.senderRole === 'DRIVER') {
+      if (!isChatVisible) {
+        setUnreadChatCount((prev) => prev + 1);
+        setLastDriverMessage(msg.content);
+      }
+    }
+  });
+
+  useEffect(() => {
+    if (isChatVisible) {
+      setUnreadChatCount(0);
+      setLastDriverMessage(null);
+    }
+  }, [isChatVisible]);
 
   useEffect(() => {
     if (!id) return;
@@ -759,6 +780,66 @@ export default function OrderConfirmationScreen() {
             ) : null}
           </View>
         </View>
+
+        {/* Thông tin tài xế & Liên hệ Chat / Gọi điện */}
+        {order.driverId || (order as any)?.driver || ['READY', 'PICKED_UP'].includes(order.status) ? (
+          <View style={styles.driverContactCard}>
+            <View style={styles.driverContactHeader}>
+              <View style={styles.driverAvatar}>
+                <Text style={styles.driverAvatarText}>
+                  {driverName?.[0]?.toUpperCase() ?? 'T'}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.driverEyebrow}>TÀI XẾ GIAO HÀNG</Text>
+                <Text style={styles.driverName}>{driverName}</Text>
+                {driverPhone ? (
+                  <Text style={styles.driverPhone}>📞 {driverPhone}</Text>
+                ) : (
+                  <Text style={[styles.driverPhone, { color: COLORS.muted }]}>
+                    Chưa cập nhật SĐT (Nhắn tin qua khung chat)
+                  </Text>
+                )}
+              </View>
+              {unreadChatCount > 0 ? (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadBadgeText}>
+                    {unreadChatCount} tin mới
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+
+            <View style={styles.contactButtonsRow}>
+              <Pressable
+                style={[styles.contactBtn, styles.callBtn]}
+                onPress={handleCallDriver}
+              >
+                <Ionicons name="call" size={17} color="#FFFFFF" />
+                <Text style={styles.callBtnText}>Gọi shipper</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.contactBtn, styles.chatBtn]}
+                onPress={() => setIsChatVisible(true)}
+              >
+                <Ionicons
+                  name="chatbubble-ellipses"
+                  size={17}
+                  color={COLORS.primary}
+                />
+                <Text style={styles.chatBtnText}>Nhắn tin với shipper</Text>
+                {unreadChatCount > 0 ? (
+                  <View style={styles.chatBtnBadge}>
+                    <Text style={styles.chatBtnBadgeText}>
+                      {unreadChatCount}
+                    </Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.orderCard}>
           <View style={styles.orderCardHeader}>
@@ -1357,18 +1438,21 @@ export default function OrderConfirmationScreen() {
           isSubmitting={isSubmittingReview}
         />
 
-        {order.driverId ? (
-          <OrderChatModal
-            visible={isChatVisible}
-            onClose={() => setIsChatVisible(false)}
-            orderId={order.id}
-            currentUserRole="CUSTOMER"
-            currentUserId={order.customerId}
-            otherPartyName={driverName}
-            otherPartyPhone={driverPhone}
-            otherPartyRoleTitle="Tài xế giao hàng"
-          />
-        ) : null}
+        <OrderChatModal
+          visible={isChatVisible}
+          onClose={() => setIsChatVisible(false)}
+          orderId={order.id}
+          currentUserRole="CUSTOMER"
+          currentUserId={order.customerId}
+          currentUserName={
+            user
+              ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
+              : 'Khách hàng'
+          }
+          otherPartyName={driverName}
+          otherPartyPhone={driverPhone}
+          otherPartyRoleTitle="Tài xế giao hàng"
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -2369,5 +2453,96 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.82,
     transform: [{ scale: 0.985 }],
+  },
+  topBarBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  topBarBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  chatNotificationBanner: {
+    backgroundColor: '#FF6B35',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  chatNotificationIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatNotificationTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFE2D6',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  chatNotificationText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginTop: 2,
+  },
+  chatNotificationReplyBtn: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  chatNotificationReplyText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  unreadBadge: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  unreadBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  chatBtnBadge: {
+    backgroundColor: '#EF4444',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+  },
+  chatBtnBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });
