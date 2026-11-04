@@ -107,6 +107,21 @@ export default function RestaurantDetailScreen() {
     return base;
   }, [categories, selectedCategoryId]);
 
+  const filteredItemsCount = useMemo(() => {
+    const q = menuSearch.trim().toLowerCase();
+    return visibleCategories.reduce((acc, category) => {
+      const count = menuItems.filter((item) => {
+        if (item.categoryId !== category.id || !item.isAvailable) return false;
+        if (!q) return true;
+        return (
+          item.name.toLowerCase().includes(q) ||
+          (item.description ?? '').toLowerCase().includes(q)
+        );
+      }).length;
+      return acc + count;
+    }, 0);
+  }, [visibleCategories, menuItems, menuSearch]);
+
   if (loadingRestaurant) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -327,7 +342,6 @@ export default function RestaurantDetailScreen() {
                 const count = availableItems.filter(
                   (i) => i.categoryId === cat.id,
                 ).length;
-                if (count === 0) return null;
                 const active = selectedCategoryId === cat.id;
 
                 return (
@@ -494,11 +508,157 @@ export default function RestaurantDetailScreen() {
             <View style={styles.emptyMenu}>
               <Text style={styles.emptyMenuEmoji}>🍽️</Text>
               <Text style={styles.emptyMenuTitle}>
-                Thực đơn đang được cập nhật
+                Không tìm thấy sản phẩm
               </Text>
               <Text style={styles.emptyMenuText}>
-                Nhà hàng chưa có món ăn nào sẵn sàng. Bạn hãy quay lại sau nhé!
+                Không tìm thấy sản phẩm, mời bạn tham khảo món khác
               </Text>
+            </View>
+          ) : filteredItemsCount === 0 ? (
+            <View>
+              <View style={styles.emptyMenu}>
+                <Text style={styles.emptyMenuEmoji}>🍽️</Text>
+                <Text style={styles.emptyMenuTitle}>
+                  Không tìm thấy sản phẩm
+                </Text>
+                <Text style={styles.emptyMenuText}>
+                  Không tìm thấy sản phẩm, mời bạn tham khảo món khác
+                </Text>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.addButton,
+                    { marginTop: 14, paddingHorizontal: 18, paddingVertical: 10 },
+                    pressed && styles.buttonPressed,
+                  ]}
+                  onPress={() => {
+                    setMenuSearch('');
+                    setSelectedCategoryId('ALL');
+                  }}
+                >
+                  <Text style={styles.addButtonText}>Tham khảo món khác</Text>
+                </Pressable>
+              </View>
+
+              <View style={[styles.categoryBlock, { marginTop: 18 }]}>
+                <View style={styles.categoryHeader}>
+                  <View style={styles.categoryAccent} />
+                  <Text style={styles.categoryName}>
+                    Mời bạn tham khảo món khác
+                  </Text>
+                  <Text style={styles.categoryCount}>
+                    {availableItems.length} món
+                  </Text>
+                </View>
+
+                {availableItems.map((item) => {
+                  const qty = getItemQuantity(item.id);
+
+                  return (
+                    <View key={item.id} style={styles.itemCard}>
+                      <View style={styles.itemInfo}>
+                        <View style={styles.itemBestSellerRow}>
+                          <View style={styles.bestSellerTag}>
+                            <Text style={styles.bestSellerTagText}>
+                              🔥 Đề xuất
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text style={styles.itemName}>{item.name}</Text>
+
+                        {item.description ? (
+                          <Text
+                            style={styles.itemDescription}
+                            numberOfLines={2}
+                          >
+                            {item.description}
+                          </Text>
+                        ) : (
+                          <Text style={styles.itemDescriptionFallback}>
+                            Chế biến nóng sốt khi có đơn đặt
+                          </Text>
+                        )}
+
+                        <View style={styles.itemBottom}>
+                          <Text style={styles.itemPrice}>
+                            ${Number(item.price).toFixed(2)}
+                          </Text>
+
+                          {qty > 0 ? (
+                            <View style={styles.qtyControls}>
+                              <Pressable
+                                style={({ pressed }) => [
+                                  styles.qtyButton,
+                                  styles.qtyMinusButton,
+                                  pressed && styles.buttonPressed,
+                                ]}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Giảm số lượng ${item.name}`}
+                                onPress={() =>
+                                  useCartStore
+                                    .getState()
+                                    .decrementItem(item.id)
+                                }
+                              >
+                                <Text style={styles.qtyMinusText}>−</Text>
+                              </Pressable>
+
+                              <Text style={styles.qtyCount}>{qty}</Text>
+
+                              <Pressable
+                                style={({ pressed }) => [
+                                  styles.qtyButton,
+                                  styles.qtyPlusButton,
+                                  pressed && styles.buttonPressed,
+                                ]}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Tăng số lượng ${item.name}`}
+                                onPress={() => handleAddItem(item)}
+                              >
+                                <Text style={styles.qtyPlusText}>+</Text>
+                              </Pressable>
+                            </View>
+                          ) : (
+                            <Pressable
+                              style={({ pressed }) => [
+                                styles.addButton,
+                                pressed && styles.buttonPressed,
+                              ]}
+                              accessibilityRole="button"
+                              onPress={() => handleAddItem(item)}
+                            >
+                              <Ionicons name="add" size={16} color="#FFFFFF" />
+                              <Text style={styles.addButtonText}>Thêm</Text>
+                            </Pressable>
+                          )}
+                        </View>
+                      </View>
+
+                      <View style={styles.itemImageContainer}>
+                        {item.imageUrl ? (
+                          <Image
+                            source={{ uri: item.imageUrl }}
+                            style={styles.itemImage}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={styles.itemImagePlaceholder}>
+                            <Text style={styles.itemPlaceholderEmoji}>🍲</Text>
+                          </View>
+                        )}
+
+                        {qty > 0 ? (
+                          <View style={styles.itemSelectedBadge}>
+                            <Text style={styles.itemSelectedBadgeText}>
+                              {qty}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
             </View>
           ) : null}
         </View>

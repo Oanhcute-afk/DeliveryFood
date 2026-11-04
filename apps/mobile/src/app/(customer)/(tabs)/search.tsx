@@ -61,6 +61,12 @@ export default function CustomerSearchScreen() {
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
   const debouncedSearch = useDebounce(search, 300);
 
+  const { data: allRestaurants = [] } = useQuery<RestaurantType[]>({
+    queryKey: ['restaurants', ''],
+    queryFn: () =>
+      api.get<RestaurantType[]>('/restaurants').then((r) => r.data),
+  });
+
   const { data: restaurants = [], isLoading } = useQuery<RestaurantType[]>({
     queryKey: ['restaurants', debouncedSearch],
     queryFn: () =>
@@ -77,13 +83,11 @@ export default function CustomerSearchScreen() {
     const cat = CATEGORIES.find((c) => c.name === selectedCategory);
     if (!cat || cat.keywords.length === 0) return restaurants;
 
-    const matched = restaurants.filter((r) => {
+    return restaurants.filter((r) => {
       const text =
         `${r.name ?? ''} ${r.cuisineType ?? ''} ${r.description ?? ''}`.toLowerCase();
       return cat.keywords.some((k) => text.includes(k));
     });
-
-    return matched.length > 0 ? matched : restaurants;
   }, [restaurants, selectedCategory]);
 
   function openRestaurant(id: string) {
@@ -235,32 +239,127 @@ export default function CustomerSearchScreen() {
             <Text style={styles.loadingText}>Đang tìm món ngon...</Text>
           </View>
         ) : filteredRestaurants.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <View style={styles.emptyIcon}>
-              <Ionicons
-                name="restaurant-outline"
-                size={30}
-                color="#FF6B35"
-              />
+          <View>
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIcon}>
+                <Ionicons
+                  name="restaurant-outline"
+                  size={30}
+                  color="#FF6B35"
+                />
+              </View>
+
+              <Text style={styles.emptyTitle}>
+                Không tìm thấy sản phẩm
+              </Text>
+
+              <Text style={styles.emptySubtitle}>
+                Không tìm thấy sản phẩm, mời bạn tham khảo món khác
+              </Text>
+
+              <Pressable
+                style={styles.resetBtn}
+                onPress={() => {
+                  setSearch('');
+                  setSelectedCategory('Tất cả');
+                }}
+              >
+                <Text style={styles.resetBtnText}>Tham khảo món khác</Text>
+              </Pressable>
             </View>
 
-            <Text style={styles.emptyTitle}>
-              Không tìm thấy quán phù hợp
-            </Text>
+            {allRestaurants.length > 0 && (
+              <View style={{ marginTop: 22 }}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>
+                    Mời bạn tham khảo món khác
+                  </Text>
+                  <Text style={styles.resultCountText}>
+                    {allRestaurants.length} quán
+                  </Text>
+                </View>
 
-            <Text style={styles.emptySubtitle}>
-              Thử tìm kiếm với từ khóa khác hoặc bấm xóa bộ lọc bên dưới nhé.
-            </Text>
+                <View style={styles.resultsList}>
+                  {allRestaurants.map((item, idx) => (
+                    <Pressable
+                      key={item.id}
+                      style={({ pressed }) => [
+                        styles.restaurantRowCard,
+                        pressed && { opacity: 0.88 },
+                      ]}
+                      onPress={() => openRestaurant(String(item.id))}
+                    >
+                      <View style={styles.thumbWrap}>
+                        {item.imageUrl ? (
+                          <Image
+                            source={{ uri: item.imageUrl }}
+                            style={styles.thumbImage}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={styles.thumbPlaceholder}>
+                            <Text style={{ fontSize: 28 }}>🍲</Text>
+                          </View>
+                        )}
+                        <View style={styles.thumbBadge}>
+                          <Text style={styles.thumbBadgeText}>Freeship</Text>
+                        </View>
+                      </View>
 
-            <Pressable
-              style={styles.resetBtn}
-              onPress={() => {
-                setSearch('');
-                setSelectedCategory('Tất cả');
-              }}
-            >
-              <Text style={styles.resetBtnText}>Xem tất cả nhà hàng</Text>
-            </Pressable>
+                      <View style={styles.restaurantRowInfo}>
+                        <View style={styles.restaurantRowTop}>
+                          <Text
+                            style={styles.restaurantRowName}
+                            numberOfLines={1}
+                          >
+                            {item.name}
+                          </Text>
+                          <View style={styles.ratingMini}>
+                            <Ionicons name="star" size={12} color="#F59E0B" />
+                            <Text style={styles.ratingMiniText}>
+                              {Number(item.rating) > 0
+                                ? Number(item.rating).toFixed(1)
+                                : '4.8'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text
+                          style={styles.restaurantRowCuisine}
+                          numberOfLines={1}
+                        >
+                          {item.cuisineType || 'Ẩm thực đa dạng'}
+                        </Text>
+
+                        <View style={styles.restaurantRowBottom}>
+                          <View style={styles.deliveryTag}>
+                            <Ionicons
+                              name="bicycle"
+                              size={13}
+                              color="#FF6B35"
+                            />
+                            <Text style={styles.deliveryTagText}>
+                              {15 + (idx % 3) * 5}-{25 + (idx % 3) * 5} phút
+                            </Text>
+                          </View>
+
+                          <View style={styles.orderNowMini}>
+                            <Text style={styles.orderNowMiniText}>
+                              Xem menu
+                            </Text>
+                            <Ionicons
+                              name="chevron-forward"
+                              size={13}
+                              color="#FF6B35"
+                            />
+                          </View>
+                        </View>
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
           </View>
         ) : (
           <View style={styles.resultsList}>

@@ -90,6 +90,12 @@ export default function CustomerHomeScreen() {
     0,
   );
 
+  const { data: allRestaurants = [] } = useQuery<RestaurantType[]>({
+    queryKey: ['restaurants', ''],
+    queryFn: () =>
+      api.get<RestaurantType[]>('/restaurants').then((r) => r.data),
+  });
+
   const {
     data: restaurants = [],
     isLoading,
@@ -121,13 +127,11 @@ export default function CustomerHomeScreen() {
     const cat = FOOD_CATEGORIES.find((c) => c.id === selectedCategory);
     if (!cat || cat.keywords.length === 0) return restaurants;
 
-    const matches = restaurants.filter((r) => {
+    return restaurants.filter((r) => {
       const haystack =
         `${r.name ?? ''} ${r.cuisineType ?? ''} ${r.description ?? ''}`.toLowerCase();
       return cat.keywords.some((kw) => haystack.includes(kw));
     });
-
-    return matches.length > 0 ? matches : restaurants;
   }, [restaurants, selectedCategory]);
 
   function openRestaurant(id: string) {
@@ -343,22 +347,185 @@ export default function CustomerHomeScreen() {
         onRefresh={() => refetch()}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={
-          <View style={styles.emptyCard}>
-            <Text style={styles.stateEmoji}>🍽️</Text>
-            <Text style={styles.stateTitle}>Chưa tìm thấy nhà hàng phù hợp</Text>
-            <Text style={styles.stateDescription}>
-              Hãy thử từ khóa khác hoặc chọn lại danh mục món ăn nhé.
-            </Text>
-            {(search.length > 0 || selectedCategory !== 'all') && (
-              <Pressable
-                onPress={() => {
-                  setSearch('');
-                  setSelectedCategory('all');
-                }}
-                style={styles.retryButton}
-              >
-                <Text style={styles.retryButtonText}>Xóa bộ lọc</Text>
-              </Pressable>
+          <View>
+            <View style={styles.emptyCard}>
+              <Text style={styles.stateEmoji}>🍽️</Text>
+              <Text style={styles.stateTitle}>
+                Không tìm thấy sản phẩm
+              </Text>
+              <Text style={styles.stateDescription}>
+                Không tìm thấy sản phẩm, mời bạn tham khảo món khác
+              </Text>
+              {(search.length > 0 || selectedCategory !== 'all') && (
+                <Pressable
+                  onPress={() => {
+                    setSearch('');
+                    setSelectedCategory('all');
+                  }}
+                  style={styles.retryButton}
+                >
+                  <Text style={styles.retryButtonText}>
+                    Tham khảo món khác
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+
+            {allRestaurants.length > 0 && (
+              <View style={{ marginTop: 20 }}>
+                <View style={styles.listSectionHeader}>
+                  <View>
+                    <Text style={styles.sectionEyebrow}>GỢI Ý CHO BẠN</Text>
+                    <Text style={styles.sectionTitle}>
+                      Mời bạn tham khảo món khác
+                    </Text>
+                  </View>
+                  <View style={styles.countBadge}>
+                    <Text style={styles.countText}>
+                      {allRestaurants.length} quán
+                    </Text>
+                  </View>
+                </View>
+
+                {allRestaurants.map((item, index) => {
+                  const deliveryInfo = getDeliveryEstimate(index);
+                  const isOpen = item.isOpen !== false;
+                  const ratingNum = Number(item.rating ?? 0);
+
+                  return (
+                    <Pressable
+                      key={String(item.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Xem thực đơn ${item.name}`}
+                      style={({ pressed }) => [
+                        styles.card,
+                        pressed && styles.cardPressed,
+                      ]}
+                      onPress={() => openRestaurant(String(item.id))}
+                    >
+                      <View style={styles.imageContainer}>
+                        {item.imageUrl ? (
+                          <Image
+                            source={{ uri: item.imageUrl }}
+                            style={styles.cardImage}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={styles.cardImagePlaceholder}>
+                            <Text style={styles.placeholderEmoji}>🍲</Text>
+                            <Text style={styles.placeholderText}>
+                              Món ngon chuẩn vị
+                            </Text>
+                          </View>
+                        )}
+
+                        <View style={styles.promoBadgeOverlay}>
+                          <Ionicons name="flash" size={12} color="#FFFFFF" />
+                          <Text style={styles.promoBadgeText}>Đề xuất</Text>
+                        </View>
+
+                        <View
+                          style={[
+                            styles.statusOverlayBadge,
+                            !isOpen && styles.statusOverlayClosed,
+                          ]}
+                        >
+                          <View
+                            style={[
+                              styles.statusDot,
+                              !isOpen && { backgroundColor: '#9CA3AF' },
+                            ]}
+                          />
+                          <Text style={styles.statusOverlayText}>
+                            {isOpen ? 'Đang mở cửa' : 'Tạm đóng'}
+                          </Text>
+                        </View>
+
+                        <View style={styles.deliveryTimeOverlay}>
+                          <Ionicons name="bicycle" size={14} color="#FF6B35" />
+                          <Text style={styles.deliveryTimeText}>
+                            {deliveryInfo.time} • {deliveryInfo.distance}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.cardBody}>
+                        <View style={styles.cardTitleRow}>
+                          <View style={styles.nameWithTick}>
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={17}
+                              color="#FF6B35"
+                              style={{ marginTop: 2 }}
+                            />
+                            <Text style={styles.cardName} numberOfLines={1}>
+                              {item.name}
+                            </Text>
+                          </View>
+
+                          <View style={styles.ratingBadge}>
+                            <Ionicons name="star" size={13} color="#F59E0B" />
+                            <Text style={styles.ratingValue}>
+                              {ratingNum > 0 ? ratingNum.toFixed(1) : '4.8'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.metaRow}>
+                          <View style={styles.cuisinePill}>
+                            <Text
+                              style={styles.cuisinePillText}
+                              numberOfLines={1}
+                            >
+                              {item.cuisineType || 'Ẩm thực đa dạng'}
+                            </Text>
+                          </View>
+
+                          {item.address ? (
+                            <View style={styles.addressPreview}>
+                              <Ionicons
+                                name="location-outline"
+                                size={13}
+                                color="#8B8289"
+                              />
+                              <Text
+                                style={styles.addressPreviewText}
+                                numberOfLines={1}
+                              >
+                                {item.address}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+
+                        <View style={styles.cardDivider} />
+
+                        <View style={styles.cardFooter}>
+                          <View style={styles.freeshipTag}>
+                            <Ionicons
+                              name="pricetag-outline"
+                              size={13}
+                              color="#168653"
+                            />
+                            <Text style={styles.freeshipTagText}>
+                              {deliveryInfo.promo}
+                            </Text>
+                          </View>
+
+                          <View style={styles.viewMenuButton}>
+                            <Text style={styles.viewMenuText}>Đặt món</Text>
+                            <Ionicons
+                              name="arrow-forward"
+                              size={13}
+                              color="#FFFFFF"
+                            />
+                          </View>
+                        </View>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
             )}
           </View>
         }
