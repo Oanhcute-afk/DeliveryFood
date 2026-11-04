@@ -9,6 +9,8 @@ const MIGRATIONS = [
   `ALTER TABLE users ALTER COLUMN password DROP NOT NULL`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id text UNIQUE`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_blocked boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone text`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url text`,
   `ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'ADMIN'`,
   // Voucher
   `DO $$ BEGIN
@@ -36,6 +38,20 @@ const MIGRATIONS = [
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_amount numeric(10, 2) NOT NULL DEFAULT 0`,
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS voucher_id uuid REFERENCES vouchers(id)`,
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS voucher_code text`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method text NOT NULL DEFAULT 'STRIPE'`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_paid boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS cash_received_at timestamp`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS driver_delivered_at timestamp`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_confirmed_at timestamp`,
+  `CREATE TABLE IF NOT EXISTS order_messages (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     order_id uuid NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+     sender_id uuid NOT NULL REFERENCES users(id),
+     sender_name text NOT NULL,
+     sender_role text NOT NULL,
+     content text NOT NULL,
+     created_at timestamp NOT NULL DEFAULT now()
+   )`,
 ];
 
 @Injectable()

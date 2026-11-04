@@ -94,7 +94,16 @@ export default function CustomerHomeScreen() {
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const bannerScrollRef = useRef<ScrollView>(null);
   const { width: windowWidth } = useWindowDimensions();
-  const bannerCardWidth = Math.max(windowWidth - 36, 280);
+  // Chiều rộng thực tế của khung carousel (đo bằng onLayout) để mỗi trang khớp đúng 1 slide
+  const [measuredBannerWidth, setMeasuredBannerWidth] = useState(0);
+  const bannerCardWidth =
+    measuredBannerWidth > 0
+      ? measuredBannerWidth
+      : Math.max(windowWidth - 36, 280);
+  // Đang kéo tay thì tạm dừng tự chuyển slide
+  const isBannerDraggingRef = useRef(false);
+  // Đổi giá trị để khởi động lại bộ đếm tự chuyển sau mỗi lần người dùng lướt
+  const [autoplayKey, setAutoplayKey] = useState(0);
 
   // Danh sách slide bảng tin:
   // - Nếu CÓ VOUCHER: Hiện slide voucher + 3 slide (Món ngon đặt nhiều, Cửa hàng mới mở, Tiệm gần nổi tiếng)
@@ -185,29 +194,40 @@ export default function CustomerHomeScreen() {
     }
   }, [bannerSlides.length, activeSlideIndex]);
 
-  // Tự động chuyển slide sau mỗi 4.5 giây
+  // Tự động chuyển slide sau 4.5 giây kể từ lần chuyển gần nhất.
+  // Bộ đếm được đặt lại mỗi khi slide thay đổi hoặc người dùng vừa lướt tay,
+  // nên không còn bị giật/nhảy slide ngay khi đang lướt.
   useEffect(() => {
     if (bannerSlides.length <= 1) return;
-    const interval = setInterval(() => {
-      setActiveSlideIndex((prev) => {
-        const nextIndex = (prev + 1) % bannerSlides.length;
-        bannerScrollRef.current?.scrollTo({
-          x: nextIndex * bannerCardWidth,
-          animated: true,
-        });
-        return nextIndex;
+    const timer = setTimeout(() => {
+      if (isBannerDraggingRef.current) return;
+      const nextIndex = (activeSlideIndex + 1) % bannerSlides.length;
+      bannerScrollRef.current?.scrollTo({
+        x: nextIndex * bannerCardWidth,
+        animated: true,
       });
+      setActiveSlideIndex(nextIndex);
     }, 4500);
 
-    return () => clearInterval(interval);
-  }, [bannerSlides.length, bannerCardWidth]);
+    return () => clearTimeout(timer);
+  }, [activeSlideIndex, autoplayKey, bannerSlides.length, bannerCardWidth]);
 
   const goToSlide = (idx: number) => {
     setActiveSlideIndex(idx);
+    setAutoplayKey((k) => k + 1);
     bannerScrollRef.current?.scrollTo({
       x: idx * bannerCardWidth,
       animated: true,
     });
+  };
+
+  const handleBannerScrollEnd = (x: number) => {
+    isBannerDraggingRef.current = false;
+    const idx = Math.round(x / bannerCardWidth);
+    if (idx >= 0 && idx < bannerSlides.length) {
+      setActiveSlideIndex(idx);
+    }
+    setAutoplayKey((k) => k + 1);
   };
 
   const {
@@ -439,7 +459,15 @@ export default function CustomerHomeScreen() {
     return (
       <View style={styles.listHeaderContainer}>
         {/* Bảng tin Banner Carousel */}
-        <View style={styles.carouselWrapper}>
+        <View
+          style={styles.carouselWrapper}
+          onLayout={(e) => {
+            const w = Math.round(e.nativeEvent.layout.width);
+            if (w > 0 && w !== measuredBannerWidth) {
+              setMeasuredBannerWidth(w);
+            }
+          }}
+        >
           <ScrollView
             ref={bannerScrollRef}
             horizontal
@@ -447,15 +475,14 @@ export default function CustomerHomeScreen() {
             showsHorizontalScrollIndicator={false}
             nestedScrollEnabled={true}
             decelerationRate="fast"
-            snapToInterval={bannerCardWidth}
-            snapToAlignment="center"
+            bounces={false}
+            overScrollMode="never"
             contentContainerStyle={styles.carouselScrollContent}
+            onScrollBeginDrag={() => {
+              isBannerDraggingRef.current = true;
+            }}
             onMomentumScrollEnd={(e) => {
-              const x = e.nativeEvent.contentOffset.x;
-              const idx = Math.round(x / bannerCardWidth);
-              if (idx >= 0 && idx < bannerSlides.length) {
-                setActiveSlideIndex(idx);
-              }
+              handleBannerScrollEnd(e.nativeEvent.contentOffset.x);
             }}
           >
             {bannerSlides.map((slide) => (
@@ -747,7 +774,7 @@ export default function CustomerHomeScreen() {
         ]}
         refreshing={isFetching && !isLoading}
         onRefresh={() => refetch()}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={renderHeader()}
         ListEmptyComponent={
           <View>
             <View style={styles.emptyCard}>

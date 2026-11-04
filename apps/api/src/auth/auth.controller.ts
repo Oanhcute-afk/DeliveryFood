@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Patch,
   Post,
   Query,
   Redirect,
@@ -12,6 +13,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Request as ExpressRequest } from 'express';
 import { JwtPayload } from '@food-delivery/types';
@@ -58,6 +60,15 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   me(@Request() req: ExpressRequest & { user: JwtPayload }) {
-    return req.user;
+    return this.authService.getProfile(req.user.sub);
+  }
+
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  updateProfile(
+    @Request() req: ExpressRequest & { user: JwtPayload },
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.authService.updateProfile(req.user.sub, dto);
   }
 }

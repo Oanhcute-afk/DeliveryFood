@@ -5,12 +5,21 @@ import { saveToken, getToken, deleteToken } from '@/lib/auth';
 import { signOutGoogle } from '@/lib/firebase-auth';
 import { User, UserRole } from '@food-delivery/types';
 
+interface UpdateProfileData {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  avatarUrl?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   googleLogin: (idToken: string, role?: UserRole) => Promise<void>;
+  updateProfile: (data: UpdateProfileData) => Promise<User>;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
   logout: () => Promise<void>;
 }
 
@@ -39,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await api.get('/auth/me');
         setUser(res.data);
       }
-    } catch (error) {
+    } catch {
       await deleteToken();
     } finally {
       setIsLoading(false);
@@ -67,6 +76,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(res.data.user);
   }
 
+  async function updateProfile(data: UpdateProfileData): Promise<User> {
+    const res = await api.patch<User>('/auth/profile', data);
+    const updated = res.data;
+    setUser(updated);
+    return updated;
+  }
+
   async function logout() {
     await deleteToken();
     await signOutGoogle();
@@ -76,7 +92,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, login, register, googleLogin, logout }}
+      value={{
+        user,
+        isLoading,
+        login,
+        register,
+        googleLogin,
+        updateProfile,
+        setUser,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>

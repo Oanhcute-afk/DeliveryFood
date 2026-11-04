@@ -55,17 +55,36 @@ export default function DriverHomeScreen() {
   });
 
   const { mutate: toggleOnline, isPending: toggling } = useMutation({
-    mutationFn: () => api.patch('/driver/online'),
-    onSuccess: () => {
+    mutationFn: () =>
+      api.patch<{ isOnline: boolean }>('/driver/online').then((r) => r.data),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['driver-status'] });
+      const previous = queryClient.getQueryData<{ isOnline: boolean }>([
+        'driver-status',
+      ]);
+      const nextOnline = !(previous?.isOnline ?? false);
+      queryClient.setQueryData(['driver-status'], { isOnline: nextOnline });
+      return { previous };
+    },
+    onError: (e: any, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['driver-status'], context.previous);
+      }
+      Alert.alert(
+        'Không thể cập nhật trạng thái',
+        e?.response?.data?.message ?? 'Vui lòng thử lại.',
+      );
+    },
+    onSuccess: (data) => {
+      if (data?.isOnline !== undefined) {
+        queryClient.setQueryData(['driver-status'], { isOnline: data.isOnline });
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['driver-status'] });
       queryClient.invalidateQueries({ queryKey: ['driver-orders'] });
       queryClient.invalidateQueries({ queryKey: ['driver-active-orders'] });
     },
-    onError: (e: any) =>
-      Alert.alert(
-        'Không thể cập nhật trạng thái',
-        e?.response?.data?.message ?? 'Vui lòng thử lại.',
-      ),
   });
 
   const {
@@ -277,7 +296,19 @@ export default function DriverHomeScreen() {
         </View>
 
         {/* Trạng thái trực tuyến */}
-        <View style={styles.statusCard}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.statusCard,
+            pressed && { opacity: 0.95 },
+          ]}
+          onPress={() => {
+            if (!toggling) {
+              toggleOnline();
+            }
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Bật hoặc tắt trạng thái trực tuyến"
+        >
           <View style={styles.statusTopRow}>
             <View style={styles.statusIcon}>
               <Text style={styles.statusIconText}>
@@ -330,7 +361,7 @@ export default function DriverHomeScreen() {
               <ActivityIndicator size="small" color="#FF6B35" />
             )}
           </View>
-        </View>
+        </Pressable>
 
         {/* Thông báo nhận đơn (Giữ lại cố định trên màn hình tài xế) */}
         <View style={styles.sectionHeader}>

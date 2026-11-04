@@ -24,4 +24,9 @@ export class CreateOrderDto {
   @IsOptional()
   @IsUUID()
   voucherId?: string;
+
+  // Phương thức thanh toán ('STRIPE' | 'CASH')
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
 }

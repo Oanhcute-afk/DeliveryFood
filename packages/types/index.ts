@@ -3,19 +3,21 @@ export const UserRole = {
     RESTAURANT_OWNER: 'RESTAURANT_OWNER',
     DRIVER: 'DRIVER',
     ADMIN: 'ADMIN'
-} as const
+} as const;
 
-export type UserRole = typeof UserRole[keyof typeof UserRole]
+export type UserRole = typeof UserRole[keyof typeof UserRole];
 
 // Các role người dùng tự chọn khi đăng ký (ADMIN chỉ được tạo sẵn trên server)
-export const SIGNUP_ROLES = [UserRole.CUSTOMER, UserRole.RESTAURANT_OWNER, UserRole.DRIVER] as const
-export type SignupRole = typeof SIGNUP_ROLES[number]
+export const SIGNUP_ROLES = [UserRole.CUSTOMER, UserRole.RESTAURANT_OWNER, UserRole.DRIVER] as const;
+export type SignupRole = typeof SIGNUP_ROLES[number];
 
 export interface User {
     id: string;
     email: string;
     firstName: string;
     lastName: string;
+    phone?: string | null;
+    avatarUrl?: string | null;
     role: UserRole;
     isBlocked?: boolean;
     createdAt: Date;
@@ -27,9 +29,9 @@ export interface HealthCheckResponse {
 }
 
 export interface JwtPayload {
-    sub: string 
-    email: string
-    role: string
+    sub: string;
+    email: string;
+    role: string;
 }
 
 export interface RestaurantType {
@@ -94,6 +96,13 @@ export const OrderStatus = {
 
 export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
 
+export const PaymentMethod = {
+  STRIPE: 'STRIPE',
+  CASH: 'CASH',
+} as const;
+
+export type PaymentMethod = typeof PaymentMethod[keyof typeof PaymentMethod];
+
 export interface CartItem {
   id: string;          // menuItem id
   name: string;
@@ -104,12 +113,33 @@ export interface CartItem {
   quantity: number;
 }
 
+export interface OrderCustomerInfo {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone?: string | null;
+  avatarUrl?: string | null;
+}
+
+export interface OrderDriverInfo {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone?: string | null;
+  avatarUrl?: string | null;
+}
+
 export interface Order {
   id: string;
   customerId: string;
   restaurantId: string;
   driverId: string | null;
   status: OrderStatus;
+  paymentMethod?: PaymentMethod | string;
+  isPaid?: boolean;
+  cashReceivedAt?: string | Date | null;
+  driverDeliveredAt?: string | Date | null;
+  customerConfirmedAt?: string | Date | null;
   totalAmount: string;
   subtotalAmount?: string | null;
   discountAmount?: string;
@@ -120,6 +150,8 @@ export interface Order {
   stripePaymentIntentId: string | null;
   createdAt: Date;
   updatedAt: Date;
+  customer?: OrderCustomerInfo | null;
+  driver?: OrderDriverInfo | null;
 }
 
 export interface OrderItem {
@@ -130,6 +162,17 @@ export interface OrderItem {
   unitPrice: string;
   createdAt: Date;
 }
+
+export interface OrderMessage {
+  id: string;
+  orderId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: string;
+  content: string;
+  createdAt: string | Date;
+}
+
 export const VoucherDiscountType = {
   PERCENT: 'PERCENT',
   FIXED: 'FIXED',

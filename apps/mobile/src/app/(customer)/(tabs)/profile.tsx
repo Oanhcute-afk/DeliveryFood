@@ -1,17 +1,29 @@
+import { useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
   StatusBar,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/auth-context';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [firstName, setFirstName] = useState(user?.firstName ?? '');
+  const [lastName, setLastName] = useState(user?.lastName ?? '');
+  const [phone, setPhone] = useState(user?.phone ?? '');
+  const [isSaving, setIsSaving] = useState(false);
 
   const fullName =
     `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() ||
@@ -27,6 +39,38 @@ export default function ProfileScreen() {
   const displayRole = user?.role
     ? roleLabel[user.role] ?? user.role
     : 'Thành viên';
+
+  function openEditModal() {
+    setFirstName(user?.firstName ?? '');
+    setLastName(user?.lastName ?? '');
+    setPhone(user?.phone ?? '');
+    setIsEditModalVisible(true);
+  }
+
+  async function handleSaveProfile() {
+    if (!firstName.trim()) {
+      Alert.alert('Thiếu thông tin', 'Vui lòng nhập tên của bạn.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await updateProfile({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone: phone.trim(),
+      });
+      setIsEditModalVisible(false);
+      Alert.alert('Thành công', 'Thông tin cá nhân đã được cập nhật.');
+    } catch (error: any) {
+      Alert.alert(
+        'Không thể cập nhật',
+        error?.response?.data?.message ?? 'Đã xảy ra lỗi. Vui lòng thử lại.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -46,13 +90,17 @@ export default function ProfileScreen() {
             <Text style={styles.headerTitle}>Hồ sơ cá nhân</Text>
           </View>
 
-          <View style={styles.headerIcon}>
-            <Ionicons
-              name="person-outline"
-              size={24}
-              color="#FF6B35"
-            />
-          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.editHeaderButton,
+              pressed && styles.pressed,
+            ]}
+            onPress={openEditModal}
+            accessibilityLabel="Chỉnh sửa thông tin"
+          >
+            <Ionicons name="create-outline" size={20} color="#FF6B35" />
+            <Text style={styles.editHeaderText}>Sửa</Text>
+          </Pressable>
         </View>
 
         {/* Profile card */}
@@ -82,6 +130,17 @@ export default function ProfileScreen() {
             />
             <Text style={styles.roleText}>{displayRole}</Text>
           </View>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.editButton,
+              pressed && styles.pressed,
+            ]}
+            onPress={openEditModal}
+          >
+            <Ionicons name="pencil" size={15} color="#FF6B35" />
+            <Text style={styles.editButtonText}>Chỉnh sửa thông tin cá nhân</Text>
+          </Pressable>
 
           <View style={styles.profileDivider} />
 
@@ -113,7 +172,7 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>Thông tin tài khoản</Text>
 
         <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
+          <Pressable style={styles.infoRow} onPress={openEditModal}>
             <View style={styles.infoIcon}>
               <Ionicons
                 name="person-outline"
@@ -128,11 +187,36 @@ export default function ProfileScreen() {
             </View>
 
             <Ionicons
-              name="chevron-forward"
+              name="create-outline"
               size={18}
-              color="#C4BAB4"
+              color="#FF6B35"
             />
-          </View>
+          </Pressable>
+
+          <View style={styles.rowDivider} />
+
+          <Pressable style={styles.infoRow} onPress={openEditModal}>
+            <View style={styles.infoIcon}>
+              <Ionicons
+                name="call-outline"
+                size={20}
+                color="#FF6B35"
+              />
+            </View>
+
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Số điện thoại liên hệ</Text>
+              <Text style={styles.infoValue}>
+                {user?.phone ? user.phone : 'Chưa cập nhật (Bấm để thêm)'}
+              </Text>
+            </View>
+
+            <Ionicons
+              name="create-outline"
+              size={18}
+              color="#FF6B35"
+            />
+          </Pressable>
 
           <View style={styles.rowDivider} />
 
@@ -153,8 +237,8 @@ export default function ProfileScreen() {
             </View>
 
             <Ionicons
-              name="chevron-forward"
-              size={18}
+              name="lock-closed-outline"
+              size={16}
               color="#C4BAB4"
             />
           </View>
@@ -176,9 +260,9 @@ export default function ProfileScreen() {
             </View>
 
             <Ionicons
-              name="chevron-forward"
+              name="checkmark-circle-outline"
               size={18}
-              color="#C4BAB4"
+              color="#37A66B"
             />
           </View>
         </View>
@@ -221,6 +305,107 @@ export default function ProfileScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Modal chỉnh sửa thông tin cá nhân */}
+      <Modal
+        visible={isEditModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsEditModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalHeader}>
+            <View>
+              <Text style={styles.modalHeaderEyebrow}>TÀI KHOẢN</Text>
+              <Text style={styles.modalHeaderTitle}>Chỉnh sửa thông tin</Text>
+            </View>
+
+            <Pressable
+              style={styles.modalCloseButton}
+              onPress={() => setIsEditModalVisible(false)}
+            >
+              <Ionicons name="close" size={22} color="#29232A" />
+            </Pressable>
+          </View>
+
+          <ScrollView
+            style={styles.modalBody}
+            contentContainerStyle={styles.modalBodyContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.formGroup}>
+              <Text style={styles.inputLabel}>
+                Họ & tên đệm <Text style={styles.requiredStar}>*</Text>
+              </Text>
+              <TextInput
+                style={styles.inputField}
+                placeholder="VD: Nguyễn Văn"
+                placeholderTextColor="#A89EA6"
+                value={firstName}
+                onChangeText={setFirstName}
+                editable={!isSaving}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.inputLabel}>
+                Tên <Text style={styles.requiredStar}>*</Text>
+              </Text>
+              <TextInput
+                style={styles.inputField}
+                placeholder="VD: An"
+                placeholderTextColor="#A89EA6"
+                value={lastName}
+                onChangeText={setLastName}
+                editable={!isSaving}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <View style={styles.phoneLabelRow}>
+                <Text style={styles.inputLabel}>Số điện thoại liên hệ</Text>
+                <View style={styles.recommendBadge}>
+                  <Text style={styles.recommendBadgeText}>Khuyên dùng</Text>
+                </View>
+              </View>
+              <Text style={styles.inputHint}>
+                Tài xế giao hàng sẽ gọi vào số này khi đến nơi để giao món cho bạn.
+              </Text>
+              <TextInput
+                style={styles.inputField}
+                placeholder="VD: 0912345678"
+                placeholderTextColor="#A89EA6"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                editable={!isSaving}
+              />
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.saveButton,
+                isSaving && styles.saveButtonDisabled,
+                pressed && !isSaving && styles.pressed,
+              ]}
+              onPress={handleSaveProfile}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                  <Text style={styles.saveButtonText}>Lưu thay đổi</Text>
+                </>
+              )}
+            </Pressable>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -255,13 +440,19 @@ const styles = StyleSheet.create({
     color: '#29232A',
     letterSpacing: -0.7,
   },
-  headerIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 17,
-    backgroundColor: '#FFEEE5',
+  editHeaderButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: '#FFEEE5',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+  },
+  editHeaderText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FF6B35',
   },
   profileCard: {
     backgroundColor: '#FFFFFF',
@@ -325,6 +516,23 @@ const styles = StyleSheet.create({
     color: '#E85B28',
     fontSize: 12,
     fontWeight: '700',
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFF4EE',
+    borderWidth: 1,
+    borderColor: '#FCD8C8',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    marginTop: 14,
+  },
+  editButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FF6B35',
   },
   profileDivider: {
     height: 1,
@@ -452,5 +660,111 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 10,
     color: '#A49AA0',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#FFF9F5',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 14,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0E8E3',
+  },
+  modalHeaderEyebrow: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FF6B35',
+    letterSpacing: 1.2,
+  },
+  modalHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#29232A',
+    marginTop: 2,
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3ECEA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBody: {
+    flex: 1,
+  },
+  modalBodyContent: {
+    padding: 20,
+    gap: 16,
+  },
+  formGroup: {
+    gap: 6,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#29232A',
+  },
+  requiredStar: {
+    color: '#E34D4D',
+  },
+  phoneLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  recommendBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  recommendBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#16A34A',
+  },
+  inputHint: {
+    fontSize: 11,
+    color: '#8B8289',
+    lineHeight: 16,
+    marginBottom: 4,
+  },
+  inputField: {
+    minHeight: 48,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8DED8',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    fontSize: 14,
+    color: '#29232A',
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FF6B35',
+    minHeight: 52,
+    borderRadius: 16,
+    marginTop: 10,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  pressed: {
+    opacity: 0.8,
   },
 });

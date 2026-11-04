@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { desc, eq, inArray, or, SQL } from 'drizzle-orm';
+import { asc, desc, eq, inArray, or, SQL } from 'drizzle-orm';
 import { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import * as schema from '../db/schema';
 import { OrderStatus, UserRole } from '@food-delivery/types';
@@ -33,8 +33,6 @@ export class OrdersService {
       .where(inArray(schema.menuItems.id, menuItemIds));
 
     // verify all menu item IDs were actually found in the DB
-    // if any ID is invalid, menuItems.length < dto.items.length
-    // without this check, find() returns undefined and total becomes NaN
     if (menuItems.length !== dto.items.length) {
       throw new BadRequestException('One or more menu items not found');
     }
@@ -67,6 +65,9 @@ export class OrdersService {
       : null;
     const discount = applied?.discount ?? 0;
 
+    const isCash = dto.paymentMethod === 'CASH';
+    const status: OrderStatus = isCash ? 'CONFIRMED' : 'PENDING';
+
     // insert the order
     const [order] = await this.db
       .insert(schema.orders)
@@ -79,7 +80,9 @@ export class OrdersService {
         totalAmount: (total - discount).toFixed(2),
         voucherId: applied?.voucher.id ?? null,
         voucherCode: applied?.voucher.code ?? null,
-        status: 'PENDING',
+        paymentMethod: isCash ? 'CASH' : 'STRIPE',
+        isPaid: false,
+        status,
       })
       .returning();
 
@@ -96,7 +99,12 @@ export class OrdersService {
       }),
     );
 
-    return order;
+    if (isCash) {
+      this.ordersGateway.emitOrderUpdate(order);
+    }
+
+    const [enriched] = await this.enrichOrders([order]);
+    return enriched;
   }
 
   async findByCustomer(customerId: string) {
@@ -136,7 +144,6 @@ export class OrdersService {
     if (!order) throw new NotFoundException('Order not found');
 
     // check access by role — each role can only view orders they're involved in
-    // we use the same NotFoundException message regardless — avoids leaking whether the order exists
     const canView =
       (user.role === UserRole.CUSTOMER && order.customerId === user.sub) ||
       (user.role === UserRole.RESTAURANT_OWNER &&
@@ -221,6 +228,14 @@ export class OrdersService {
       this.driverService.clearOrderDeclines(orderId);
     }
 
+    if (user.role === UserRole.DRIVER && newStatus === 'DELIVERED') {
+      updateValues.driverDeliveredAt = new Date();
+      if (order.paymentMethod === 'CASH') {
+        updateValues.isPaid = true;
+        updateValues.cashReceivedAt = new Date();
+      }
+    }
+
     const [updated] = await this.db
       .update(schema.orders)
       .set(updateValues)
@@ -233,7 +248,89 @@ export class OrdersService {
       await this.driverService.assignDriver(orderId);
     }
 
-    return updated;
+    const [enriched] = await this.enrichOrders([updated]);
+    return enriched;
+  }
+
+  async confirmReceived(orderId: string, user: { sub: string; role: string }) {
+    const [order] = await this.db
+      .select()
+      .from(schema.orders)
+      .where(eq(schema.orders.id, orderId));
+
+    if (!order) throw new NotFoundException('Order not found');
+
+    if (order.customerId !== user.sub) {
+      throw new ForbiddenException('Đơn hàng này không thuộc về bạn');
+    }
+
+    const [updated] = await this.db
+      .update(schema.orders)
+      .set({
+        status: 'DELIVERED',
+        customerConfirmedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.orders.id, orderId))
+      .returning();
+
+    this.ordersGateway.emitOrderUpdate(updated);
+
+    const [enriched] = await this.enrichOrders([updated]);
+    return enriched;
+  }
+
+  async getMessages(orderId: string, user: { sub: string; role: string }) {
+    // Check permission to view order
+    await this.findById(orderId, user);
+
+    const messages = await this.db
+      .select()
+      .from(schema.orderMessages)
+      .where(eq(schema.orderMessages.orderId, orderId))
+      .orderBy(asc(schema.orderMessages.createdAt));
+
+    return messages;
+  }
+
+  async addMessage(
+    orderId: string,
+    user: { sub: string; role: string },
+    content: string,
+  ) {
+    if (!content?.trim()) {
+      throw new BadRequestException('Nội dung tin nhắn không được để trống');
+    }
+
+    // Check permission to view order
+    await this.findById(orderId, user);
+
+    // Get sender info
+    const [sender] = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, user.sub));
+
+    const senderName = sender
+      ? `${sender.firstName} ${sender.lastName}`.trim()
+      : user.role === UserRole.DRIVER
+        ? 'Tài xế'
+        : 'Khách hàng';
+
+    const [message] = await this.db
+      .insert(schema.orderMessages)
+      .values({
+        orderId,
+        senderId: user.sub,
+        senderName,
+        senderRole: user.role,
+        content: content.trim(),
+      })
+      .returning();
+
+    this.ordersGateway.emitOrderChat(orderId, message);
+
+    return message;
   }
 
   private validateTransition(
@@ -272,7 +369,6 @@ export class OrdersService {
   }
 
   private async isOwnerOfRestaurant(ownerId: string, restaurantId: string) {
-    // one restaurant per owner — single query is enough
     const [restaurant] = await this.db
       .select()
       .from(schema.restaurants)
@@ -284,47 +380,97 @@ export class OrdersService {
   private async enrichOrders(orderRows: (typeof schema.orders.$inferSelect)[]) {
     if (orderRows.length === 0) return [];
 
+    const now = Date.now();
+    for (const order of orderRows) {
+      // Tự động hoàn thành sau 24h kể từ khi shipper xác nhận giao hàng nếu khách chưa bấm
+      if (order.driverDeliveredAt && !order.customerConfirmedAt) {
+        const deliveredTime = new Date(order.driverDeliveredAt).getTime();
+        if (now - deliveredTime >= 24 * 60 * 60 * 1000) {
+          order.customerConfirmedAt = new Date(
+            deliveredTime + 24 * 60 * 60 * 1000,
+          );
+          void this.db
+            .update(schema.orders)
+            .set({
+              customerConfirmedAt: order.customerConfirmedAt,
+              updatedAt: new Date(),
+            })
+            .where(eq(schema.orders.id, order.id));
+        }
+      }
+    }
+
     const orderIds = orderRows.map((o) => o.id);
     const restaurantIds = [...new Set(orderRows.map((o) => o.restaurantId))];
 
-    const restaurants = await this.db
-      .select({
-        id: schema.restaurants.id,
-        name: schema.restaurants.name,
-        address: schema.restaurants.address,
-        imageUrl: schema.restaurants.imageUrl,
-        cuisineType: schema.restaurants.cuisineType,
-      })
-      .from(schema.restaurants)
-      .where(inArray(schema.restaurants.id, restaurantIds));
+    const customerIds = [
+      ...new Set(orderRows.map((o) => o.customerId).filter(Boolean)),
+    ];
+    const driverIds = [
+      ...new Set(
+        orderRows.map((o) => o.driverId).filter(Boolean) as string[],
+      ),
+    ];
+    const userIds = [...new Set([...customerIds, ...driverIds])];
 
-    const items = await this.db
-      .select({
-        id: schema.orderItems.id,
-        orderId: schema.orderItems.orderId,
-        menuItemId: schema.orderItems.menuItemId,
-        quantity: schema.orderItems.quantity,
-        unitPrice: schema.orderItems.unitPrice,
-        menuItem: {
-          id: schema.menuItems.id,
-          name: schema.menuItems.name,
-          imageUrl: schema.menuItems.imageUrl,
-          price: schema.menuItems.price,
-        },
-      })
-      .from(schema.orderItems)
-      .leftJoin(
-        schema.menuItems,
-        eq(schema.orderItems.menuItemId, schema.menuItems.id),
-      )
-      .where(inArray(schema.orderItems.orderId, orderIds));
+    const [restaurants, items, userList] = await Promise.all([
+      this.db
+        .select({
+          id: schema.restaurants.id,
+          name: schema.restaurants.name,
+          address: schema.restaurants.address,
+          imageUrl: schema.restaurants.imageUrl,
+          cuisineType: schema.restaurants.cuisineType,
+        })
+        .from(schema.restaurants)
+        .where(inArray(schema.restaurants.id, restaurantIds)),
 
-    const restaurantMap = Object.fromEntries(restaurants.map((r) => [r.id, r]));
+      this.db
+        .select({
+          id: schema.orderItems.id,
+          orderId: schema.orderItems.orderId,
+          menuItemId: schema.orderItems.menuItemId,
+          quantity: schema.orderItems.quantity,
+          unitPrice: schema.orderItems.unitPrice,
+          menuItem: {
+            id: schema.menuItems.id,
+            name: schema.menuItems.name,
+            imageUrl: schema.menuItems.imageUrl,
+            price: schema.menuItems.price,
+          },
+        })
+        .from(schema.orderItems)
+        .leftJoin(
+          schema.menuItems,
+          eq(schema.orderItems.menuItemId, schema.menuItems.id),
+        )
+        .where(inArray(schema.orderItems.orderId, orderIds)),
+
+      userIds.length > 0
+        ? this.db
+            .select({
+              id: schema.users.id,
+              firstName: schema.users.firstName,
+              lastName: schema.users.lastName,
+              phone: schema.users.phone,
+              avatarUrl: schema.users.avatarUrl,
+            })
+            .from(schema.users)
+            .where(inArray(schema.users.id, userIds))
+        : Promise.resolve([]),
+    ]);
+
+    const restaurantMap = Object.fromEntries(
+      restaurants.map((r) => [r.id, r]),
+    );
+    const userMap = Object.fromEntries(userList.map((u) => [u.id, u]));
 
     return orderRows.map((order) => ({
       ...order,
       restaurant: restaurantMap[order.restaurantId],
       items: items.filter((i) => i.orderId === order.id),
+      customer: userMap[order.customerId] ?? null,
+      driver: order.driverId ? userMap[order.driverId] ?? null : null,
     }));
   }
 

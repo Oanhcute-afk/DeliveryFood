@@ -11,6 +11,7 @@ import {
 import { Request as ExpressRequest } from 'express';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateOrderMessageDto } from './dto/create-order-message.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -59,6 +60,27 @@ export class OrdersController {
       req.user,
       dto.cancelReason,
     );
+  }
+
+  @Post(':id/confirm-received')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.CUSTOMER)
+  confirmReceived(@Param('id') id: string, @Request() req: AuthRequest) {
+    return this.ordersService.confirmReceived(id, req.user);
+  }
+
+  @Get(':id/messages')
+  getMessages(@Param('id') id: string, @Request() req: AuthRequest) {
+    return this.ordersService.getMessages(id, req.user);
+  }
+
+  @Post(':id/messages')
+  addMessage(
+    @Param('id') id: string,
+    @Request() req: AuthRequest,
+    @Body() dto: CreateOrderMessageDto,
+  ) {
+    return this.ordersService.addMessage(id, req.user, dto.content);
   }
 
   @Get(':id')

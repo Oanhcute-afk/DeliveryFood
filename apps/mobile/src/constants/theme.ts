@@ -24,6 +24,16 @@ export const Colors = {
   },
 } as const;
 
+export const BURGER_COLORS = {
+  primary: '#FF6B35',
+  primaryLight: '#FFF0E8',
+  surface: '#FFFFFF',
+  surfaceMuted: '#F5ECE7',
+  border: '#F0E8E3',
+  text: '#29232A',
+  muted: '#8B8289',
+};
+
 export type ThemeColor = keyof typeof Colors.light;
 
 export const Fonts = Platform.select({

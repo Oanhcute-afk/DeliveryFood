@@ -84,6 +84,7 @@ export default function CartScreen() {
   const [floorApartment, setFloorApartment] = useState('');
   const [streetName, setStreetName] = useState('');
   const [addressNote, setAddressNote] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'STRIPE'>('CASH');
 
   const specificAddress = useMemo(
     () =>
@@ -140,6 +141,7 @@ export default function CartScreen() {
       api.post('/orders', {
         restaurantId,
         deliveryAddress: specificAddress,
+        paymentMethod,
         items: items.map((item) => ({
           menuItemId: item.id,
           quantity: String(item.quantity),
@@ -257,36 +259,36 @@ export default function CartScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.screenTitle}>Giỏ hàng</Text>
-            <Text style={styles.headerSubtitle}>
-              {itemCount} món ăn đã chọn
-            </Text>
-          </View>
-
-          <Pressable
-            style={styles.clearIconButton}
-            onPress={handleClearCart}
-            accessibilityLabel="Xóa toàn bộ giỏ hàng"
-          >
-            <Ionicons
-              name="trash-outline"
-              size={21}
-              color={COLORS.danger}
-            />
-          </Pressable>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.screenTitle}>Giỏ hàng</Text>
+          <Text style={styles.headerSubtitle}>
+            {itemCount} món ăn đã chọn
+          </Text>
         </View>
 
-        <FlatList
-          data={items}
-          extraData={items}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          bounces={true}
-          alwaysBounceVertical={true}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.listContent}
+        <Pressable
+          style={styles.clearIconButton}
+          onPress={handleClearCart}
+          accessibilityLabel="Xóa toàn bộ giỏ hàng"
+        >
+          <Ionicons
+            name="trash-outline"
+            size={21}
+            color={COLORS.danger}
+          />
+        </Pressable>
+      </View>
+
+      <FlatList
+        data={items}
+        extraData={items}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+        bounces={true}
+        alwaysBounceVertical={true}
+        keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View style={styles.restaurantCard}>
             <View style={styles.restaurantIcon}>
@@ -514,6 +516,76 @@ export default function CartScreen() {
               onSelect={setSelectedVoucherId}
             />
 
+            {/* Chọn phương thức thanh toán */}
+            <View style={styles.paymentSectionCard}>
+              <View style={styles.sectionHeading}>
+                <View style={[styles.sectionIcon, { backgroundColor: '#E8F8F0' }]}>
+                  <Ionicons name="wallet-outline" size={21} color={COLORS.green} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
+                  <Text style={styles.sectionSubtitle}>
+                    Chọn thanh toán khi nhận hàng hoặc qua thẻ
+                  </Text>
+                </View>
+              </View>
+
+              <Pressable
+                style={[
+                  styles.paymentOption,
+                  paymentMethod === 'CASH' && styles.paymentOptionSelected,
+                ]}
+                onPress={() => setPaymentMethod('CASH')}
+              >
+                <View style={[styles.paymentOptionIcon, { backgroundColor: '#DCFCE7' }]}>
+                  <Ionicons name="cash-outline" size={22} color={COLORS.green} />
+                </View>
+                <View style={styles.paymentOptionInfo}>
+                  <View style={styles.paymentOptionTitleRow}>
+                    <Text style={styles.paymentOptionTitle}>
+                      Tiền mặt khi nhận hàng (COD)
+                    </Text>
+                    <View style={styles.popularBadge}>
+                      <Text style={styles.popularBadgeText}>Phổ biến</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.paymentOptionDesc}>
+                    Thanh toán trực tiếp cho shipper khi nhận được món
+                  </Text>
+                </View>
+                <Ionicons
+                  name={paymentMethod === 'CASH' ? 'radio-button-on' : 'radio-button-off'}
+                  size={22}
+                  color={paymentMethod === 'CASH' ? COLORS.primary : COLORS.muted}
+                />
+              </Pressable>
+
+              <Pressable
+                style={[
+                  styles.paymentOption,
+                  paymentMethod === 'STRIPE' && styles.paymentOptionSelected,
+                ]}
+                onPress={() => setPaymentMethod('STRIPE')}
+              >
+                <View style={[styles.paymentOptionIcon, { backgroundColor: '#FFE8DF' }]}>
+                  <Ionicons name="card-outline" size={22} color={COLORS.primary} />
+                </View>
+                <View style={styles.paymentOptionInfo}>
+                  <Text style={styles.paymentOptionTitle}>
+                    Thanh toán thẻ trực tuyến (Stripe)
+                  </Text>
+                  <Text style={styles.paymentOptionDesc}>
+                    Thanh toán trước qua thẻ quốc tế (Visa, Mastercard...)
+                  </Text>
+                </View>
+                <Ionicons
+                  name={paymentMethod === 'STRIPE' ? 'radio-button-on' : 'radio-button-off'}
+                  size={22}
+                  color={paymentMethod === 'STRIPE' ? COLORS.primary : COLORS.muted}
+                />
+              </Pressable>
+            </View>
+
             <View style={styles.summaryCard}>
               <Text style={styles.summaryHeading}>Tóm tắt đơn hàng</Text>
 
@@ -550,7 +622,9 @@ export default function CartScreen() {
                 <View>
                   <Text style={styles.totalLabel}>Tổng cộng</Text>
                   <Text style={styles.totalHint}>
-                    Chưa bao gồm phí giao hàng nếu có
+                    {paymentMethod === 'CASH'
+                      ? 'Trả tiền mặt cho tài xế khi nhận hàng'
+                      : 'Thanh toán trực tuyến qua thẻ'}
                   </Text>
                 </View>
 
@@ -583,7 +657,9 @@ export default function CartScreen() {
                     size={22}
                     color="#FFFFFF"
                   />
-                  <Text style={styles.orderButtonText}>Đặt hàng ngay</Text>
+                  <Text style={styles.orderButtonText}>
+                    {paymentMethod === 'CASH' ? 'Đặt hàng (Trả tiền mặt)' : 'Đặt hàng & Thanh toán'}
+                  </Text>
                   <Ionicons
                     name="arrow-forward"
                     size={20}
@@ -600,7 +676,9 @@ export default function CartScreen() {
                 color={COLORS.muted}
               />
               <Text style={styles.secureNoteText}>
-                Vui lòng kiểm tra địa chỉ cụ thể trước khi đặt hàng
+                {paymentMethod === 'CASH'
+                  ? 'Bạn chỉ cần thanh toán tiền mặt khi đã nhận được món'
+                  : 'Giao dịch được bảo mật và xử lý an toàn qua Stripe'}
               </Text>
             </View>
 
@@ -905,6 +983,75 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     color: COLORS.text,
+  },
+
+  paymentSectionCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 16,
+    gap: 12,
+  },
+
+  paymentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: '#FAFAF9',
+    gap: 12,
+  },
+
+  paymentOptionSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#FFF8F4',
+  },
+
+  paymentOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  paymentOptionInfo: {
+    flex: 1,
+    gap: 2,
+  },
+
+  paymentOptionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+
+  paymentOptionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.text,
+  },
+
+  popularBadge: {
+    backgroundColor: COLORS.greenLight,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+
+  popularBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.green,
+  },
+
+  paymentOptionDesc: {
+    fontSize: 12,
+    color: COLORS.muted,
+    lineHeight: 16,
   },
 
   summaryCard: {

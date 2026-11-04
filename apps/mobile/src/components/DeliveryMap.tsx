@@ -1,23 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-type Props = {
+interface Props {
   latitude?: number;
   longitude?: number;
-};
+}
 
-function createGoogleMapHtml(latitude: number, longitude: number) {
-  return `<!doctype html>
+function createGoogleMapHtml(latitude: number, longitude: number): string {
+  return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <style>
     html, body, #map {
@@ -25,26 +20,11 @@ function createGoogleMapHtml(latitude: number, longitude: number) {
       width: 100%;
       margin: 0;
       padding: 0;
-      background: #e8eef0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4efe9;
     }
-    .driver-marker {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 42px;
-      height: 42px;
-      border-radius: 21px;
-      background: #FF6B35;
-      border: 3px solid #FFFFFF;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.28);
-      font-size: 22px;
-    }
-    .leaflet-control-attribution {
-      font-size: 9px !important;
-      background: rgba(255,255,255,0.85) !important;
-      padding: 2px 6px !important;
-      border-radius: 4px;
+    .custom-marker {
+      background: transparent;
+      border: none;
     }
   </style>
 </head>
@@ -52,81 +32,61 @@ function createGoogleMapHtml(latitude: number, longitude: number) {
   <div id="map"></div>
   <script>
     (function () {
-      var currentCoords = [${latitude}, ${longitude}];
       var map = null;
       var marker = null;
-
-      function handleMessage(event) {
-        try {
-          var data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-          if (!data || data.type !== 'UPDATE_LOCATION') return;
-
-          var lat = Number(data.latitude);
-          var lng = Number(data.longitude);
-          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-
-          currentCoords = [lat, lng];
-          if (map && marker) {
-            marker.setLatLng(currentCoords);
-            map.panTo(currentCoords, { animate: true });
-          }
-        } catch (e) {}
-      }
-
-      window.addEventListener('message', handleMessage);
-      document.addEventListener('message', handleMessage);
+      var curLat = ${latitude};
+      var curLng = ${longitude};
 
       function initMap() {
-        if (!window.L) return;
+        if (typeof L === 'undefined') return;
 
         map = L.map('map', {
-          zoomControl: true,
-          attributionControl: true
-        }).setView(currentCoords, 16);
+          zoomControl: false,
+          attributionControl: false
+        }).setView([curLat, curLng], 16);
 
-        // Sử dụng Google Maps रोड tiles (hỗ trợ tiếng Việt) với fallback sang OpenStreetMap
-        var googleTiles = L.tileLayer(
-          'https://{s}.google.com/vt/lyrs=m&hl=vi&x={x}&y={y}&z={z}',
-          {
-            maxZoom: 20,
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-            attribution: '© Google Maps'
-          }
-        );
-
-        var osmFallback = L.tileLayer(
-          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap'
-          }
-        );
-
-        var switchedToFallback = false;
-        googleTiles.on('tileerror', function () {
-          if (!switchedToFallback && map) {
-            switchedToFallback = true;
-            map.removeLayer(googleTiles);
-            osmFallback.addTo(map);
-          }
-        });
-
-        googleTiles.addTo(map);
+        // Google Maps Standard Road Tiles
+        L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&hl=vi&x={x}&y={y}&z={z}', {
+          subdomains: ['0', '1', '2', '3'],
+          maxZoom: 20
+        }).addTo(map);
 
         var icon = L.divIcon({
-          className: '',
-          html: '<div class="driver-marker">🛵</div>',
-          iconSize: [42, 42],
-          iconAnchor: [21, 21]
+          className: 'custom-marker',
+          html: '<div style="background-color:#FF6B35;width:24px;height:24px;border-radius:50%;border:3px solid #FFFFFF;box-shadow:0 3px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;">🛵</div>',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
         });
 
-        marker = L.marker(currentCoords, { icon: icon })
-          .addTo(map)
-          .bindPopup('Vị trí giao hàng hiện tại');
+        marker = L.marker([curLat, curLng], { icon: icon }).addTo(map);
 
-        setTimeout(function () {
-          map.invalidateSize();
-        }, 200);
+        window.addEventListener('message', function (e) {
+          try {
+            var data = JSON.parse(e.data);
+            if (data.type === 'UPDATE_LOCATION' && map && marker) {
+              var lat = parseFloat(data.latitude);
+              var lng = parseFloat(data.longitude);
+              if (!isNaN(lat) && !isNaN(lng)) {
+                marker.setLatLng([lat, lng]);
+                map.panTo([lat, lng], { animate: true, duration: 0.8 });
+              }
+            }
+          } catch (err) {}
+        });
+
+        document.addEventListener('message', function (e) {
+          try {
+            var data = JSON.parse(e.data);
+            if (data.type === 'UPDATE_LOCATION' && map && marker) {
+              var lat = parseFloat(data.latitude);
+              var lng = parseFloat(data.longitude);
+              if (!isNaN(lat) && !isNaN(lng)) {
+                marker.setLatLng([lat, lng]);
+                map.panTo([lat, lng], { animate: true, duration: 0.8 });
+              }
+            }
+          } catch (err) {}
+        });
       }
 
       function loadScript(src, onSuccess, onError) {
@@ -158,7 +118,7 @@ export default function DeliveryMap({
   latitude = 10.7769,
   longitude = 106.7009,
 }: Props) {
-  const webViewRef = useRef<WebView | null>(null);
+  const webViewRef = useRef<any>(null);
   const [mapReady, setMapReady] = useState(false);
 
   const safeLat = Number.isFinite(latitude) ? latitude : 10.7769;
@@ -206,26 +166,24 @@ export default function DeliveryMap({
 
 const styles = StyleSheet.create({
   container: {
-    height: 280,
-    width: '100%',
+    flex: 1,
     overflow: 'hidden',
-    borderRadius: 12,
-    backgroundColor: '#E8EEF0',
+    backgroundColor: '#FAF5F0',
   },
   map: {
     flex: 1,
-    backgroundColor: '#E8EEF0',
+    backgroundColor: 'transparent',
   },
   loading: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 249, 245, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E8EEF0',
+    gap: 12,
   },
   loadingText: {
-    marginTop: 8,
+    color: '#8B8289',
     fontSize: 13,
     fontWeight: '600',
-    color: '#444',
   },
 });

@@ -16,6 +16,7 @@ import { JwtPayload } from '@food-delivery/types';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { DecodedIdToken, getAuth } from 'firebase-admin/auth';
 
@@ -240,6 +241,44 @@ export class AuthService {
       email: decoded.email,
       name: decoded.name as string | undefined,
     };
+  }
+
+  async getProfile(userId: string) {
+    const [user] = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, userId));
+
+    if (!user) throw new NotFoundException('User not found');
+    this.assertNotBlocked(user);
+    return this.sanitizeUser(user);
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const [user] = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, userId));
+
+    if (!user) throw new NotFoundException('User not found');
+    this.assertNotBlocked(user);
+
+    const updateData: Partial<typeof schema.users.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+
+    if (dto.firstName !== undefined) updateData.firstName = dto.firstName.trim();
+    if (dto.lastName !== undefined) updateData.lastName = dto.lastName.trim();
+    if (dto.phone !== undefined) updateData.phone = dto.phone ? dto.phone.trim() : null;
+    if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl ? dto.avatarUrl.trim() : null;
+
+    const [updated] = await this.db
+      .update(schema.users)
+      .set(updateData)
+      .where(eq(schema.users.id, userId))
+      .returning();
+
+    return this.sanitizeUser(updated);
   }
 
   private assertNotBlocked(user: schema.User) {

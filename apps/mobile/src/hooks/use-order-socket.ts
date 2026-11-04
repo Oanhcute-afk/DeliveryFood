@@ -141,3 +141,35 @@ export function useDriverLocationSocket(orderId: string | null) {
 
   return driverLocation;
 }
+
+export function useOrderChatSocket(
+  orderId: string | null,
+  onMessage: (msg: any) => void,
+) {
+  useEffect(() => {
+    if (!orderId) return;
+
+    const s = acquireSocket();
+
+    const joinRoom = () => {
+      s.emit('join:order', orderId);
+    };
+
+    joinRoom();
+    s.on('connect', joinRoom);
+
+    const handler = (msg: any) => {
+      if (msg && (msg.orderId === orderId || !msg.orderId)) {
+        onMessage(msg);
+      }
+    };
+
+    s.on('order:chat', handler);
+
+    return () => {
+      s.off('connect', joinRoom);
+      s.off('order:chat', handler);
+      releaseSocket();
+    };
+  }, [orderId, onMessage]);
+}

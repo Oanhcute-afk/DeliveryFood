@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,6 +24,7 @@ import {
 } from '@/hooks/use-order-socket';
 import { RatingModal } from '@/components/rating-modal';
 import { CancelOrderModal } from '@/components/cancel-order-modal';
+import { OrderChatModal } from '@/components/OrderChatModal';
 import {
   ensureConfirmedOrdersHydrated,
   isOrderConfirmedByCustomer,
@@ -296,6 +298,7 @@ export default function OrderConfirmationScreen() {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [isConfirmedReceived, setIsConfirmedReceived] = useState(false);
+  const [isChatVisible, setIsChatVisible] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -308,11 +311,26 @@ export default function OrderConfirmationScreen() {
     if (!id) return;
     await markOrderConfirmedByCustomer(id);
     setIsConfirmedReceived(true);
+    try {
+      await api.post(`/orders/${id}/confirm-received`);
+    } catch {
+      // Bỏ qua lỗi mạng, đã lưu local
+    }
+    queryClient.setQueryData(['order', id], (old: any) => ({
+      ...(old ?? {}),
+      customerConfirmedAt: new Date(),
+      status: 'DELIVERED',
+    }));
+    queryClient.invalidateQueries({ queryKey: ['order', id] });
+    queryClient.invalidateQueries({ queryKey: ['my-orders'] });
     Alert.alert(
       'Xác nhận thành công',
       'Cảm ơn bạn đã xác nhận đã nhận được món ăn! Chúc bạn có một bữa ăn ngon miệng.',
     );
+    setShowRatingModal(true);
   };
+
+
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapLoadFailed, setMapLoadFailed] = useState(false);
   const [cachedDriverLocation, setCachedDriverLocation] =
@@ -351,6 +369,26 @@ export default function OrderConfirmationScreen() {
   const isAutoConfirmed = useMemo(() => {
     return isOrderAutoConfirmed(order?.updatedAt);
   }, [order?.updatedAt]);
+
+  const driver = (order as any)?.driver;
+  const driverName = driver
+    ? `${driver.firstName ?? ''} ${driver.lastName ?? ''}`.trim() || 'Tài xế giao hàng'
+    : 'Tài xế giao hàng';
+  const driverPhone = driver?.phone ?? null;
+
+  function handleCallDriver() {
+    if (!driverPhone?.trim()) {
+      Alert.alert(
+        'Chưa có số điện thoại',
+        'Tài xế chưa cập nhật số điện thoại. Bạn có thể bấm "Nhắn tin trao đổi" để chat trực tiếp nhé!',
+      );
+      return;
+    }
+    const cleanPhone = driverPhone.trim().replace(/\s+/g, '');
+    Linking.openURL(`tel:${cleanPhone}`).catch(() => {
+      Alert.alert('Lỗi', 'Không thể mở ứng dụng cuộc gọi.');
+    });
+  }
 
   const { mutate: cancelOrder, isPending: isCancellingOrder } = useMutation({
     mutationFn: (reason: CancelOrderReason) =>
@@ -808,6 +846,30 @@ export default function OrderConfirmationScreen() {
               <Text style={styles.infoValue}>
                 {STATUS_LABELS[order.status] ?? order.status}
               </Text>
+            </View>
+          </View>
+
+          <View style={styles.infoRow}>
+            <View style={styles.infoIcon}>
+              <Ionicons
+                name={order.paymentMethod === 'CASH' ? 'cash-outline' : 'card-outline'}
+                size={20}
+                color={order.paymentMethod === 'CASH' ? COLORS.success : COLORS.primary}
+              />
+            </View>
+
+            <View style={styles.infoTextContainer}>
+              <Text style={styles.infoLabel}>Hình thức thanh toán</Text>
+              <Text style={styles.infoValue}>
+                {order.paymentMethod === 'CASH'
+                  ? 'Tiền mặt khi nhận hàng (COD)'
+                  : 'Thanh toán trực tuyến (Stripe)'}
+              </Text>
+              {order.paymentMethod === 'CASH' ? (
+                <Text style={{ fontSize: 11, color: COLORS.success, marginTop: 2, fontWeight: '700' }}>
+                  {order.isPaid ? '✓ Đã thanh toán cho tài xế' : 'Vui lòng chuẩn bị tiền mặt trả shipper'}
+                </Text>
+              ) : null}
             </View>
           </View>
 
@@ -1294,6 +1356,19 @@ export default function OrderConfirmationScreen() {
           }}
           isSubmitting={isSubmittingReview}
         />
+
+        {order.driverId ? (
+          <OrderChatModal
+            visible={isChatVisible}
+            onClose={() => setIsChatVisible(false)}
+            orderId={order.id}
+            currentUserRole="CUSTOMER"
+            currentUserId={order.customerId}
+            otherPartyName={driverName}
+            otherPartyPhone={driverPhone}
+            otherPartyRoleTitle="Tài xế giao hàng"
+          />
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -2158,6 +2233,83 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.muted,
     marginTop: 3,
+  },
+  driverContactCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: 12,
+  },
+  driverContactHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  driverAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  driverAvatarText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+  driverEyebrow: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: COLORS.muted,
+    letterSpacing: 1,
+  },
+  driverName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginTop: 2,
+  },
+  driverPhone: {
+    fontSize: 12,
+    color: COLORS.success,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  contactButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  contactBtn: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+  },
+  callBtn: {
+    backgroundColor: COLORS.success,
+  },
+  chatBtn: {
+    backgroundColor: COLORS.primaryLight,
+    borderWidth: 1,
+    borderColor: '#FCD8C8',
+  },
+  callBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  chatBtnText: {
+    color: COLORS.primary,
+    fontSize: 13,
+    fontWeight: '800',
   },
   receivedConfirmCard: {
     backgroundColor: COLORS.surface,

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -14,12 +15,14 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { io, Socket } from 'socket.io-client';
 import { api } from '@/lib/axios';
 import { useAuth } from '@/context/auth-context';
 import { Order } from '@food-delivery/types';
 import DeliveryMap from '@/components/DeliveryMap';
+import { OrderChatModal } from '@/components/OrderChatModal';
 
 const DEFAULT_COORDS = {
   latitude: 10.7769,
@@ -36,6 +39,7 @@ export default function DriverActiveScreen() {
   const socketRef = useRef<Socket | null>(null);
   const locationWatchRef = useRef<Location.LocationSubscription | null>(null);
   const [driverCoords, setDriverCoords] = useState(DEFAULT_COORDS);
+  const [isChatVisible, setIsChatVisible] = useState(false);
 
   const {
     data: activeOrders = [],
@@ -116,12 +120,10 @@ export default function DriverActiveScreen() {
         await Location.requestForegroundPermissionsAsync();
 
       if (status !== Location.PermissionStatus.GRANTED) {
-        // Vẫn gửi vị trí mặc định để bản đồ phía khách hàng và tài xế luôn hiển thị
         emitPosition(DEFAULT_COORDS.latitude, DEFAULT_COORDS.longitude);
         return;
       }
 
-      // Gửi ngay vị trí ban đầu để khách hàng thấy bản đồ tức thì mà không cần chờ di chuyển 10m
       const lastKnown = await Location.getLastKnownPositionAsync();
       if (lastKnown?.coords) {
         emitPosition(lastKnown.coords.latitude, lastKnown.coords.longitude);
@@ -172,6 +174,57 @@ export default function DriverActiveScreen() {
     };
   }, [activeOrder?.id]);
 
+  const customer = (activeOrder as any)?.customer;
+  const customerName = customer
+    ? `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || 'Khách hàng'
+    : 'Khách hàng';
+  const customerPhone = customer?.phone ?? null;
+  const isCash = activeOrder?.paymentMethod === 'CASH';
+
+  function handleCallCustomer() {
+    if (!customerPhone?.trim()) {
+      Alert.alert(
+        'Chưa có số điện thoại',
+        'Khách hàng chưa cập nhật số điện thoại. Bạn có thể bấm nút "Nhắn tin" để nhắn tin trao đổi điểm đón nhé!',
+      );
+      return;
+    }
+    const cleanPhone = customerPhone.trim().replace(/\s+/g, '');
+    Linking.openURL(`tel:${cleanPhone}`).catch(() => {
+      Alert.alert('Lỗi', 'Không thể mở ứng dụng cuộc gọi.');
+    });
+  }
+
+  function handleConfirmDelivered() {
+    if (!activeOrder) return;
+
+    if (isCash && !activeOrder.isPaid) {
+      Alert.alert(
+        'Thu tiền mặt & Giao hàng',
+        `Đơn này thanh toán tiền mặt (COD).\n\nSố tiền cần thu: $${Number(activeOrder.totalAmount).toFixed(2)}\n\nBạn đã nhận đủ tiền mặt từ khách hàng chưa?`,
+        [
+          { text: 'Chưa thu', style: 'cancel' },
+          {
+            text: 'Đã nhận đủ tiền & Giao xong',
+            onPress: () => markDelivered(activeOrder.id),
+          },
+        ],
+      );
+    } else {
+      Alert.alert(
+        'Xác nhận giao hàng',
+        'Bạn có chắc chắn đơn hàng đã được giao cho khách hàng không?',
+        [
+          { text: 'Chưa', style: 'cancel' },
+          {
+            text: 'Đã giao hàng',
+            onPress: () => markDelivered(activeOrder.id),
+          },
+        ],
+      );
+    }
+  }
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -189,7 +242,12 @@ export default function DriverActiveScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <ScrollView
-          contentContainerStyle={styles.centered}
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.content,
+            styles.emptyScrollContent,
+            { paddingBottom: insets.bottom + TAB_BAR_OFFSET },
+          ]}
           showsVerticalScrollIndicator={false}
           bounces={true}
           alwaysBounceVertical={true}
@@ -221,7 +279,7 @@ export default function DriverActiveScreen() {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: 32 },
+          { paddingBottom: insets.bottom + TAB_BAR_OFFSET + 20 },
         ]}
         showsVerticalScrollIndicator={false}
         bounces={true}
@@ -242,7 +300,7 @@ export default function DriverActiveScreen() {
             <Text style={styles.eyebrow}>TÀI XẾ ĐANG HOẠT ĐỘNG</Text>
             <Text style={styles.title}>Đơn giao hàng</Text>
             <Text style={styles.subtitle}>
-              Theo dõi hành trình và hoàn tất giao hàng.
+              Theo dõi hành trình và liên hệ khách để giao hàng.
             </Text>
           </View>
 
@@ -266,6 +324,93 @@ export default function DriverActiveScreen() {
             <View style={styles.statusDot} />
             <Text style={styles.statusPillText}>ĐANG GIAO</Text>
           </View>
+        </View>
+
+        {/* Thẻ liên hệ khách hàng & Gọi/Nhắn tin */}
+        <View style={styles.customerCard}>
+          <View style={styles.customerCardHeader}>
+            <View style={styles.customerAvatar}>
+              <Text style={styles.customerAvatarText}>
+                {customerName[0]?.toUpperCase() ?? 'K'}
+              </Text>
+            </View>
+
+            <View style={styles.customerInfo}>
+              <Text style={styles.customerEyebrow}>KHÁCH HÀNG NHẬN MÓN</Text>
+              <Text style={styles.customerName}>{customerName}</Text>
+              <Text style={styles.customerPhone}>
+                {customerPhone ? `📞 ${customerPhone}` : 'Chưa có SĐT'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.contactButtonsRow}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.contactButton,
+                styles.callButton,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={handleCallCustomer}
+            >
+              <Ionicons name="call" size={18} color="#FFFFFF" />
+              <Text style={styles.contactButtonTextWhite}>Gọi khách hàng</Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.contactButton,
+                styles.chatButton,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={() => setIsChatVisible(true)}
+            >
+              <Ionicons name="chatbubbles" size={18} color="#FF6B35" />
+              <Text style={styles.contactButtonTextOrange}>Nhắn tin hẹn gặp</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Thông tin phương thức thanh toán */}
+        <View
+          style={[
+            styles.paymentCard,
+            isCash ? styles.paymentCardCash : styles.paymentCardStripe,
+          ]}
+        >
+          <View style={styles.paymentCardIcon}>
+            <Ionicons
+              name={isCash ? 'cash' : 'card'}
+              size={24}
+              color={isCash ? '#16A34A' : '#FF6B35'}
+            />
+          </View>
+
+          <View style={styles.paymentCardContent}>
+            <Text
+              style={[
+                styles.paymentCardTitle,
+                { color: isCash ? '#16A34A' : '#FF6B35' },
+              ]}
+            >
+              {isCash
+                ? 'ĐƠN HÀNG THU TIỀN MẶT (COD)'
+                : 'ĐÃ THANH TOÁN TRỰC TUYẾN (STRIPE)'}
+            </Text>
+            <Text style={styles.paymentCardSubtitle}>
+              {isCash
+                ? `Cần thu: $${Number(activeOrder.totalAmount).toFixed(2)} từ khách`
+                : 'Khách đã thanh toán qua thẻ, không thu thêm tiền mặt.'}
+            </Text>
+          </View>
+
+          {isCash && (
+            <View style={styles.cashAmountBadge}>
+              <Text style={styles.cashAmountText}>
+                ${Number(activeOrder.totalAmount).toFixed(2)}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Bản đồ */}
@@ -315,7 +460,7 @@ export default function DriverActiveScreen() {
               <Text style={styles.infoEmoji}>📍</Text>
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.label}>Địa chỉ giao hàng</Text>
+              <Text style={styles.label}>Địa chỉ cụ thể</Text>
               <Text style={styles.value}>
                 {activeOrder.deliveryAddress}
               </Text>
@@ -324,11 +469,13 @@ export default function DriverActiveScreen() {
 
           <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
-              <Text style={styles.infoEmoji}>🚚</Text>
+              <Text style={styles.infoEmoji}>💵</Text>
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.label}>Trạng thái đơn</Text>
-              <Text style={styles.statusValue}>Đã lấy hàng</Text>
+              <Text style={styles.label}>Tổng tiền đơn hàng</Text>
+              <Text style={styles.amountValue}>
+                ${Number(activeOrder.totalAmount).toFixed(2)}
+              </Text>
             </View>
           </View>
         </View>
@@ -341,7 +488,7 @@ export default function DriverActiveScreen() {
           <View style={styles.trackingContent}>
             <Text style={styles.trackingTitle}>Theo dõi vị trí</Text>
             <Text style={styles.trackingDescription}>
-              Ứng dụng đang gửi cập nhật vị trí khi GPS hoạt động.
+              Ứng dụng đang phát sóng GPS trực tiếp để khách hàng theo dõi.
             </Text>
           </View>
           <View style={styles.trackingIndicator} />
@@ -351,7 +498,9 @@ export default function DriverActiveScreen() {
         <View style={styles.actionSection}>
           <Text style={styles.actionTitle}>Đã giao hàng thành công?</Text>
           <Text style={styles.actionDescription}>
-            Chỉ xác nhận sau khi khách hàng đã nhận được đơn hàng.
+            {isCash
+              ? 'Thu đủ tiền mặt và bàn giao món cho khách trước khi xác nhận.'
+              : 'Chỉ xác nhận sau khi khách hàng đã nhận được đơn hàng.'}
           </Text>
 
           <Pressable
@@ -360,36 +509,31 @@ export default function DriverActiveScreen() {
               isPending && styles.disabledButton,
               pressed && !isPending && styles.buttonPressed,
             ]}
-            onPress={() => {
-              Alert.alert(
-                'Xác nhận giao hàng',
-                'Bạn có chắc chắn đơn hàng đã được giao cho khách hàng không?',
-                [
-                  {
-                    text: 'Chưa',
-                    style: 'cancel',
-                  },
-                  {
-                    text: 'Đã giao hàng',
-                    onPress: () => markDelivered(activeOrder.id),
-                  },
-                ],
-              );
-            }}
+            onPress={handleConfirmDelivered}
             disabled={isPending}
           >
             {isPending ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <>
-                <Text style={styles.deliveredButtonText}>
-                  ✓  Xác nhận đã giao hàng
-                </Text>
-              </>
+              <Text style={styles.deliveredButtonText}>
+                ✓  Xác nhận đã giao hàng {isCash ? '(& Đã thu tiền)' : ''}
+              </Text>
             )}
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Khung chat với khách hàng */}
+      <OrderChatModal
+        visible={isChatVisible}
+        onClose={() => setIsChatVisible(false)}
+        orderId={activeOrder.id}
+        currentUserRole="DRIVER"
+        currentUserId={user?.id}
+        otherPartyName={customerName}
+        otherPartyPhone={customerPhone}
+        otherPartyRoleTitle="Khách nhận món"
+      />
     </SafeAreaView>
   );
 }
@@ -406,7 +550,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 18,
     paddingTop: 20,
-    gap: 18,
+    gap: 16,
   },
 
   // Header
@@ -440,72 +584,203 @@ const styles = StyleSheet.create({
     color: '#8B8289',
   },
   headerIcon: {
-    width: 68,
-    height: 68,
-    borderRadius: 23,
+    width: 60,
+    height: 60,
+    borderRadius: 20,
     backgroundColor: '#FFF0E8',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerEmoji: {
-    fontSize: 35,
+    fontSize: 30,
   },
 
-  // Trạng thái đơn hàng
+  // Trạng thái banner
   statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 11,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#F0E8E3',
-    borderRadius: 18,
-    padding: 14,
+    borderRadius: 20,
+    padding: 16,
+    gap: 13,
   },
   statusIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     backgroundColor: '#FFF0E8',
     alignItems: 'center',
     justifyContent: 'center',
   },
   statusEmoji: {
-    fontSize: 22,
+    fontSize: 23,
   },
   statusContent: {
     flex: 1,
   },
   statusTitle: {
-    fontSize: 14,
-    fontWeight: '900',
+    fontSize: 15,
+    fontWeight: '800',
     color: '#29232A',
   },
   statusSubtitle: {
     fontSize: 11,
     color: '#8B8289',
-    marginTop: 4,
-    lineHeight: 16,
+    marginTop: 3,
   },
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#FFF0E8',
-    borderRadius: 9,
-    paddingHorizontal: 8,
-    paddingVertical: 7,
+    backgroundColor: '#F0E9FF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
   },
   statusDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#8256D0',
   },
   statusPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#8256D0',
+    letterSpacing: 0.5,
+  },
+
+  // Khách hàng Card
+  customerCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F0E8E3',
+    borderRadius: 20,
+    padding: 16,
+    gap: 14,
+  },
+  customerCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  customerAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFF0E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customerAvatarText: {
+    fontSize: 20,
+    fontWeight: '800',
     color: '#FF6B35',
-    fontSize: 9,
+  },
+  customerInfo: {
+    flex: 1,
+  },
+  customerEyebrow: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#8B8289',
+    letterSpacing: 1,
+  },
+  customerName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#29232A',
+    marginTop: 2,
+  },
+  customerPhone: {
+    fontSize: 12,
+    color: '#16A34A',
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  contactButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  contactButton: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+  },
+  callButton: {
+    backgroundColor: '#16A34A',
+  },
+  chatButton: {
+    backgroundColor: '#FFF0E8',
+    borderWidth: 1,
+    borderColor: '#FCD8C8',
+  },
+  contactButtonTextWhite: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  contactButtonTextOrange: {
+    color: '#FF6B35',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+
+  // Phương thức thanh toán Card
+  paymentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    gap: 12,
+  },
+  paymentCardCash: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  paymentCardStripe: {
+    backgroundColor: '#FFF7ED',
+    borderColor: '#FFEDD5',
+  },
+  paymentCardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  paymentCardContent: {
+    flex: 1,
+  },
+  paymentCardTitle: {
+    fontSize: 12,
     fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  paymentCardSubtitle: {
+    fontSize: 12,
+    color: '#4B5563',
+    marginTop: 2,
+  },
+  cashAmountBadge: {
+    backgroundColor: '#16A34A',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  cashAmountText: {
+    color: '#FFFFFF',
+    fontWeight: '900',
+    fontSize: 14,
   },
 
   // Bản đồ
@@ -513,73 +788,73 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: -8,
+    marginTop: 4,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '900',
+    fontSize: 17,
+    fontWeight: '800',
     color: '#29232A',
   },
   liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#E9F8EF',
-    borderRadius: 8,
-    paddingHorizontal: 9,
-    paddingVertical: 6,
+    backgroundColor: '#E8F8F0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
   },
   liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#22A06B',
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#16A36A',
   },
   liveText: {
     fontSize: 10,
-    fontWeight: '900',
-    color: '#168653',
+    fontWeight: '800',
+    color: '#16A36A',
+    letterSpacing: 0.8,
   },
   mapContainer: {
-    width: '100%',
-    minHeight: 240,
+    height: 250,
+    borderRadius: 22,
     overflow: 'hidden',
-    borderRadius: 20,
-    backgroundColor: '#F0E8E3',
     borderWidth: 1,
     borderColor: '#F0E8E3',
+    backgroundColor: '#FFFFFF',
   },
 
-  // Thông tin đơn hàng
+  // Chi tiết đơn
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 18,
     borderWidth: 1,
     borderColor: '#F0E8E3',
-    gap: 16,
+    borderRadius: 22,
+    padding: 18,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 14,
   },
   cardEyebrow: {
-    fontSize: 9,
-    fontWeight: '900',
+    fontSize: 10,
+    fontWeight: '800',
     color: '#FF6B35',
     letterSpacing: 1.2,
-    marginBottom: 5,
+    marginBottom: 4,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '900',
+    fontSize: 17,
+    fontWeight: '800',
     color: '#29232A',
   },
   packageIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 15,
     backgroundColor: '#FFF0E8',
     alignItems: 'center',
     justifyContent: 'center',
@@ -589,178 +864,178 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#F0E8E3',
+    backgroundColor: '#F5ECE7',
+    marginBottom: 14,
   },
   infoRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    paddingVertical: 9,
     gap: 12,
   },
   infoIcon: {
-    width: 38,
-    height: 38,
+    width: 36,
+    height: 36,
     borderRadius: 12,
-    backgroundColor: '#FFF9F5',
+    backgroundColor: '#FFF0E8',
     alignItems: 'center',
     justifyContent: 'center',
   },
   infoEmoji: {
-    fontSize: 17,
-    color: '#FF6B35',
-    fontWeight: '900',
+    fontSize: 15,
   },
   infoContent: {
     flex: 1,
-    paddingTop: 2,
   },
   label: {
     fontSize: 11,
-    color: '#9B9097',
-    fontWeight: '600',
-    marginBottom: 5,
+    color: '#8B8289',
+    marginBottom: 3,
   },
   value: {
     fontSize: 14,
-    lineHeight: 21,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#29232A',
   },
-  statusValue: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#168653',
+  amountValue: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: '#FF6B35',
   },
 
-  // Theo dõi GPS
+  // Tracking
   trackingCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 15,
-    borderRadius: 17,
-    backgroundColor: '#E9F8EF',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D4F0DF',
+    borderColor: '#F0E8E3',
+    borderRadius: 18,
+    padding: 15,
+    gap: 12,
   },
   trackingIcon: {
     width: 42,
     height: 42,
-    borderRadius: 13,
-    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    backgroundColor: '#FFF0E8',
     alignItems: 'center',
     justifyContent: 'center',
   },
   trackingEmoji: {
-    fontSize: 20,
+    fontSize: 19,
   },
   trackingContent: {
     flex: 1,
   },
   trackingTitle: {
     fontSize: 13,
-    fontWeight: '900',
-    color: '#166534',
+    fontWeight: '800',
+    color: '#29232A',
   },
   trackingDescription: {
     fontSize: 11,
-    lineHeight: 17,
-    color: '#43805B',
-    marginTop: 4,
+    color: '#8B8289',
+    marginTop: 2,
+    lineHeight: 16,
   },
   trackingIndicator: {
     width: 9,
     height: 9,
     borderRadius: 5,
-    backgroundColor: '#22A06B',
+    backgroundColor: '#16A36A',
   },
 
-  // Nút xác nhận
+  // Action
   actionSection: {
-    padding: 18,
-    borderRadius: 20,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#F0E8E3',
-    gap: 10,
+    borderRadius: 22,
+    padding: 18,
+    alignItems: 'center',
+    gap: 8,
   },
   actionTitle: {
-    fontSize: 17,
-    fontWeight: '900',
+    fontSize: 16,
+    fontWeight: '800',
     color: '#29232A',
   },
   actionDescription: {
     fontSize: 12,
-    lineHeight: 19,
     color: '#8B8289',
+    textAlign: 'center',
+    marginBottom: 6,
   },
   deliveredButton: {
-    backgroundColor: '#FF6B35',
-    borderRadius: 15,
-    paddingHorizontal: 16,
-    paddingVertical: 17,
+    width: '100%',
+    minHeight: 54,
+    borderRadius: 16,
+    backgroundColor: '#16A36A',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 56,
-    marginTop: 5,
+    shadowColor: '#16A36A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  deliveredButtonText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   disabledButton: {
     opacity: 0.6,
   },
   buttonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.99 }],
-  },
-  deliveredButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '900',
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
   },
 
-  // Loading và chưa có đơn
-  centered: {
+  // Empty state
+  emptyScrollContent: {
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 30,
-    paddingVertical: 32,
-  },
-  loadingIcon: {
-    width: 76,
-    height: 76,
-    borderRadius: 25,
-    backgroundColor: '#FFF0E8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 18,
-  },
-  loadingText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#8B8289',
+    paddingVertical: 50,
   },
   emptyIcon: {
-    width: 100,
-    height: 100,
+    width: 96,
+    height: 96,
     borderRadius: 32,
     backgroundColor: '#FFF0E8',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 22,
+    marginBottom: 20,
   },
   emptyEmoji: {
-    fontSize: 49,
+    fontSize: 48,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
     color: '#29232A',
-    textAlign: 'center',
+    marginBottom: 10,
   },
   emptyText: {
-    fontSize: 13,
-    lineHeight: 21,
+    fontSize: 14,
+    lineHeight: 22,
     color: '#8B8289',
     textAlign: 'center',
-    marginTop: 10,
+    maxWidth: 280,
+  },
+
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingIcon: {
+    marginBottom: 14,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#8B8289',
   },
 });

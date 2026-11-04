@@ -33,31 +33,35 @@ export class DriverService {
   }
 
   private async assignPendingOrdersToDriver(driverId: string) {
-    const readyOrders = await this.db
-      .select()
-      .from(schema.orders)
-      .where(eq(schema.orders.status, 'READY'));
+    try {
+      const readyOrders = await this.db
+        .select()
+        .from(schema.orders)
+        .where(eq(schema.orders.status, 'READY'));
 
-    for (const order of readyOrders) {
-      if (this.hasDriverDeclined(order.id, driverId)) {
-        continue;
-      }
-
-      let orderToEmit = order;
-
-      if (!order.driverId) {
-        const [updatedOrder] = await this.db
-          .update(schema.orders)
-          .set({ driverId, updatedAt: new Date() })
-          .where(eq(schema.orders.id, order.id))
-          .returning();
-
-        if (updatedOrder) {
-          orderToEmit = updatedOrder;
+      for (const order of readyOrders) {
+        if (this.hasDriverDeclined(order.id, driverId)) {
+          continue;
         }
-      }
 
-      this.ordersGateway.emitDriverAssigned(driverId, orderToEmit);
+        let orderToEmit = order;
+
+        if (!order.driverId) {
+          const [updatedOrder] = await this.db
+            .update(schema.orders)
+            .set({ driverId, updatedAt: new Date() })
+            .where(eq(schema.orders.id, order.id))
+            .returning();
+
+          if (updatedOrder) {
+            orderToEmit = updatedOrder;
+          }
+        }
+
+        this.ordersGateway.emitDriverAssigned(driverId, orderToEmit);
+      }
+    } catch (err) {
+      console.warn('[DriverService] Error in assignPendingOrdersToDriver:', err);
     }
   }
 
@@ -76,8 +80,12 @@ export class DriverService {
       .returning();
 
     if (updated.isOnline) {
-      this.clearDriverDeclines(driverId);
-      await this.assignPendingOrdersToDriver(driverId);
+      try {
+        this.clearDriverDeclines(driverId);
+        await this.assignPendingOrdersToDriver(driverId);
+      } catch (err) {
+        console.warn('[DriverService] Error in toggleOnline assignPendingOrders:', err);
+      }
     }
 
     return { isOnline: updated.isOnline };
@@ -92,7 +100,11 @@ export class DriverService {
     if (!driver) throw new NotFoundException('Driver not found');
 
     if (driver.isOnline) {
-      await this.assignPendingOrdersToDriver(driverId);
+      try {
+        await this.assignPendingOrdersToDriver(driverId);
+      } catch (err) {
+        console.warn('[DriverService] Error in getStatus assignPendingOrders:', err);
+      }
     }
 
     return { isOnline: driver.isOnline };

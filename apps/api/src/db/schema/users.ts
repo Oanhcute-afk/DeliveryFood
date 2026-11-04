@@ -13,6 +13,8 @@ export const users = pgTable('users', {
   firstName: text('first_name').notNull(),
   lastName: text('last_name').notNull(),
   email: text('email').notNull().unique(),
+  phone: text('phone'),
+  avatarUrl: text('avatar_url'),
   // null cho tài khoản chỉ đăng nhập bằng Google
   password: text('password'),
   googleId: text('google_id').unique(),

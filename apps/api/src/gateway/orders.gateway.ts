@@ -69,7 +69,35 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   emitDriverAssigned(driverId: string, order: Record<string, unknown>) {
-    this.server.to(`driver:${driverId}`).emit('driver:assigned', order);
+    try {
+      this.server?.to(`driver:${driverId}`).emit('driver:assigned', order);
+    } catch (err) {
+      console.warn('Failed to emit driver:assigned', err);
+    }
+  }
+
+  emitOrderChat(orderId: string, message: unknown) {
+    try {
+      this.server?.to(`order:${orderId}`).emit('order:chat', message);
+    } catch (err) {
+      console.warn('Failed to emit order:chat', err);
+    }
+  }
+
+  @SubscribeMessage('order:chat')
+  handleOrderChat(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { orderId: string; message: unknown },
+  ) {
+    if (payload?.orderId) {
+      try {
+        this.server
+          ?.to(`order:${payload.orderId}`)
+          .emit('order:chat', payload.message);
+      } catch (err) {
+        console.warn('Failed to relay order:chat', err);
+      }
+    }
   }
 
   @SubscribeMessage('driver:location')
