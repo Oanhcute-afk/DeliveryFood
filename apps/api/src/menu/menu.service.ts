@@ -130,6 +130,88 @@ export class MenuService {
   /**
    * Lấy danh sách danh mục của nhà hàng.
    */
+  /**
+   * Lấy tất cả danh mục do các nhà hàng tạo ra trên toàn hệ thống,
+   * gộp theo tên danh mục, kèm danh sách nhà hàng và số lượng món ăn khả dụng.
+   */
+  async getAllPublicCategories() {
+    const categories = await this.db
+      .select({
+        id: schema.menuCategories.id,
+        name: schema.menuCategories.name,
+        restaurantId: schema.menuCategories.restaurantId,
+        isOpen: schema.restaurants.isOpen,
+      })
+      .from(schema.menuCategories)
+      .innerJoin(
+        schema.restaurants,
+        eq(schema.menuCategories.restaurantId, schema.restaurants.id),
+      );
+
+    const items = await this.db
+      .select({
+        id: schema.menuItems.id,
+        categoryId: schema.menuItems.categoryId,
+        restaurantId: schema.menuItems.restaurantId,
+        isAvailable: schema.menuItems.isAvailable,
+      })
+      .from(schema.menuItems);
+
+    const countMap = new Map<string, { total: number; available: number }>();
+    for (const item of items) {
+      const c = countMap.get(item.categoryId) || { total: 0, available: 0 };
+      c.total += 1;
+      if (item.isAvailable) c.available += 1;
+      countMap.set(item.categoryId, c);
+    }
+
+    const grouped = new Map<
+      string,
+      {
+        name: string;
+        categoryIds: string[];
+        restaurantIds: Set<string>;
+        totalItems: number;
+        availableItems: number;
+      }
+    >();
+
+    for (const cat of categories) {
+      const trimmedName = (cat.name || '').trim();
+      if (!trimmedName) continue;
+      const key = trimmedName.toLowerCase();
+      const counts = countMap.get(cat.id) || { total: 0, available: 0 };
+
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          name: trimmedName,
+          categoryIds: [],
+          restaurantIds: new Set<string>(),
+          totalItems: 0,
+          availableItems: 0,
+        });
+      }
+
+      const g = grouped.get(key)!;
+      g.categoryIds.push(cat.id);
+      if (cat.isOpen) {
+        g.restaurantIds.add(cat.restaurantId);
+      }
+      g.totalItems += counts.total;
+      g.availableItems += counts.available;
+    }
+
+    return Array.from(grouped.values()).map((g) => ({
+      id: g.name,
+      name: g.name,
+      restaurantIds: Array.from(g.restaurantIds),
+      categoryIds: g.categoryIds,
+      totalItems: g.totalItems,
+      availableItems: g.availableItems,
+      hasProducts: g.availableItems > 0,
+    }));
+  }
+
   async getCategories(restaurantId: string) {
     const cacheKey = CacheKeys.MENU_CATEGORIES(restaurantId);
 

@@ -146,12 +146,8 @@ export class OrdersService {
 
     if (!canView) throw new NotFoundException('Order not found');
 
-    const items = await this.db
-      .select()
-      .from(schema.orderItems)
-      .where(eq(schema.orderItems.orderId, id));
-
-    return { ...order, items };
+    const [enriched] = await this.enrichOrders([order]);
+    return enriched;
   }
 
   async findByRestaurant(ownerId: string) {
@@ -295,13 +291,32 @@ export class OrdersService {
       .select({
         id: schema.restaurants.id,
         name: schema.restaurants.name,
+        address: schema.restaurants.address,
+        imageUrl: schema.restaurants.imageUrl,
+        cuisineType: schema.restaurants.cuisineType,
       })
       .from(schema.restaurants)
       .where(inArray(schema.restaurants.id, restaurantIds));
 
     const items = await this.db
-      .select()
+      .select({
+        id: schema.orderItems.id,
+        orderId: schema.orderItems.orderId,
+        menuItemId: schema.orderItems.menuItemId,
+        quantity: schema.orderItems.quantity,
+        unitPrice: schema.orderItems.unitPrice,
+        menuItem: {
+          id: schema.menuItems.id,
+          name: schema.menuItems.name,
+          imageUrl: schema.menuItems.imageUrl,
+          price: schema.menuItems.price,
+        },
+      })
       .from(schema.orderItems)
+      .leftJoin(
+        schema.menuItems,
+        eq(schema.orderItems.menuItemId, schema.menuItems.id),
+      )
       .where(inArray(schema.orderItems.orderId, orderIds));
 
     const restaurantMap = Object.fromEntries(restaurants.map((r) => [r.id, r]));

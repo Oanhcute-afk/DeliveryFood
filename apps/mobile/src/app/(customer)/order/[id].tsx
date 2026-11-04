@@ -24,6 +24,12 @@ import {
 import { RatingModal } from '@/components/rating-modal';
 import { CancelOrderModal } from '@/components/cancel-order-modal';
 import {
+  ensureConfirmedOrdersHydrated,
+  isOrderConfirmedByCustomer,
+  markOrderConfirmedByCustomer,
+  isOrderAutoConfirmed,
+} from '@/lib/confirmed-orders';
+import {
   applyLocalCancellation,
   cancelPendingOrder,
   ensureCancelledOrdersHydrated,
@@ -289,6 +295,24 @@ export default function OrderConfirmationScreen() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [isConfirmedReceived, setIsConfirmedReceived] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    ensureConfirmedOrdersHydrated().then(() => {
+      setIsConfirmedReceived(isOrderConfirmedByCustomer(id));
+    });
+  }, [id]);
+
+  const handleConfirmReceived = async () => {
+    if (!id) return;
+    await markOrderConfirmedByCustomer(id);
+    setIsConfirmedReceived(true);
+    Alert.alert(
+      'Xác nhận thành công',
+      'Cảm ơn bạn đã xác nhận đã nhận được món ăn! Chúc bạn có một bữa ăn ngon miệng.',
+    );
+  };
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapLoadFailed, setMapLoadFailed] = useState(false);
   const [cachedDriverLocation, setCachedDriverLocation] =
@@ -323,6 +347,10 @@ export default function OrderConfirmationScreen() {
     enabled: !!id,
     refetchInterval: 4000,
   });
+
+  const isAutoConfirmed = useMemo(() => {
+    return isOrderAutoConfirmed(order?.updatedAt);
+  }, [order?.updatedAt]);
 
   const { mutate: cancelOrder, isPending: isCancellingOrder } = useMutation({
     mutationFn: (reason: CancelOrderReason) =>
@@ -676,6 +704,24 @@ export default function OrderConfirmationScreen() {
           </View>
         </View>
 
+        {/* Tên tiệm của món ăn */}
+        <View style={styles.restaurantBannerCard}>
+          <View style={styles.restaurantBannerIcon}>
+            <Ionicons name="restaurant" size={22} color={COLORS.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.restaurantBannerEyebrow}>TIỆM LÀM MÓN</Text>
+            <Text style={styles.restaurantBannerName}>
+              {(order as any)?.restaurant?.name || 'Nhà hàng đối tác'}
+            </Text>
+            {(order as any)?.restaurant?.address ? (
+              <Text style={styles.restaurantBannerAddress} numberOfLines={1}>
+                📍 {(order as any).restaurant.address}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+
         <View style={styles.orderCard}>
           <View style={styles.orderCardHeader}>
             <View style={styles.orderCardIcon}>
@@ -823,6 +869,71 @@ export default function OrderConfirmationScreen() {
             </View>
           ) : null}
         </View>
+
+        {/* Khách hàng xác nhận đã nhận đơn hàng */}
+        {order.status === 'DELIVERED' && (
+          <View style={styles.receivedConfirmCard}>
+            <View style={styles.receivedConfirmHeader}>
+              <View
+                style={[
+                  styles.receivedConfirmIconWrap,
+                  (isConfirmedReceived || isAutoConfirmed) &&
+                    styles.receivedConfirmIconWrapActive,
+                ]}
+              >
+                <Ionicons
+                  name={
+                    isConfirmedReceived || isAutoConfirmed
+                      ? 'checkmark-done-circle'
+                      : 'checkbox-outline'
+                  }
+                  size={24}
+                  color={
+                    isConfirmedReceived || isAutoConfirmed
+                      ? COLORS.success
+                      : COLORS.primary
+                  }
+                />
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.receivedConfirmTitle}>
+                  {isConfirmedReceived
+                    ? 'Đã xác nhận nhận đơn hàng'
+                    : isAutoConfirmed
+                    ? 'Đã nhận đơn hàng (Tự động)'
+                    : 'Xác nhận đã nhận đơn hàng'}
+                </Text>
+                <Text style={styles.receivedConfirmSubtitle}>
+                  {isConfirmedReceived
+                    ? 'Bạn đã xác nhận nhận món ăn thành công.'
+                    : isAutoConfirmed
+                    ? 'Hệ thống đã tự động xác nhận bạn đã nhận đơn sau 1 ngày (24 giờ).'
+                    : 'Không bắt buộc tick. Nếu sau 1 ngày bạn không tick, hệ thống sẽ tự động xác nhận.'}
+                </Text>
+              </View>
+            </View>
+
+            {!isConfirmedReceived && !isAutoConfirmed && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.confirmReceivedBtn,
+                  pressed && styles.pressed,
+                ]}
+                onPress={handleConfirmReceived}
+              >
+                <Ionicons
+                  name="checkmark-circle"
+                  size={18}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.confirmReceivedBtnText}>
+                  Tôi đã nhận được món ăn
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        )}
 
         {order.status === 'PENDING' && (
           <View style={styles.paymentCard}>
@@ -2007,6 +2118,102 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
+  restaurantBannerCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#29232A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  restaurantBannerIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  restaurantBannerEyebrow: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: COLORS.primary,
+    letterSpacing: 0.6,
+  },
+  restaurantBannerName: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: COLORS.text,
+    marginTop: 2,
+  },
+  restaurantBannerAddress: {
+    fontSize: 12,
+    color: COLORS.muted,
+    marginTop: 3,
+  },
+  receivedConfirmCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#29232A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  receivedConfirmHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  receivedConfirmIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  receivedConfirmIconWrapActive: {
+    backgroundColor: COLORS.successLight,
+  },
+  receivedConfirmTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.text,
+  },
+  receivedConfirmSubtitle: {
+    fontSize: 12,
+    color: COLORS.muted,
+    lineHeight: 17,
+    marginTop: 4,
+  },
+  confirmReceivedBtn: {
+    backgroundColor: COLORS.success,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    marginTop: 14,
+  },
+  confirmReceivedBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
   pressed: {
     opacity: 0.82,
     transform: [{ scale: 0.985 }],

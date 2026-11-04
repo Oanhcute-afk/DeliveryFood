@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/axios';
+import { voucherApi } from '@/lib/vouchers';
 import { useCartStore } from '@/store/cart-store';
 import {
   MenuCategory,
@@ -145,10 +146,12 @@ export default function RestaurantDetailScreen() {
     (sum, item) => sum + parseFloat(item.price) * item.quantity,
     0,
   );
-  const ratingDisplay =
-    Number(restaurant.rating) > 0
-      ? Number(restaurant.rating).toFixed(1)
-      : '4.8';
+  const { data: voucherData } = useQuery({
+    queryKey: ['available-vouchers-restaurant'],
+    queryFn: () => voucherApi.available(0).catch(() => null),
+  });
+  const hasVouchers = (voucherData?.vouchers?.length ?? 0) > 0;
+  const ratingNum = Number(restaurant.rating ?? 0);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -235,10 +238,12 @@ export default function RestaurantDetailScreen() {
               </Text>
             </View>
 
-            <View style={styles.ratingBadge}>
-              <Ionicons name="star" size={14} color="#F59E0B" />
-              <Text style={styles.ratingValue}>{ratingDisplay}</Text>
-            </View>
+            {ratingNum > 0 ? (
+              <View style={styles.ratingBadge}>
+                <Ionicons name="star" size={14} color="#F59E0B" />
+                <Text style={styles.ratingValue}>{ratingNum.toFixed(1)}</Text>
+              </View>
+            ) : null}
           </View>
 
           {restaurant.description ? (
@@ -258,11 +263,22 @@ export default function RestaurantDetailScreen() {
             <View style={styles.deliveryStatDivider} />
 
             <View style={styles.deliveryStatBox}>
-              <Ionicons name="pricetag" size={16} color="#16A34A" />
+              <Ionicons
+                name={hasVouchers ? 'pricetag' : 'shield-checkmark'}
+                size={16}
+                color={hasVouchers ? '#16A34A' : '#3B82F6'}
+              />
               <View>
-                <Text style={styles.deliveryStatLabel}>Phí giao hàng</Text>
-                <Text style={[styles.deliveryStatValue, { color: '#16A34A' }]}>
-                  Freeship 0đ
+                <Text style={styles.deliveryStatLabel}>
+                  {hasVouchers ? 'Mã ưu đãi' : 'Dịch vụ'}
+                </Text>
+                <Text
+                  style={[
+                    styles.deliveryStatValue,
+                    { color: hasVouchers ? '#16A34A' : '#3B82F6' },
+                  ]}
+                >
+                  {hasVouchers ? 'Có mã giảm phí giao' : 'Giao tận nơi'}
                 </Text>
               </View>
             </View>
@@ -351,6 +367,7 @@ export default function RestaurantDetailScreen() {
                     style={[
                       styles.categoryPill,
                       active && styles.categoryPillActive,
+                      count === 0 && { opacity: 0.75, backgroundColor: '#FAF5F2' },
                     ]}
                   >
                     <Text
@@ -359,7 +376,7 @@ export default function RestaurantDetailScreen() {
                         active && styles.categoryPillTextActive,
                       ]}
                     >
-                      {cat.name} ({count})
+                      {cat.name} {count === 0 ? '(Hết)' : `(${count})`}
                     </Text>
                   </Pressable>
                 );
@@ -519,10 +536,16 @@ export default function RestaurantDetailScreen() {
               <View style={styles.emptyMenu}>
                 <Text style={styles.emptyMenuEmoji}>🍽️</Text>
                 <Text style={styles.emptyMenuTitle}>
-                  Không tìm thấy sản phẩm
+                  {selectedCategoryId !== 'ALL'
+                    ? 'Không còn sản phẩm'
+                    : 'Không tìm thấy sản phẩm'}
                 </Text>
                 <Text style={styles.emptyMenuText}>
-                  Không tìm thấy sản phẩm, mời bạn tham khảo món khác
+                  {selectedCategoryId !== 'ALL'
+                    ? `Danh mục "${
+                        categories.find((c) => c.id === selectedCategoryId)?.name || ''
+                      }" hiện không còn sản phẩm, mời bạn tham khảo món khác.`
+                    : 'Không tìm thấy sản phẩm, mời bạn tham khảo món khác'}
                 </Text>
                 <Pressable
                   style={({ pressed }) => [

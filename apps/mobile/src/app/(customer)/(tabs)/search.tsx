@@ -314,14 +314,14 @@ export default function CustomerSearchScreen() {
                           >
                             {item.name}
                           </Text>
-                          <View style={styles.ratingMini}>
-                            <Ionicons name="star" size={12} color="#F59E0B" />
-                            <Text style={styles.ratingMiniText}>
-                              {Number(item.rating) > 0
-                                ? Number(item.rating).toFixed(1)
-                                : '4.8'}
-                            </Text>
-                          </View>
+                          {Number(item.rating) > 0 ? (
+                            <View style={styles.ratingMini}>
+                              <Ionicons name="star" size={12} color="#F59E0B" />
+                              <Text style={styles.ratingMiniText}>
+                                {Number(item.rating).toFixed(1)}
+                              </Text>
+                            </View>
+                          ) : null}
                         </View>
 
                         <Text
@@ -394,14 +394,14 @@ export default function CustomerSearchScreen() {
                     <Text style={styles.restaurantRowName} numberOfLines={1}>
                       {item.name}
                     </Text>
-                    <View style={styles.ratingMini}>
-                      <Ionicons name="star" size={12} color="#F59E0B" />
-                      <Text style={styles.ratingMiniText}>
-                        {Number(item.rating) > 0
-                          ? Number(item.rating).toFixed(1)
-                          : '4.8'}
-                      </Text>
-                    </View>
+                    {Number(item.rating) > 0 ? (
+                      <View style={styles.ratingMini}>
+                        <Ionicons name="star" size={12} color="#F59E0B" />
+                        <Text style={styles.ratingMiniText}>
+                          {Number(item.rating).toFixed(1)}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
 
                   <Text style={styles.restaurantRowCuisine} numberOfLines={1}>

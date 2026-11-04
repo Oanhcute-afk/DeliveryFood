@@ -19,6 +19,11 @@ import { api } from '@/lib/axios';
 import { Order } from '@food-delivery/types';
 import { CancelOrderModal } from '@/components/cancel-order-modal';
 import {
+  ensureConfirmedOrdersHydrated,
+  isOrderConfirmedByCustomer,
+  isOrderAutoConfirmed,
+} from '@/lib/confirmed-orders';
+import {
   applyLocalCancellation,
   cancelPendingOrder,
   ensureCancelledOrdersHydrated,
@@ -195,9 +200,44 @@ function OrderCard({
       {/* Tóm tắt món ăn & địa chỉ */}
       {dishNames ? (
         <Text style={styles.dishSummaryText} numberOfLines={2}>
-          🍱 {dishNames}
+          🍱 Món đã đặt: {dishNames}
         </Text>
       ) : null}
+
+      {order.status === 'DELIVERED' && (
+        <View style={styles.deliveryConfirmTag}>
+          <Ionicons
+            name={
+              isOrderConfirmedByCustomer(order.id) ||
+              isOrderAutoConfirmed(order.updatedAt)
+                ? 'checkmark-circle'
+                : 'time-outline'
+            }
+            size={13}
+            color={
+              isOrderConfirmedByCustomer(order.id) ||
+              isOrderAutoConfirmed(order.updatedAt)
+                ? '#16A34A'
+                : '#D97706'
+            }
+          />
+          <Text
+            style={[
+              styles.deliveryConfirmTagText,
+              (isOrderConfirmedByCustomer(order.id) ||
+                isOrderAutoConfirmed(order.updatedAt)) && {
+                color: '#16A34A',
+              },
+            ]}
+          >
+            {isOrderConfirmedByCustomer(order.id)
+              ? 'Khách đã xác nhận nhận đơn'
+              : isOrderAutoConfirmed(order.updatedAt)
+              ? 'Hệ thống tự động xác nhận sau 24h'
+              : 'Chờ xác nhận đã nhận đơn'}
+          </Text>
+        </View>
+      )}
 
       {order.deliveryAddress ? (
         <View style={styles.addressRow}>
@@ -274,7 +314,7 @@ export default function CustomerOrdersScreen() {
   } = useQuery<OrderWithRestaurant[]>({
     queryKey: ['my-orders'],
     queryFn: async () => {
-      await ensureCancelledOrdersHydrated();
+      await Promise.all([ensureCancelledOrdersHydrated(), ensureConfirmedOrdersHydrated()]);
       const r = await api.get<OrderWithRestaurant[]>('/orders/mine');
       return r.data.map((o) => applyLocalCancellation(o));
     },
@@ -319,29 +359,39 @@ export default function CustomerOrdersScreen() {
     },
   });
 
+  // Lịch sử đơn hàng của khách chỉ lưu và hiển thị trong vòng 3 tuần (21 ngày)
+  const THREE_WEEKS_MS = 21 * 24 * 60 * 60 * 1000;
+  const recentOrders = useMemo(() => {
+    const cutoff = Date.now() - THREE_WEEKS_MS;
+    return orders.filter((o) => {
+      const orderTime = new Date(o.createdAt).getTime();
+      return isNaN(orderTime) || orderTime >= cutoff;
+    });
+  }, [orders]);
+
   const pendingCount = useMemo(
-    () => orders.filter((o) => o.status === 'PENDING').length,
-    [orders],
+    () => recentOrders.filter((o) => o.status === 'PENDING').length,
+    [recentOrders],
   );
   const activeCount = useMemo(
-    () => orders.filter((o) => ACTIVE_STEPS.includes(o.status)).length,
-    [orders],
+    () => recentOrders.filter((o) => ACTIVE_STEPS.includes(o.status)).length,
+    [recentOrders],
   );
 
   const filteredOrders = useMemo(() => {
     switch (selectedTab) {
       case 'ACTIVE':
-        return orders.filter((o) => ACTIVE_STEPS.includes(o.status));
+        return recentOrders.filter((o) => ACTIVE_STEPS.includes(o.status));
       case 'PENDING':
-        return orders.filter((o) => o.status === 'PENDING');
+        return recentOrders.filter((o) => o.status === 'PENDING');
       case 'HISTORY':
-        return orders.filter(
+        return recentOrders.filter(
           (o) => o.status === 'DELIVERED' || o.status === 'CANCELLED',
         );
       default:
-        return orders;
+        return recentOrders;
     }
-  }, [orders, selectedTab]);
+  }, [recentOrders, selectedTab]);
 
   if (isLoading) {
     return (
@@ -364,7 +414,7 @@ export default function CustomerOrdersScreen() {
       {/* Page header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerCaption}>THEO DÕI GIAO ĐỒ ĂN</Text>
+          <Text style={styles.headerCaption}>LƯU ĐƠN 3 TUẦN GẦN NHẤT</Text>
           <Text style={styles.title}>Đơn hàng của tôi</Text>
         </View>
 
@@ -756,6 +806,22 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#F3EEEA',
     marginVertical: 12,
+  },
+  deliveryConfirmTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 7,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+  },
+  deliveryConfirmTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#D97706',
   },
   dishSummaryText: {
     fontSize: 12,

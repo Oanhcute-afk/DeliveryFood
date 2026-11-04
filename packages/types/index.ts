@@ -53,6 +53,16 @@ export interface MenuCategory {
   createdAt: Date;
 }
 
+export interface PublicCategorySummary {
+  id: string;
+  name: string;
+  restaurantIds: string[];
+  categoryIds: string[];
+  totalItems: number;
+  availableItems: number;
+  hasProducts: boolean;
+}
+
 export interface MenuItem {
   id: string;
   categoryId: string;

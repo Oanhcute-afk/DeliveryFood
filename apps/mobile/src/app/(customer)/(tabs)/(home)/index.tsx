@@ -17,61 +17,48 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { api } from '@/lib/axios';
-import { RestaurantType } from '@food-delivery/types';
+import { MenuCategory, MenuItem, PublicCategorySummary, RestaurantType } from '@food-delivery/types';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useCartStore } from '@/store/cart-store';
 import { useAuth } from '@/context/auth-context';
+import { voucherApi } from '@/lib/vouchers';
 
-const FOOD_CATEGORIES = [
-  { id: 'all', label: 'Tất cả', emoji: '🍽️', keywords: [] as string[] },
-  {
-    id: 'viet',
-    label: 'Món Việt',
-    emoji: '🍜',
-    keywords: ['việt', 'phở', 'bún', 'cơm', 'bánh mì', 'vietnamese', 'rice'],
-  },
-  {
-    id: 'fastfood',
-    label: 'Burger & Gà',
-    emoji: '🍔',
-    keywords: ['burger', 'gà', 'chicken', 'fast', 'american', 'kfc'],
-  },
-  {
-    id: 'pizza',
-    label: 'Pizza & Ý',
-    emoji: '🍕',
-    keywords: ['pizza', 'ý', 'italian', 'pasta', 'mì ý'],
-  },
-  {
-    id: 'asian',
-    label: 'Hàn & Nhật',
-    emoji: '🍣',
-    keywords: ['hàn', 'nhật', 'sushi', 'korean', 'japanese', 'ramen', 'tokbokki'],
-  },
-  {
-    id: 'drink',
-    label: 'Đồ uống',
-    emoji: '🧋',
-    keywords: ['trà', 'cà phê', 'coffee', 'tea', 'drink', 'đồ uống', 'sinh tố'],
-  },
-  {
-    id: 'top_rated',
-    label: 'Đánh giá cao',
-    emoji: '⭐',
-    keywords: [],
-  },
-];
+function getCategoryEmoji(name: string): string {
+  const n = (name || '').toLowerCase();
+  if (n.includes('phở') || n.includes('bún') || n.includes('mì') || n.includes('ramen')) return '🍜';
+  if (n.includes('cơm') || n.includes('xôi') || n.includes('rice')) return '🍚';
+  if (n.includes('gà') || n.includes('chicken') || n.includes('chiên')) return '🍗';
+  if (n.includes('burger')) return '🍔';
+  if (n.includes('pizza') || n.includes('ý') || n.includes('pasta')) return '🍕';
+  if (n.includes('trà') || n.includes('cà phê') || n.includes('coffee') || n.includes('nước') || n.includes('uống') || n.includes('sinh tố') || n.includes('sữa')) return '🧋';
+  if (n.includes('bánh') || n.includes('kem') || n.includes('tráng miệng') || n.includes('chè')) return '🍰';
+  if (n.includes('sushi') || n.includes('hải sản') || n.includes('cá') || n.includes('tôm')) return '🍣';
+  if (n.includes('lẩu') || n.includes('nướng') || n.includes('bbq')) return '🍲';
+  if (n.includes('chay') || n.includes('salad') || n.includes('rau')) return '🥗';
+  if (n.includes('ăn vặt') || n.includes('khoai')) return '🍟';
+  if (n.includes('khai vị')) return '🥟';
+  return '🍽️';
+}
+
+interface DynamicCategory {
+  id: string;
+  label: string;
+  emoji: string;
+  hasProducts: boolean;
+  availableCount: number;
+  restaurantIds?: string[];
+  keywords?: string[];
+}
 
 function getDeliveryEstimate(index: number): {
   time: string;
   distance: string;
-  promo: string;
 } {
   const estimates = [
-    { time: '15-20 phút', distance: '0.8 km', promo: 'Freeship đơn từ $0' },
-    { time: '20-25 phút', distance: '1.4 km', promo: 'Giảm $2 phí giao' },
-    { time: '15-25 phút', distance: '1.1 km', promo: 'Freeship • Quán chuẩn' },
-    { time: '25-30 phút', distance: '2.0 km', promo: 'Ưu đãi món mới' },
+    { time: '15-20 phút', distance: '0.8 km' },
+    { time: '20-25 phút', distance: '1.4 km' },
+    { time: '15-25 phút', distance: '1.1 km' },
+    { time: '25-30 phút', distance: '2.0 km' },
   ];
   return estimates[index % estimates.length];
 }
@@ -96,6 +83,13 @@ export default function CustomerHomeScreen() {
       api.get<RestaurantType[]>('/restaurants').then((r) => r.data),
   });
 
+  // Kiểm tra voucher thực tế trên hệ thống
+  const { data: voucherData } = useQuery({
+    queryKey: ['available-vouchers-customer'],
+    queryFn: () => voucherApi.available(0).catch(() => null),
+  });
+  const hasVouchers = (voucherData?.vouchers?.length ?? 0) > 0;
+
   const {
     data: restaurants = [],
     isLoading,
@@ -115,6 +109,155 @@ export default function CustomerHomeScreen() {
         .then((response) => response.data),
   });
 
+  // 1. Lấy danh mục thực tế do các nhà hàng tạo ra từ backend
+  const { data: serverCategories = [] } = useQuery<PublicCategorySummary[]>({
+    queryKey: ['public-menu-categories'],
+    queryFn: () =>
+      api
+        .get<PublicCategorySummary[]>('/menu/categories')
+        .then((r) => r.data)
+        .catch(() => []),
+  });
+
+  // 2. Dự phòng: nếu backend chưa có route thì tổng hợp danh mục từ các quán đã tải
+  const { data: fallbackCategories = [] } = useQuery({
+    queryKey: [
+      'fallback-restaurant-categories',
+      allRestaurants.map((r) => r.id).sort().join(','),
+    ],
+    queryFn: async () => {
+      if (allRestaurants.length === 0) return [];
+      const map = new Map<
+        string,
+        { name: string; restaurantIds: Set<string>; availableCount: number }
+      >();
+
+      await Promise.all(
+        allRestaurants.map(async (r) => {
+          try {
+            const [catRes, itemsRes] = await Promise.all([
+              api.get<MenuCategory[]>(`/menu/categories/${r.id}`),
+              api.get<MenuItem[]>(`/menu/items/${r.id}`),
+            ]);
+            const availableItems = (itemsRes.data || []).filter(
+              (i) => i.isAvailable,
+            );
+            for (const cat of catRes.data || []) {
+              const name = (cat.name || '').trim();
+              if (!name) continue;
+              const key = name.toLowerCase();
+              if (!map.has(key)) {
+                map.set(key, {
+                  name,
+                  restaurantIds: new Set<string>(),
+                  availableCount: 0,
+                });
+              }
+              const group = map.get(key)!;
+              const matchingCount = availableItems.filter(
+                (i) => i.categoryId === cat.id,
+              ).length;
+              if (matchingCount > 0) {
+                group.restaurantIds.add(r.id);
+                group.availableCount += matchingCount;
+              }
+            }
+          } catch {}
+        }),
+      );
+
+      return Array.from(map.values()).map((v) => ({
+        id: v.name,
+        name: v.name,
+        restaurantIds: Array.from(v.restaurantIds),
+        categoryIds: [],
+        totalItems: v.availableCount,
+        availableItems: v.availableCount,
+        hasProducts: v.availableCount > 0,
+      }));
+    },
+    enabled: serverCategories.length === 0 && allRestaurants.length > 0,
+  });
+
+  // 3. Danh sách danh mục dựa trên thực đơn các nhà hàng tạo ra
+  const categoryList = useMemo<DynamicCategory[]>(() => {
+    const rawList =
+      serverCategories.length > 0 ? serverCategories : fallbackCategories;
+
+    const list: DynamicCategory[] = [
+      {
+        id: 'all',
+        label: 'Tất cả',
+        emoji: '🍽️',
+        hasProducts: restaurants.length > 0,
+        availableCount: restaurants.length,
+      },
+    ];
+
+    if (rawList.length > 0) {
+      for (const cat of rawList) {
+        list.push({
+          id: cat.name,
+          label: cat.name,
+          emoji: getCategoryEmoji(cat.name),
+          restaurantIds: cat.restaurantIds,
+          hasProducts: cat.hasProducts ?? (cat.availableItems > 0),
+          availableCount: cat.availableItems ?? 0,
+        });
+      }
+    } else {
+      // Mặc định khi chưa có nhà hàng nào tạo danh mục trong database
+      list.push(
+        {
+          id: 'viet',
+          label: 'Món Việt',
+          emoji: '🍜',
+          hasProducts: true,
+          availableCount: 1,
+          keywords: ['việt', 'phở', 'bún', 'cơm', 'bánh mì', 'vietnamese'],
+        },
+        {
+          id: 'fastfood',
+          label: 'Burger & Gà',
+          emoji: '🍔',
+          hasProducts: true,
+          availableCount: 1,
+          keywords: ['burger', 'gà', 'chicken', 'fast', 'kfc'],
+        },
+        {
+          id: 'pizza',
+          label: 'Pizza & Ý',
+          emoji: '🍕',
+          hasProducts: true,
+          availableCount: 1,
+          keywords: ['pizza', 'ý', 'italian', 'pasta'],
+        },
+        {
+          id: 'drink',
+          label: 'Đồ uống',
+          emoji: '🧋',
+          hasProducts: true,
+          availableCount: 1,
+          keywords: ['trà', 'cà phê', 'coffee', 'tea', 'drink'],
+        },
+      );
+    }
+
+    list.push({
+      id: 'top_rated',
+      label: 'Đánh giá cao',
+      emoji: '⭐',
+      hasProducts: restaurants.length > 0,
+      availableCount: restaurants.length,
+    });
+
+    return list;
+  }, [serverCategories, fallbackCategories, restaurants]);
+
+  const activeCategory = useMemo(() => {
+    return categoryList.find((c) => c.id === selectedCategory);
+  }, [categoryList, selectedCategory]);
+
   const filteredRestaurants = useMemo(() => {
     if (selectedCategory === 'all') return restaurants;
 
@@ -124,15 +267,36 @@ export default function CustomerHomeScreen() {
       );
     }
 
-    const cat = FOOD_CATEGORIES.find((c) => c.id === selectedCategory);
-    if (!cat || cat.keywords.length === 0) return restaurants;
+    if (!activeCategory) return restaurants;
 
+    // Nếu nhấp vào danh mục không còn sản phẩm: trả về rỗng để hiển thị thông báo
+    if (!activeCategory.hasProducts || activeCategory.availableCount === 0) {
+      return [];
+    }
+
+    // Nếu có danh sách quán thuộc danh mục:
+    if (activeCategory.restaurantIds && activeCategory.restaurantIds.length > 0) {
+      return restaurants.filter((r) =>
+        activeCategory.restaurantIds!.includes(r.id),
+      );
+    }
+
+    // Nếu là fallback theo keywords:
+    if (activeCategory.keywords && activeCategory.keywords.length > 0) {
+      return restaurants.filter((r) => {
+        const haystack =
+          `${r.name ?? ''} ${r.cuisineType ?? ''} ${r.description ?? ''}`.toLowerCase();
+        return activeCategory.keywords!.some((kw) => haystack.includes(kw));
+      });
+    }
+
+    const catNameLower = activeCategory.label.toLowerCase();
     return restaurants.filter((r) => {
       const haystack =
         `${r.name ?? ''} ${r.cuisineType ?? ''} ${r.description ?? ''}`.toLowerCase();
-      return cat.keywords.some((kw) => haystack.includes(kw));
+      return haystack.includes(catNameLower);
     });
-  }, [restaurants, selectedCategory]);
+  }, [restaurants, selectedCategory, activeCategory]);
 
   function openRestaurant(id: string) {
     router.push({
@@ -225,8 +389,12 @@ export default function CustomerHomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.categoryScroll}
           >
-            {FOOD_CATEGORIES.map((cat) => {
+            {categoryList.map((cat) => {
               const active = selectedCategory === cat.id;
+              const isOutOfStock =
+                !cat.hasProducts ||
+                (cat.id !== 'all' && cat.id !== 'top_rated' && cat.availableCount === 0);
+
               return (
                 <Pressable
                   key={cat.id}
@@ -234,6 +402,7 @@ export default function CustomerHomeScreen() {
                   style={[
                     styles.categoryChip,
                     active && styles.categoryChipActive,
+                    isOutOfStock && styles.categoryChipOutOfStock,
                   ]}
                 >
                   <View
@@ -249,9 +418,21 @@ export default function CustomerHomeScreen() {
                       styles.categoryChipLabel,
                       active && styles.categoryChipLabelActive,
                     ]}
+                    numberOfLines={1}
                   >
                     {cat.label}
                   </Text>
+                  {isOutOfStock ? (
+                    <View style={styles.stockBadgeEmpty}>
+                      <Text style={styles.stockBadgeEmptyText}>Hết món</Text>
+                    </View>
+                  ) : cat.id !== 'all' && cat.id !== 'top_rated' && cat.availableCount > 0 ? (
+                    <View style={[styles.stockBadge, active && styles.stockBadgeActive]}>
+                      <Text style={[styles.stockBadgeText, active && styles.stockBadgeTextActive]}>
+                        {cat.availableCount} món
+                      </Text>
+                    </View>
+                  ) : null}
                 </Pressable>
               );
             })}
@@ -351,10 +532,16 @@ export default function CustomerHomeScreen() {
             <View style={styles.emptyCard}>
               <Text style={styles.stateEmoji}>🍽️</Text>
               <Text style={styles.stateTitle}>
-                Không tìm thấy sản phẩm
+                {activeCategory && !activeCategory.hasProducts
+                  ? 'Không còn sản phẩm'
+                  : 'Không tìm thấy sản phẩm'}
               </Text>
               <Text style={styles.stateDescription}>
-                Không tìm thấy sản phẩm, mời bạn tham khảo món khác
+                {activeCategory && !activeCategory.hasProducts
+                  ? `Danh mục "${activeCategory.label}" hiện không còn sản phẩm khả dụng. Mời bạn tham khảo món khác!`
+                  : selectedCategory !== 'all'
+                  ? `Không tìm thấy sản phẩm trong danh mục "${activeCategory?.label || ''}". Mời bạn tham khảo món khác!`
+                  : 'Không tìm thấy sản phẩm, mời bạn tham khảo món khác'}
               </Text>
               {(search.length > 0 || selectedCategory !== 'all') && (
                 <Pressable
@@ -463,12 +650,14 @@ export default function CustomerHomeScreen() {
                             </Text>
                           </View>
 
-                          <View style={styles.ratingBadge}>
-                            <Ionicons name="star" size={13} color="#F59E0B" />
-                            <Text style={styles.ratingValue}>
-                              {ratingNum > 0 ? ratingNum.toFixed(1) : '4.8'}
-                            </Text>
-                          </View>
+                          {ratingNum > 0 ? (
+                            <View style={styles.ratingBadge}>
+                              <Ionicons name="star" size={13} color="#F59E0B" />
+                              <Text style={styles.ratingValue}>
+                                {ratingNum.toFixed(1)}
+                              </Text>
+                            </View>
+                          ) : null}
                         </View>
 
                         <View style={styles.metaRow}>
@@ -501,16 +690,18 @@ export default function CustomerHomeScreen() {
                         <View style={styles.cardDivider} />
 
                         <View style={styles.cardFooter}>
-                          <View style={styles.freeshipTag}>
-                            <Ionicons
-                              name="pricetag-outline"
-                              size={13}
-                              color="#168653"
-                            />
-                            <Text style={styles.freeshipTagText}>
-                              {deliveryInfo.promo}
-                            </Text>
-                          </View>
+                          {hasVouchers ? (
+                            <View style={styles.freeshipTag}>
+                              <Ionicons
+                                name="pricetag-outline"
+                                size={13}
+                                color="#168653"
+                              />
+                              <Text style={styles.freeshipTagText}>
+                                Có mã giảm giá
+                              </Text>
+                            </View>
+                          ) : <View />}
 
                           <View style={styles.viewMenuButton}>
                             <Text style={styles.viewMenuText}>Đặt món</Text>
@@ -607,12 +798,14 @@ export default function CustomerHomeScreen() {
                     </Text>
                   </View>
 
-                  <View style={styles.ratingBadge}>
-                    <Ionicons name="star" size={13} color="#F59E0B" />
-                    <Text style={styles.ratingValue}>
-                      {ratingNum > 0 ? ratingNum.toFixed(1) : '4.8'}
-                    </Text>
-                  </View>
+                  {ratingNum > 0 ? (
+                    <View style={styles.ratingBadge}>
+                      <Ionicons name="star" size={13} color="#F59E0B" />
+                      <Text style={styles.ratingValue}>
+                        {ratingNum.toFixed(1)}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
 
                 <View style={styles.metaRow}>
@@ -639,16 +832,18 @@ export default function CustomerHomeScreen() {
                 <View style={styles.cardDivider} />
 
                 <View style={styles.cardFooter}>
-                  <View style={styles.freeshipTag}>
-                    <Ionicons
-                      name="pricetag-outline"
-                      size={13}
-                      color="#168653"
-                    />
-                    <Text style={styles.freeshipTagText}>
-                      {deliveryInfo.promo}
-                    </Text>
-                  </View>
+                  {hasVouchers ? (
+                    <View style={styles.freeshipTag}>
+                      <Ionicons
+                        name="pricetag-outline"
+                        size={13}
+                        color="#168653"
+                      />
+                      <Text style={styles.freeshipTagText}>
+                        Có mã giảm giá
+                      </Text>
+                    </View>
+                  ) : <View />}
 
                   <View style={styles.viewMenuButton}>
                     <Text style={styles.viewMenuText}>Đặt món</Text>
@@ -915,6 +1110,27 @@ const styles = StyleSheet.create({
   listHeaderContainer: {
     marginBottom: 8,
   },
+  promoBannerNewStores: {
+    backgroundColor: '#3B82F6',
+    shadowColor: '#2563EB',
+  },
+  promoTagNewStores: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+    marginBottom: 10,
+  },
+  promoTagNewStoresText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#2563EB',
+    letterSpacing: 0.6,
+  },
   promoBanner: {
     backgroundColor: '#FF6B35',
     borderRadius: 24,
@@ -1065,14 +1281,46 @@ const styles = StyleSheet.create({
   },
   categoryChip: {
     alignItems: 'center',
-    width: 76,
+    minWidth: 80,
     paddingVertical: 10,
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
     borderRadius: 18,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#F0E6DF',
-    gap: 6,
+    gap: 5,
+  },
+  categoryChipOutOfStock: {
+    backgroundColor: '#FAF5F2',
+    borderColor: '#F5E4DC',
+  },
+  stockBadge: {
+    backgroundColor: '#FFF0E8',
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  stockBadgeActive: {
+    backgroundColor: 'rgba(255,255,255,0.28)',
+  },
+  stockBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FF6B35',
+  },
+  stockBadgeTextActive: {
+    color: '#FFFFFF',
+  },
+  stockBadgeEmpty: {
+    backgroundColor: '#FDECEC',
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  stockBadgeEmptyText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#E5484D',
   },
   categoryChipActive: {
     backgroundColor: '#FF6B35',

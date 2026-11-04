@@ -20,6 +20,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '@/lib/axios';
 import { useImageUploader } from '@/lib/uploadthing';
+import { Ionicons } from '@expo/vector-icons';
 import { MenuCategory, MenuItem, RestaurantType } from '@food-delivery/types';
 
 const COLORS = {
@@ -40,6 +41,9 @@ export default function OwnerMenuScreen() {
   const queryClient = useQueryClient();
 
   const [showAddCategory, setShowAddCategory] = useState(false);
+  const [showEditCategory, setShowEditCategory] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<MenuCategory | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState('');
   const [showAddItem, setShowAddItem] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
@@ -100,6 +104,29 @@ export default function OwnerMenuScreen() {
     },
   });
 
+  const { mutate: updateCategory, isPending: updatingCategory } = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      api.patch(`/menu/categories/${id}`, { name }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['categories', restaurant?.id],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ['public-menu-categories'],
+      });
+      setShowEditCategory(false);
+      setEditingCategory(null);
+      setEditingCategoryName('');
+      Alert.alert('Thành công', 'Đã cập nhật tên danh mục.');
+    },
+    onError: (e: { response?: { data?: { message?: string } } }) => {
+      Alert.alert(
+        'Không thể cập nhật danh mục',
+        e.response?.data?.message ?? 'Vui lòng thử lại.',
+      );
+    },
+  });
+
   const { mutate: deleteCategory, isPending: deletingCategory } = useMutation({
     mutationFn: (id: string) => api.delete(`/menu/categories/${id}`),
     onSuccess: () => {
@@ -117,6 +144,22 @@ export default function OwnerMenuScreen() {
       );
     },
   });
+
+  function startEditCategory(category: MenuCategory) {
+    setEditingCategory(category);
+    setEditingCategoryName(category.name);
+    setShowEditCategory(true);
+  }
+
+  function handleUpdateCategory() {
+    const name = editingCategoryName.trim();
+    if (!name) {
+      Alert.alert('Thiếu thông tin', 'Vui lòng nhập tên danh mục.');
+      return;
+    }
+    if (!editingCategory) return;
+    updateCategory({ id: editingCategory.id, name });
+  }
 
   function handleAddCategory() {
     const name = newCategoryName.trim();
@@ -383,19 +426,34 @@ export default function OwnerMenuScreen() {
                   </View>
                 </View>
 
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Xóa danh mục ${category.name}`}
-                  disabled={deletingCategory}
-                  hitSlop={8}
-                  style={({ pressed }) => [
-                    styles.deleteIconButton,
-                    pressed && styles.pressed,
-                  ]}
-                  onPress={() => confirmDeleteCategory(category)}
-                >
-                  <Text style={styles.deleteIcon}>×</Text>
-                </Pressable>
+                <View style={styles.categoryActionsRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Sửa danh mục ${category.name}`}
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.editCategoryIconButton,
+                      pressed && styles.pressed,
+                    ]}
+                    onPress={() => startEditCategory(category)}
+                  >
+                    <Ionicons name="pencil" size={15} color={COLORS.primary} />
+                  </Pressable>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Xóa danh mục ${category.name}`}
+                    disabled={deletingCategory}
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.deleteIconButton,
+                      pressed && styles.pressed,
+                    ]}
+                    onPress={() => confirmDeleteCategory(category)}
+                  >
+                    <Text style={styles.deleteIcon}>×</Text>
+                  </Pressable>
+                </View>
               </View>
 
               {categoryItems.length === 0 ? (
@@ -532,6 +590,90 @@ export default function OwnerMenuScreen() {
           )
         }
       />
+
+      {/* Modal sửa danh mục */}
+      <Modal
+        visible={showEditCategory}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          if (!updatingCategory) setShowEditCategory(false);
+        }}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => {
+              if (!updatingCategory) setShowEditCategory(false);
+            }}
+          />
+
+          <View style={styles.modal}>
+            <View style={styles.modalHandle} />
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.modalHeader}>
+                <View style={styles.modalIcon}>
+                  <Text style={styles.modalEmoji}>✏️</Text>
+                </View>
+
+                <View style={styles.modalHeaderText}>
+                  <Text style={styles.modalTitle}>Sửa tên danh mục</Text>
+                  <Text style={styles.modalSubtitle}>
+                    Cập nhật lại tên danh mục cho thực đơn
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={styles.inputLabel}>Tên danh mục</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Nhập tên danh mục..."
+                placeholderTextColor="#B4AAB0"
+                value={editingCategoryName}
+                onChangeText={setEditingCategoryName}
+                maxLength={80}
+                returnKeyType="done"
+                onSubmitEditing={handleUpdateCategory}
+              />
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  pressed && styles.pressed,
+                  (updatingCategory || !editingCategoryName.trim()) &&
+                    styles.disabledButton,
+                ]}
+                onPress={handleUpdateCategory}
+                disabled={updatingCategory || !editingCategoryName.trim()}
+              >
+                {updatingCategory ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Lưu thay đổi</Text>
+                )}
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.cancelModalButton,
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => setShowEditCategory(false)}
+                disabled={updatingCategory}
+              >
+                <Text style={styles.cancelModalButtonText}>Hủy</Text>
+              </Pressable>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Modal tạo danh mục */}
       <Modal
@@ -979,6 +1121,30 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     fontSize: 11,
     marginTop: 4,
+  },
+  categoryActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  editCategoryIconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelModalButton: {
+    marginTop: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelModalButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.muted,
   },
   deleteIconButton: {
     width: 34,
