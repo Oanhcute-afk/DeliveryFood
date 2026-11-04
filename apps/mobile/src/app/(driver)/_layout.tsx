@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
+<<<<<<< HEAD
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -95,5 +96,41 @@ export default function DriverLayout() {
         }}
       />
     </Tabs>
+=======
+import { BURGER_COLORS } from '@/constants/theme';
+import { useLanguage } from '@/context/language-context';
+
+export default function DriverLayout() {
+  const { tr } = useLanguage();
+
+  return (
+    <NativeTabs
+      tintColor={BURGER_COLORS.primary}
+      backgroundColor={BURGER_COLORS.background}
+    >
+      <NativeTabs.Trigger name="index">
+        <NativeTabs.Trigger.Label>{tr('Trang chủ', 'Home')}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="active">
+        <NativeTabs.Trigger.Label>{tr('Đang giao', 'Active')}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="car.fill" md="local_shipping" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="history">
+        <NativeTabs.Trigger.Label>{tr('Lịch sử', 'History')}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="clock.fill" md="history" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="profile">
+        <NativeTabs.Trigger.Label>{tr('Hồ sơ', 'Profile')}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf="person.crop.circle.fill"
+          md="account_circle"
+        />
+      </NativeTabs.Trigger>
+    </NativeTabs>
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   );
 }

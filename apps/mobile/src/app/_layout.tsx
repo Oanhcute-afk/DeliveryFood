@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AuthProvider, useAuth } from '@/context/auth-context';
+import { LanguageProvider } from '@/context/language-context';
 import { UserRole } from '@food-delivery/types';
 
 const queryClient = new QueryClient();
@@ -48,17 +49,31 @@ function RootNavigator() {
 
 export default function TabLayout() {
   return (
+<<<<<<< HEAD
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <StripeProvider
           publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!}
         >
+=======
+    <QueryClientProvider client={queryClient}>
+      <StripeProvider
+        publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!}
+      >
+        <LanguageProvider>
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
           <AuthProvider>
             <AnimatedSplashOverlay />
             <RootNavigator />
           </AuthProvider>
+<<<<<<< HEAD
         </StripeProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
+=======
+        </LanguageProvider>
+      </StripeProvider>
+    </QueryClientProvider>
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   );
 }

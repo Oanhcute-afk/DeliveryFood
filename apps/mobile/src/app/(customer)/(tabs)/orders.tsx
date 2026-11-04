@@ -17,6 +17,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/axios';
 import { Order } from '@food-delivery/types';
+<<<<<<< HEAD
 import { CancelOrderModal } from '@/components/cancel-order-modal';
 import {
   ensureConfirmedOrdersHydrated,
@@ -36,6 +37,11 @@ type OrderItemDetail = {
   unitPrice?: string;
   menuItem?: { id: string; name: string };
 };
+=======
+import { BURGER_COLORS } from '@/constants/theme';
+import { useLanguage } from '@/context/language-context';
+import { LanguageSwitch } from '@/components/language-switch';
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
 
 type OrderWithRestaurant = Order & {
   restaurant: { id: string; name: string };
@@ -52,6 +58,7 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
 ];
 
 const STATUS_COLORS: Record<string, string> = {
+<<<<<<< HEAD
   PENDING: '#F59E0B',
   CONFIRMED: '#3B82F6',
   PREPARING: '#8B5CF6',
@@ -69,6 +76,15 @@ const STATUS_LABELS: Record<string, string> = {
   PICKED_UP: 'Tài xế đang giao',
   DELIVERED: 'Đã giao thành công',
   CANCELLED: 'Đã hủy đơn',
+=======
+  PENDING: '#D97706',
+  CONFIRMED: '#2563EB',
+  PREPARING: '#7C3AED',
+  READY: '#0891B2',
+  PICKED_UP: BURGER_COLORS.primary,
+  DELIVERED: BURGER_COLORS.success,
+  CANCELLED: BURGER_COLORS.danger,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
 };
 
 const STATUS_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -92,10 +108,11 @@ function OrderCard({
   onPress: () => void;
   onCancelPress: () => void;
 }) {
-  const statusColor = STATUS_COLORS[order.status] ?? '#999999';
-  const statusLabel = STATUS_LABELS[order.status] ?? order.status;
+  const { tr, isVi } = useLanguage();
+  const statusColor = STATUS_COLORS[order.status] ?? BURGER_COLORS.muted;
   const statusIcon = STATUS_ICONS[order.status] ?? 'receipt-outline';
 
+<<<<<<< HEAD
   const date = new Date(order.createdAt).toLocaleDateString('vi-VN', {
     day: '2-digit',
     month: '2-digit',
@@ -105,6 +122,28 @@ function OrderCard({
     hour: '2-digit',
     minute: '2-digit',
   });
+=======
+  const statusLabels: Record<string, string> = {
+    PENDING: tr('Chờ thanh toán', 'Pending'),
+    CONFIRMED: tr('Đã xác nhận', 'Confirmed'),
+    PREPARING: tr('Đang chuẩn bị', 'Preparing'),
+    READY: tr('Sẵn sàng lấy món', 'Ready for pickup'),
+    PICKED_UP: tr('Đang giao hàng', 'On the way'),
+    DELIVERED: tr('Đã giao hàng', 'Delivered'),
+    CANCELLED: tr('Đã hủy', 'Cancelled'),
+  };
+
+  const statusLabel = statusLabels[order.status] ?? order.status;
+
+  const date = new Date(order.createdAt).toLocaleDateString(
+    isVi ? 'vi-VN' : 'en-US',
+    {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    },
+  );
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
 
   const itemCount =
     order.items?.reduce((sum, it) => sum + (it.quantity ?? 1), 0) ?? 0;
@@ -121,16 +160,14 @@ function OrderCard({
 
   return (
     <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        pressed && styles.cardPressed,
-      ]}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={onPress}
     >
       {/* Header nhà hàng + trạng thái */}
       <View style={styles.cardHeader}>
         <View style={styles.restaurantSection}>
           <View style={styles.restaurantIcon}>
+<<<<<<< HEAD
             <Ionicons name="restaurant" size={20} color="#FF6B35" />
           </View>
 
@@ -143,17 +180,47 @@ function OrderCard({
             </View>
             <Text style={styles.date}>
               {time} • {date} • #{String(order.id).slice(-6).toUpperCase()}
+=======
+            <Ionicons
+              name="restaurant-outline"
+              size={21}
+              color={BURGER_COLORS.primary}
+            />
+          </View>
+
+          <View style={styles.restaurantInfo}>
+            <Text style={styles.restaurantName} numberOfLines={1}>
+              {order.restaurant?.name ?? tr('Nhà hàng', 'Restaurant')}
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
             </Text>
           </View>
         </View>
 
+<<<<<<< HEAD
+=======
+        <Ionicons
+          name="chevron-forward"
+          size={18}
+          color={BURGER_COLORS.faint}
+        />
+      </View>
+
+      <View style={styles.divider} />
+
+      {/* Status */}
+      <View style={styles.statusRow}>
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
         <View
           style={[
             styles.statusBadge,
             { backgroundColor: `${statusColor}16` },
           ]}
         >
+<<<<<<< HEAD
           <Ionicons name={statusIcon} size={14} color={statusColor} />
+=======
+          <Ionicons name={statusIcon} size={15} color={statusColor} />
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
           <Text style={[styles.statusText, { color: statusColor }]}>
             {statusLabel}
           </Text>
@@ -252,6 +319,7 @@ function OrderCard({
       <View style={styles.cardFooter}>
         <View style={styles.itemsSection}>
           <View style={styles.itemsIcon}>
+<<<<<<< HEAD
             <Ionicons name="bag-handle" size={15} color="#FF6B35" />
           </View>
           <Text style={styles.items}>{itemCount} phần ăn</Text>
@@ -259,6 +327,28 @@ function OrderCard({
 
         <View style={styles.totalSection}>
           <Text style={styles.totalLabel}>Tổng thanh toán</Text>
+=======
+            <Ionicons
+              name="bag-handle-outline"
+              size={16}
+              color={BURGER_COLORS.muted}
+            />
+          </View>
+
+          <Text style={styles.items}>
+            {itemCount}{' '}
+            {tr(
+              'món',
+              itemCount === 1 ? 'item' : 'items',
+            )}
+          </Text>
+        </View>
+
+        <View style={styles.totalSection}>
+          <Text style={styles.totalLabel}>
+            {tr('Tổng cộng', 'Total amount')}
+          </Text>
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
           <Text style={styles.total}>
             ${Number(order.totalAmount).toFixed(2)}
           </Text>
@@ -299,12 +389,16 @@ function OrderCard({
 }
 
 export default function CustomerOrdersScreen() {
+<<<<<<< HEAD
   const queryClient = useQueryClient();
   const [selectedTab, setSelectedTab] = useState<FilterTab>('ALL');
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(
     null,
   );
 
+=======
+  const { tr } = useLanguage();
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   const {
     data: orders = [],
     isLoading,
@@ -396,12 +490,18 @@ export default function CustomerOrdersScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFF9F5" />
+        <StatusBar barStyle="dark-content" backgroundColor={BURGER_COLORS.background} />
         <View style={styles.centered}>
           <View style={styles.loadingIcon}>
-            <ActivityIndicator size="large" color="#FF6B35" />
+            <ActivityIndicator size="large" color={BURGER_COLORS.primary} />
           </View>
+<<<<<<< HEAD
           <Text style={styles.loadingText}>Đang tải đơn hàng của bạn...</Text>
+=======
+          <Text style={styles.loadingText}>
+            {tr('Đang tải đơn hàng của bạn...', 'Loading your orders...')}
+          </Text>
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
         </View>
       </SafeAreaView>
     );
@@ -409,10 +509,11 @@ export default function CustomerOrdersScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFF9F5" />
+      <StatusBar barStyle="dark-content" backgroundColor={BURGER_COLORS.background} />
 
       {/* Page header */}
       <View style={styles.header}>
+<<<<<<< HEAD
         <View>
           <Text style={styles.headerCaption}>LƯU ĐƠN 3 TUẦN GẦN NHẤT</Text>
           <Text style={styles.title}>Đơn hàng của tôi</Text>
@@ -478,6 +579,33 @@ export default function CustomerOrdersScreen() {
           })}
         </ScrollView>
       </View>
+=======
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerCaption}>
+            {tr('HÀNH TRÌNH ẨM THỰC', 'YOUR FOOD JOURNEY')}
+          </Text>
+          <Text style={styles.title}>{tr('Đơn hàng của tôi', 'My Orders')}</Text>
+          <Text style={styles.subtitle}>
+            {tr('Theo dõi trạng thái các bữa ăn của bạn.', 'Keep track of your delicious moments.')}
+          </Text>
+        </View>
+
+        <LanguageSwitch />
+      </View>
+
+      {/* Order count */}
+      {!isError && orders.length > 0 && (
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryDot} />
+          <Text style={styles.summaryText}>
+            {tr(
+              `${orders.length} đơn hàng trong lịch sử`,
+              `${orders.length} ${orders.length === 1 ? 'order' : 'orders'} in your history`,
+            )}
+          </Text>
+        </View>
+      )}
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
 
       {isError ? (
         <ScrollView
@@ -497,24 +625,42 @@ export default function CustomerOrdersScreen() {
           <View style={styles.emptyIcon}>
             <Ionicons
               name="cloud-offline-outline"
-              size={35}
-              color="#FF6B35"
+              size={34}
+              color={BURGER_COLORS.primary}
             />
           </View>
 
+<<<<<<< HEAD
           <Text style={styles.emptyText}>Không thể tải đơn hàng</Text>
           <Text style={styles.emptySubText}>
             Vui lòng kiểm tra kết nối mạng và thử lại.
+=======
+          <Text style={styles.emptyText}>
+            {tr('Không thể tải đơn hàng', 'Unable to load orders')}
+          </Text>
+          <Text style={styles.emptySubText}>
+            {tr(
+              'Vui lòng kiểm tra kết nối mạng và thử lại.',
+              'Please check your connection and try again.',
+            )}
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
           </Text>
 
           <Pressable
-            style={styles.retryButton}
+            style={({ pressed }) => [
+              styles.retryButton,
+              pressed && styles.cardPressed,
+            ]}
             onPress={() => {
               void refetch();
             }}
           >
             <Ionicons name="refresh-outline" size={18} color="#FFFFFF" />
+<<<<<<< HEAD
             <Text style={styles.retryText}>Thử lại</Text>
+=======
+            <Text style={styles.retryText}>{tr('Thử lại', 'Try again')}</Text>
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
           </Pressable>
         </ScrollView>
       ) : filteredOrders.length === 0 ? (
@@ -535,14 +681,21 @@ export default function CustomerOrdersScreen() {
           <View style={styles.emptyIllustration}>
             <View style={styles.emptyIcon}>
               <Ionicons
+<<<<<<< HEAD
                 name="fast-food-outline"
                 size={39}
                 color="#FF6B35"
+=======
+                name="receipt-outline"
+                size={38}
+                color={BURGER_COLORS.primary}
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
               />
             </View>
           </View>
 
           <Text style={styles.emptyText}>
+<<<<<<< HEAD
             {selectedTab === 'ALL'
               ? 'Chưa có đơn hàng nào'
               : 'Không có đơn hàng ở mục này'}
@@ -551,6 +704,15 @@ export default function CustomerOrdersScreen() {
             {selectedTab === 'ALL'
               ? 'Khám phá thực đơn hấp dẫn và đặt ngay bữa ăn nóng hổi giao tận nhà!'
               : 'Hãy chuyển sang tab khác hoặc đặt thêm món mới nhé.'}
+=======
+            {tr('Chưa có đơn hàng nào', 'No orders yet')}
+          </Text>
+          <Text style={styles.emptySubText}>
+            {tr(
+              'Khám phá thực đơn hấp dẫn và đặt bữa ăn đầu tiên của bạn ngay!',
+              'Explore the menu and place your first order!',
+            )}
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
           </Text>
 
           <Pressable
@@ -558,6 +720,7 @@ export default function CustomerOrdersScreen() {
               styles.shopButton,
               pressed && styles.cardPressed,
             ]}
+<<<<<<< HEAD
             onPress={() =>
               selectedTab === 'ALL'
                 ? router.push('/(customer)/(tabs)/(home)')
@@ -568,6 +731,15 @@ export default function CustomerOrdersScreen() {
             <Text style={styles.shopButtonText}>
               {selectedTab === 'ALL' ? 'Đặt món ngay' : 'Xem tất cả đơn hàng'}
             </Text>
+=======
+            onPress={() => router.push('/(customer)/(tabs)/(home)')}
+          >
+            <Ionicons name="fast-food-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.shopButtonText}>
+              {tr('Khám phá món ngon', 'Explore food')}
+            </Text>
+            <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
           </Pressable>
         </ScrollView>
       ) : (
@@ -609,12 +781,13 @@ export default function CustomerOrdersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF9F5',
+    backgroundColor: BURGER_COLORS.background,
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
+<<<<<<< HEAD
     paddingHorizontal: 20,
     paddingTop: 14,
     paddingBottom: 12,
@@ -624,11 +797,27 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#FF6B35',
     letterSpacing: 1.3,
+=======
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 14,
+    gap: 12,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerCaption: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: BURGER_COLORS.primary,
+    letterSpacing: 1.2,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     marginBottom: 4,
   },
   title: {
     fontSize: 26,
     fontWeight: '900',
+<<<<<<< HEAD
     color: '#29232A',
     letterSpacing: -0.6,
   },
@@ -639,6 +828,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFEEE5',
     alignItems: 'center',
     justifyContent: 'center',
+=======
+    color: BURGER_COLORS.text,
+    letterSpacing: -0.6,
+  },
+  subtitle: {
+    fontSize: 12,
+    color: BURGER_COLORS.muted,
+    marginTop: 4,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   tabsWrapper: {
     paddingBottom: 8,
@@ -650,6 +848,7 @@ const styles = StyleSheet.create({
   tabPill: {
     flexDirection: 'row',
     alignItems: 'center',
+<<<<<<< HEAD
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 9,
@@ -661,9 +860,21 @@ const styles = StyleSheet.create({
   tabPillActive: {
     backgroundColor: '#FF6B35',
     borderColor: '#FF6B35',
+=======
+    gap: 8,
+    paddingHorizontal: 18,
+    marginBottom: 8,
+  },
+  summaryDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: BURGER_COLORS.primary,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   tabPillText: {
     fontSize: 12,
+<<<<<<< HEAD
     fontWeight: '800',
     color: '#6E656C',
   },
@@ -693,10 +904,19 @@ const styles = StyleSheet.create({
   list: {
     paddingHorizontal: 18,
     paddingTop: 8,
+=======
+    color: BURGER_COLORS.muted,
+    fontWeight: '600',
+  },
+  list: {
+    paddingHorizontal: 18,
+    paddingTop: 6,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     paddingBottom: 30,
-    gap: 14,
+    gap: 12,
   },
   card: {
+<<<<<<< HEAD
     backgroundColor: '#FFFFFF',
     borderRadius: 22,
     borderWidth: 1,
@@ -710,6 +930,16 @@ const styles = StyleSheet.create({
   },
   cardPressed: {
     opacity: 0.85,
+=======
+    backgroundColor: BURGER_COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: BURGER_COLORS.border,
+    padding: 15,
+  },
+  cardPressed: {
+    opacity: 0.88,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   cardHeader: {
     flexDirection: 'row',
@@ -723,10 +953,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   restaurantIcon: {
+<<<<<<< HEAD
     width: 42,
     height: 42,
     borderRadius: 14,
     backgroundColor: '#FFF0E7',
+=======
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: BURGER_COLORS.primaryLight,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 11,
@@ -741,6 +978,7 @@ const styles = StyleSheet.create({
   },
   restaurantName: {
     fontSize: 15,
+<<<<<<< HEAD
     fontWeight: '900',
     color: '#29232A',
     flexShrink: 1,
@@ -749,10 +987,32 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9B9097',
     marginTop: 3,
+=======
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
+    marginBottom: 3,
+  },
+  date: {
+    fontSize: 11,
+    color: BURGER_COLORS.muted,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: BURGER_COLORS.border,
+    marginVertical: 12,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 12,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+<<<<<<< HEAD
     gap: 5,
     borderRadius: 999,
     paddingHorizontal: 10,
@@ -840,13 +1100,34 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 11,
     color: '#8B8289',
+=======
+    gap: 6,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    flexShrink: 1,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  orderReference: {
+    fontSize: 11,
+    color: BURGER_COLORS.muted,
+    fontWeight: '700',
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+<<<<<<< HEAD
     backgroundColor: '#FFFAF7',
     borderRadius: 14,
+=======
+    backgroundColor: BURGER_COLORS.surfaceMuted,
+    borderRadius: 12,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
@@ -859,13 +1140,21 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 9,
+<<<<<<< HEAD
     backgroundColor: '#FFF0E8',
+=======
+    backgroundColor: BURGER_COLORS.surface,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     alignItems: 'center',
     justifyContent: 'center',
   },
   items: {
     fontSize: 12,
+<<<<<<< HEAD
     color: '#574E54',
+=======
+    color: BURGER_COLORS.muted,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     fontWeight: '700',
   },
   totalSection: {
@@ -873,6 +1162,7 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 10,
+<<<<<<< HEAD
     color: '#A49AA0',
     marginBottom: 2,
   },
@@ -880,6 +1170,15 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '900',
     color: '#FF6B35',
+=======
+    color: BURGER_COLORS.muted,
+    marginBottom: 2,
+  },
+  total: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: BURGER_COLORS.primary,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   pendingActionsRow: {
     flexDirection: 'row',
@@ -924,23 +1223,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 30,
+<<<<<<< HEAD
     paddingVertical: 32,
+=======
+    paddingBottom: 40,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   loadingIcon: {
-    width: 75,
-    height: 75,
-    borderRadius: 25,
-    backgroundColor: '#FFF0E7',
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    backgroundColor: BURGER_COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 18,
+    marginBottom: 16,
   },
   loadingText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#8B8289',
+    color: BURGER_COLORS.muted,
   },
   emptyIllustration: {
+<<<<<<< HEAD
     position: 'relative',
     marginBottom: 18,
   },
@@ -949,19 +1253,33 @@ const styles = StyleSheet.create({
     height: 88,
     borderRadius: 28,
     backgroundColor: '#FFF0E7',
+=======
+    marginBottom: 18,
+  },
+  emptyIcon: {
+    width: 84,
+    height: 84,
+    borderRadius: 28,
+    backgroundColor: BURGER_COLORS.primaryLight,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyText: {
     fontSize: 20,
+<<<<<<< HEAD
     fontWeight: '900',
     color: '#29232A',
+=======
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubText: {
-    fontSize: 12,
-    color: '#8B8289',
+    fontSize: 13,
+    color: BURGER_COLORS.muted,
     textAlign: 'center',
     lineHeight: 19,
   },
@@ -970,9 +1288,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+<<<<<<< HEAD
     backgroundColor: '#FF6B35',
     borderRadius: 15,
     paddingHorizontal: 19,
+=======
+    backgroundColor: BURGER_COLORS.primary,
+    borderRadius: 14,
+    paddingHorizontal: 18,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     paddingVertical: 13,
     marginTop: 20,
   },
@@ -986,15 +1310,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#FF6B35',
+    backgroundColor: BURGER_COLORS.primary,
     borderRadius: 14,
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     paddingVertical: 13,
-    marginTop: 22,
+    marginTop: 20,
   },
   retryText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#FFFFFF',
   },
 });

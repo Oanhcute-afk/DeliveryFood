@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "a9751246-40e0-444c-b940-a55c050d9d20"
+      }
+    },
+    "android": {
+      "package": "com.oanhcuteafk.fooddelivery"
+    }
+  }
+}

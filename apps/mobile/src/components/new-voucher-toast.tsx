@@ -7,6 +7,8 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCartStore } from '@/store/cart-store';
 import { voucherApi, type LatestVoucher } from '@/lib/vouchers';
+import { BURGER_COLORS } from '@/constants/theme';
+import { useLanguage } from '@/context/language-context';
 
 const SEEN_KEY = 'seen_voucher_ids';
 const AUTO_HIDE_MS = 8000;
@@ -24,7 +26,6 @@ async function readSeen(): Promise<string[]> {
 async function markSeen(id: string) {
   const seen = await readSeen();
   if (seen.includes(id)) return;
-  // Giữ 50 voucher gần nhất là đủ
   await SecureStore.setItemAsync(
     SEEN_KEY,
     JSON.stringify([id, ...seen].slice(0, 50)),
@@ -34,6 +35,7 @@ async function markSeen(id: string) {
 /** Banner nhỏ báo voucher mới — mỗi voucher chỉ hiện 1 lần trên máy */
 export function NewVoucherToast() {
   const insets = useSafeAreaInsets();
+  const { tr } = useLanguage();
   const hasCartItems = useCartStore((s) => s.items.length > 0);
   const [voucher, setVoucher] = useState<LatestVoucher | null>(null);
   const translateY = useRef(new Animated.Value(-200)).current;
@@ -51,10 +53,10 @@ export function NewVoucherToast() {
     void readSeen().then((seen) => {
       if (cancelled || seen.includes(latest.id)) return;
       setVoucher(latest);
-      Animated.spring(translateY, {
+      Animated.timing(translateY, {
         toValue: 0,
+        duration: 240,
         useNativeDriver: true,
-        friction: 8,
       }).start();
       if (hideTimer.current) clearTimeout(hideTimer.current);
       hideTimer.current = setTimeout(() => dismiss(latest.id), AUTO_HIDE_MS);
@@ -76,7 +78,7 @@ export function NewVoucherToast() {
     void markSeen(id);
     Animated.timing(translateY, {
       toValue: -200,
-      duration: 220,
+      duration: 200,
       useNativeDriver: true,
     }).start(() => setVoucher(null));
   }
@@ -85,7 +87,10 @@ export function NewVoucherToast() {
 
   const minOrder =
     voucher.minOrderAmount > 0
-      ? ` cho đơn từ $${voucher.minOrderAmount.toFixed(2).replace(/\.00$/, '')}`
+      ? tr(
+          ` cho đơn từ $${voucher.minOrderAmount.toFixed(2).replace(/\.00$/, '')}`,
+          ` on orders from $${voucher.minOrderAmount.toFixed(2).replace(/\.00$/, '')}`,
+        )
       : '';
 
   return (
@@ -109,22 +114,26 @@ export function NewVoucherToast() {
         accessibilityRole="alert"
       >
         <View style={styles.icon}>
-          <Ionicons name="ticket" size={22} color="#FFFFFF" />
+          <Ionicons name="ticket" size={20} color={BURGER_COLORS.text} />
         </View>
         <View style={styles.body}>
           <Text style={styles.title}>
-            Đã có voucher giảm {voucher.discountLabel}, nhanh tay đặt món ngay
-            nào!
+            {tr(
+              `Ưu đãi mới giảm ${voucher.discountLabel}, đặt burger ngay!`,
+              `New voucher: ${voucher.discountLabel} off, order now!`,
+            )}
           </Text>
           <Text style={styles.sub} numberOfLines={1}>
-            Mã {voucher.code}
-            {minOrder} · Tự động áp dụng khi thanh toán
+            {tr(
+              `Mã ${voucher.code}${minOrder} · Tự động áp dụng`,
+              `Code ${voucher.code}${minOrder} · Auto-applied at checkout`,
+            )}
           </Text>
         </View>
         <Pressable
           onPress={() => dismiss(voucher.id)}
           hitSlop={12}
-          accessibilityLabel="Đóng thông báo"
+          accessibilityLabel={tr('Đóng thông báo', 'Dismiss notification')}
         >
           <Ionicons name="close" size={18} color="rgba(255,255,255,0.85)" />
         </Pressable>
@@ -134,31 +143,31 @@ export function NewVoucherToast() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: 'absolute', left: 12, right: 12, zIndex: 100 },
+  wrap: { position: 'absolute', left: 14, right: 14, zIndex: 100 },
   toast: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#FF6B35',
-    borderRadius: 18,
+    backgroundColor: BURGER_COLORS.primary,
+    borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    shadowColor: '#29232A',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowColor: BURGER_COLORS.text,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  pressed: { opacity: 0.92 },
+  pressed: { opacity: 0.9 },
   icon: {
-    width: 40,
-    height: 40,
-    borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: BURGER_COLORS.cheese,
     alignItems: 'center',
     justifyContent: 'center',
   },
   body: { flex: 1, minWidth: 0 },
-  title: { fontSize: 14, fontWeight: '800', color: '#FFFFFF', lineHeight: 19 },
-  sub: { fontSize: 11, color: 'rgba(255,255,255,0.9)', marginTop: 3 },
+  title: { fontSize: 13, fontWeight: '800', color: '#FFFFFF', lineHeight: 18 },
+  sub: { fontSize: 11, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
 });

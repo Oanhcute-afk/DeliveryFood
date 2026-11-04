@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { useEffect, useMemo, useRef, useState } from 'react';
+=======
+import { useState } from 'react';
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
 import {
   ActivityIndicator,
   FlatList,
@@ -20,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/axios';
 import { MenuCategory, MenuItem, PublicCategorySummary, RestaurantType } from '@food-delivery/types';
 import { useDebounce } from '@/hooks/use-debounce';
+<<<<<<< HEAD
 import { useCartStore } from '@/store/cart-store';
 import { useAuth } from '@/context/auth-context';
 import { voucherApi } from '@/lib/vouchers';
@@ -63,8 +68,14 @@ function getDeliveryEstimate(index: number): {
   ];
   return estimates[index % estimates.length];
 }
+=======
+import { BURGER_COLORS } from '@/constants/theme';
+import { useLanguage } from '@/context/language-context';
+import { LanguageSwitch } from '@/components/language-switch';
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
 
 export default function CustomerHomeScreen() {
+  const { tr } = useLanguage();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const debouncedSearch = useDebounce(search, 350);
@@ -692,11 +703,22 @@ export default function CustomerHomeScreen() {
           alwaysBounceVertical={true}
         >
           <View style={styles.loadingIcon}>
-            <ActivityIndicator size="large" color="#FF6B35" />
+            <ActivityIndicator size="large" color={BURGER_COLORS.primary} />
           </View>
+<<<<<<< HEAD
           <Text style={styles.stateTitle}>Đang tìm quán ngon gần bạn</Text>
           <Text style={styles.stateDescription}>
             Chờ một chút, hàng loạt món ngon sắp hiện ra!
+=======
+          <Text style={styles.stateTitle}>
+            {tr('Đang tìm quán ngon', 'Finding restaurants')}
+          </Text>
+          <Text style={styles.stateDescription}>
+            {tr(
+              'Chờ một chút, burger nóng hổi sắp xuất hiện!',
+              'Hang tight, freshly grilled meals are on the way!',
+            )}
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
           </Text>
         </ScrollView>
       );
@@ -711,9 +733,18 @@ export default function CustomerHomeScreen() {
           alwaysBounceVertical={true}
         >
           <Text style={styles.stateEmoji}>📡</Text>
+<<<<<<< HEAD
           <Text style={styles.stateTitle}>Không tải được danh sách quán</Text>
+=======
+          <Text style={styles.stateTitle}>
+            {tr('Không tải được nhà hàng', 'Unable to load restaurants')}
+          </Text>
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
           <Text style={styles.stateDescription}>
-            Kiểm tra kết nối mạng hoặc máy chủ API rồi thử lại nhé.
+            {tr(
+              'Kiểm tra kết nối mạng hoặc máy chủ API rồi thử lại nhé.',
+              'Please check your internet connection or API server and try again.',
+            )}
           </Text>
           <Text style={styles.errorDetails} numberOfLines={3}>
             {error instanceof Error ? error.message : String(error)}
@@ -726,7 +757,13 @@ export default function CustomerHomeScreen() {
               pressed && styles.buttonPressed,
             ]}
           >
+<<<<<<< HEAD
             <Text style={styles.retryButtonText}>Thử lại ngay</Text>
+=======
+            <Text style={styles.retryButtonText}>
+              {tr('Thử lại', 'Try again')}
+            </Text>
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
           </Pressable>
         </ScrollView>
       );
@@ -747,6 +784,7 @@ export default function CustomerHomeScreen() {
         ]}
         refreshing={isFetching && !isLoading}
         onRefresh={() => refetch()}
+<<<<<<< HEAD
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={
           <View>
@@ -993,18 +1031,107 @@ export default function CustomerHomeScreen() {
                   />
                   <Text style={styles.statusOverlayText}>
                     {isOpen ? 'Đang mở cửa' : 'Tạm đóng'}
+=======
+        ListHeaderComponent={
+          restaurants.length > 0 ? (
+            <View style={styles.listHeader}>
+              <Text style={styles.sectionTitle}>
+                {tr('Quán ngon nổi bật', 'Featured Restaurants')}
+              </Text>
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>
+                  {restaurants.length} {tr('quán', 'places')}
+                </Text>
+              </View>
+            </View>
+          ) : null
+        }
+        ListEmptyComponent={
+          <View style={styles.centered}>
+            <Text style={styles.stateEmoji}>🍔</Text>
+            <Text style={styles.stateTitle}>
+              {tr('Chưa tìm thấy nhà hàng', 'No restaurants found')}
+            </Text>
+            <Text style={styles.stateDescription}>
+              {tr(
+                'Thử tìm tên quán hoặc loại món ăn khác nhé.',
+                'Try another restaurant name or cuisine type.',
+              )}
+            </Text>
+            {search.length > 0 && (
+              <Pressable
+                onPress={() => setSearch('')}
+                style={({ pressed }) => [
+                  styles.retryButton,
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <Text style={styles.retryButtonText}>
+                  {tr('Xóa tìm kiếm', 'Clear search')}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        }
+        renderItem={({ item }) => (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${tr('Xem thực đơn', 'View menu')} ${item.name}`}
+            style={({ pressed }) => [
+              styles.card,
+              pressed && styles.cardPressed,
+            ]}
+            onPress={() => openRestaurant(String(item.id))}
+          >
+            <View style={styles.imageContainer}>
+              {item.imageUrl ? (
+                <Image
+                  source={{ uri: item.imageUrl }}
+                  style={styles.cardImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.cardImagePlaceholder}>
+                  <Text style={styles.placeholderEmoji}>🍔</Text>
+                  <Text style={styles.placeholderText}>
+                    {tr('Nóng hổi & thơm ngon', 'Fresh & Flame-Grilled')}
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
                   </Text>
                 </View>
 
+<<<<<<< HEAD
                 {/* Thời gian giao hàng góc dưới ảnh */}
                 <View style={styles.deliveryTimeOverlay}>
                   <Ionicons name="bicycle" size={14} color="#FF6B35" />
                   <Text style={styles.deliveryTimeText}>
                     {deliveryInfo.time} • {deliveryInfo.distance}
+=======
+              <View style={styles.openBadge}>
+                <View style={styles.openDot} />
+                <Text style={styles.openBadgeText}>
+                  {tr('Mở cửa', 'Open')}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.cardBody}>
+              <View style={styles.cardTitleRow}>
+                <Text style={styles.cardName} numberOfLines={1}>
+                  {item.name}
+                </Text>
+
+                <View style={styles.ratingBadge}>
+                  <Text style={styles.ratingStar}>★</Text>
+                  <Text style={styles.ratingValue}>
+                    {Number(item.rating) > 0
+                      ? Number(item.rating).toFixed(1)
+                      : tr('Mới', 'New')}
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
                   </Text>
                 </View>
               </View>
 
+<<<<<<< HEAD
               <View style={styles.cardBody}>
                 <View style={styles.cardTitleRow}>
                   <View style={styles.nameWithTick}>
@@ -1089,12 +1216,34 @@ export default function CustomerHomeScreen() {
             </View>
           ) : null
         }
+=======
+              <View style={styles.cardMetaRow}>
+                <Text style={styles.cardCuisine} numberOfLines={1}>
+                  {item.cuisineType || tr('Burger & Đồ ăn nhanh', 'Burgers & Fast Food')}
+                </Text>
+
+                <View style={styles.viewMenu}>
+                  <Text style={styles.viewMenuText}>
+                    {tr('Xem menu', 'View menu')}
+                  </Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={14}
+                    color={BURGER_COLORS.primary}
+                  />
+                </View>
+              </View>
+            </View>
+          </Pressable>
+        )}
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
       />
     );
   }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+<<<<<<< HEAD
       <StatusBar barStyle="dark-content" backgroundColor="#FFF9F5" />
 
       {/* Top Delivery Bar gọn gàng, chuẩn app giao đồ ăn */}
@@ -1141,21 +1290,62 @@ export default function CustomerHomeScreen() {
             style={styles.searchInput}
             placeholder="Tìm món ăn, trà sữa, burger, nhà hàng..."
             placeholderTextColor="#9E949A"
+=======
+      <View style={styles.header}>
+        <View style={styles.topRow}>
+          <View style={styles.brandGroup}>
+            <View style={styles.brandIcon}>
+              <Text style={styles.brandEmoji}>🍔</Text>
+            </View>
+            <View>
+              <Text style={styles.greetingLabel}>
+                {tr('DELIBURGER · GIAO NHANH', 'DELIBURGER · FAST DELIVERY')}
+              </Text>
+              <Text style={styles.greetingTitle}>
+                {tr('Hôm nay ăn gì? 👋', 'Craving a burger? 👋')}
+              </Text>
+            </View>
+          </View>
+
+          <LanguageSwitch />
+        </View>
+
+        <View style={styles.searchContainer}>
+          <Ionicons
+            name="search-outline"
+            size={20}
+            color={BURGER_COLORS.primary}
+          />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={tr(
+              'Tìm burger, nhà hàng, món ăn...',
+              'Search burgers, restaurants, dishes...',
+            )}
+            placeholderTextColor={BURGER_COLORS.faint}
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
             value={search}
             onChangeText={setSearch}
             returnKeyType="search"
             autoCapitalize="none"
-            accessibilityLabel="Tìm kiếm nhà hàng"
+            accessibilityLabel={tr('Tìm kiếm nhà hàng', 'Search restaurants')}
           />
           {search.length > 0 && (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Xóa từ khóa tìm kiếm"
+              accessibilityLabel={tr(
+                'Xóa từ khóa tìm kiếm',
+                'Clear search query',
+              )}
               onPress={() => setSearch('')}
               hitSlop={10}
               style={styles.clearButton}
             >
+<<<<<<< HEAD
               <Ionicons name="close" size={16} color="#756B72" />
+=======
+              <Ionicons name="close" size={16} color={BURGER_COLORS.muted} />
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
             </Pressable>
           )}
         </View>
@@ -1203,8 +1393,9 @@ export default function CustomerHomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF9F5',
+    backgroundColor: BURGER_COLORS.background,
   },
+<<<<<<< HEAD
   topHeader: {
     paddingHorizontal: 18,
     paddingTop: 8,
@@ -1224,6 +1415,32 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 14,
     backgroundColor: '#FF6B35',
+=======
+  header: {
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 14,
+    backgroundColor: BURGER_COLORS.background,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 14,
+  },
+  brandGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  brandIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: BURGER_COLORS.primary,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#FF6B35',
@@ -1232,8 +1449,13 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
+<<<<<<< HEAD
   deliveryInfo: {
     flex: 1,
+=======
+  brandEmoji: {
+    fontSize: 22,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   deliveryLabelRow: {
     flexDirection: 'row',
@@ -1243,6 +1465,7 @@ const styles = StyleSheet.create({
   },
   deliveryLabel: {
     fontSize: 10,
+<<<<<<< HEAD
     fontWeight: '900',
     color: '#FF6B35',
     letterSpacing: 0.9,
@@ -1291,23 +1514,45 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '900',
+=======
+    fontWeight: '800',
+    color: BURGER_COLORS.primary,
+    letterSpacing: 0.8,
+  },
+  greetingTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: BURGER_COLORS.text,
+    marginTop: 2,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   searchContainer: {
     height: 48,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BURGER_COLORS.surface,
     borderWidth: 1,
+<<<<<<< HEAD
     borderColor: '#EDE2DA',
     borderRadius: 15,
+=======
+    borderColor: BURGER_COLORS.border,
+    borderRadius: 14,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     paddingHorizontal: 14,
     gap: 10,
   },
   searchInput: {
     flex: 1,
+<<<<<<< HEAD
     fontSize: 14,
     color: '#29232A',
     height: '100%',
+=======
+    height: '100%',
+    fontSize: 14,
+    color: BURGER_COLORS.text,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   clearButton: {
     width: 24,
@@ -1315,15 +1560,24 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+<<<<<<< HEAD
     backgroundColor: '#F3ECE7',
+=======
+    backgroundColor: BURGER_COLORS.surfaceMuted,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   content: {
     flex: 1,
   },
   listContent: {
     paddingHorizontal: 18,
+<<<<<<< HEAD
     paddingTop: 14,
     paddingBottom: 28,
+=======
+    paddingTop: 4,
+    paddingBottom: 96,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   emptyListContent: {
     flexGrow: 1,
@@ -1383,6 +1637,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+<<<<<<< HEAD
     marginBottom: 0,
     overflow: 'hidden',
     shadowOffset: { width: 0, height: 6 },
@@ -1606,10 +1861,14 @@ const styles = StyleSheet.create({
     color: '#FF6B35',
     letterSpacing: 1.2,
     marginBottom: 3,
+=======
+    marginBottom: 12,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   sectionTitle: {
     fontSize: 19,
     fontWeight: '900',
+<<<<<<< HEAD
     color: '#29232A',
     letterSpacing: -0.4,
   },
@@ -1618,18 +1877,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 999,
+=======
+    color: BURGER_COLORS.text,
+  },
+  countBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: BURGER_COLORS.cheeseLight,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   countText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#FF6B35',
+    color: BURGER_COLORS.cheeseDark,
   },
   card: {
+<<<<<<< HEAD
     backgroundColor: '#FFFFFF',
     borderRadius: 22,
     borderWidth: 1,
     borderColor: '#EFE5DE',
     marginBottom: 16,
+=======
+    marginBottom: 14,
+    borderRadius: 18,
+    backgroundColor: BURGER_COLORS.surface,
+    borderWidth: 1,
+    borderColor: BURGER_COLORS.border,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     overflow: 'hidden',
     shadowColor: '#29232A',
     shadowOffset: { width: 0, height: 4 },
@@ -1638,10 +1914,18 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardPressed: {
+<<<<<<< HEAD
     opacity: 0.92,
     transform: [{ scale: 0.99 }],
   },
   imageContainer: {
+=======
+    opacity: 0.88,
+  },
+  imageContainer: {
+    height: 164,
+    backgroundColor: BURGER_COLORS.surfaceMuted,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     position: 'relative',
     height: 168,
     backgroundColor: '#FFF0E8',
@@ -1654,13 +1938,18 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+<<<<<<< HEAD
     backgroundColor: '#FFE8D9',
+=======
+    backgroundColor: BURGER_COLORS.surfaceMuted,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   placeholderEmoji: {
     fontSize: 40,
     marginBottom: 6,
   },
   placeholderText: {
+<<<<<<< HEAD
     fontSize: 11,
     fontWeight: '800',
     color: '#B5633F',
@@ -1727,6 +2016,38 @@ const styles = StyleSheet.create({
   },
   cardBody: {
     padding: 15,
+=======
+    fontSize: 12,
+    fontWeight: '700',
+    color: BURGER_COLORS.muted,
+  },
+  openBadge: {
+    position: 'absolute',
+    left: 12,
+    bottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: BURGER_COLORS.surface,
+  },
+  openDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: BURGER_COLORS.lettuce,
+  },
+  openBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: BURGER_COLORS.lettuce,
+  },
+  cardBody: {
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   cardTitleRow: {
     flexDirection: 'row',
@@ -1742,15 +2063,22 @@ const styles = StyleSheet.create({
   },
   cardName: {
     flex: 1,
+<<<<<<< HEAD
     fontSize: 17,
     fontWeight: '900',
     color: '#29232A',
     letterSpacing: -0.3,
+=======
+    fontSize: 16,
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   ratingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+<<<<<<< HEAD
     backgroundColor: '#FFF8E6',
     borderWidth: 1,
     borderColor: '#FDE68A',
@@ -1814,19 +2142,51 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     color: '#168653',
+=======
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: BURGER_COLORS.cheeseLight,
+  },
+  ratingStar: {
+    color: BURGER_COLORS.cheese,
+    fontSize: 13,
+  },
+  ratingValue: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: BURGER_COLORS.cheeseDark,
+  },
+  cardMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    gap: 8,
+  },
+  cardCuisine: {
+    flex: 1,
+    fontSize: 13,
+    color: BURGER_COLORS.muted,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   viewMenuButton: {
     flexDirection: 'row',
     alignItems: 'center',
+<<<<<<< HEAD
     gap: 5,
     backgroundColor: '#FF6B35',
     paddingHorizontal: 13,
     paddingVertical: 7,
     borderRadius: 11,
+=======
+    gap: 3,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   viewMenuText: {
     fontSize: 12,
     fontWeight: '800',
+<<<<<<< HEAD
     color: '#FFFFFF',
   },
   emptyCard: {
@@ -1838,6 +2198,9 @@ const styles = StyleSheet.create({
     borderColor: '#F0E6DF',
     padding: 28,
     marginTop: 10,
+=======
+    color: BURGER_COLORS.primary,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   centered: {
     flexGrow: 1,
@@ -1847,15 +2210,23 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   loadingIcon: {
+<<<<<<< HEAD
     width: 72,
     height: 72,
     borderRadius: 24,
     backgroundColor: '#FFF0E8',
+=======
+    width: 68,
+    height: 68,
+    borderRadius: 20,
+    backgroundColor: BURGER_COLORS.primaryLight,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
   stateEmoji: {
+<<<<<<< HEAD
     fontSize: 44,
     marginBottom: 12,
   },
@@ -1863,10 +2234,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
     color: '#29232A',
+=======
+    fontSize: 42,
+    marginBottom: 12,
+  },
+  stateTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: BURGER_COLORS.text,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     textAlign: 'center',
   },
   stateDescription: {
     fontSize: 13,
+<<<<<<< HEAD
     lineHeight: 20,
     color: '#8B8289',
     textAlign: 'center',
@@ -1884,6 +2265,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 11,
     borderRadius: 13,
+=======
+    color: BURGER_COLORS.muted,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginTop: 6,
+  },
+  errorDetails: {
+    fontSize: 11,
+    color: BURGER_COLORS.tomato,
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 16,
+  },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: BURGER_COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 11,
+    borderRadius: 12,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   retryButtonText: {
     color: '#FFFFFF',
@@ -1891,6 +2292,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   buttonPressed: {
+<<<<<<< HEAD
     opacity: 0.85,
   },
   footerNote: {
@@ -1975,5 +2377,8 @@ const styles = StyleSheet.create({
     color: '#FF6B35',
     fontSize: 12,
     fontWeight: '900',
+=======
+    opacity: 0.88,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
 });

@@ -12,16 +12,18 @@ import { router, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { UserRole } from '@food-delivery/types';
 import { useAuth } from '@/context/auth-context';
+import { useLanguage } from '@/context/language-context';
 import { ROLES } from '@/constants/roles';
+import { BURGER_COLORS } from '@/constants/theme';
 import { isGoogleSignInAvailable, signInWithGoogle } from '@/lib/firebase-auth';
 
 interface Props {
-  // Role dùng khi tạo tài khoản mới. Bỏ trống thì sẽ hỏi người dùng nếu cần.
   role?: UserRole;
 }
 
 export function GoogleSignInButton({ role }: Props) {
   const { googleLogin } = useAuth();
+  const { isVi, tr } = useLanguage();
   const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(false);
   const [pendingIdToken, setPendingIdToken] = useState<string | null>(null);
@@ -37,7 +39,11 @@ export function GoogleSignInButton({ role }: Props) {
     } catch (error: any) {
       setIsLoading(false);
       Alert.alert(
+<<<<<<< HEAD
         'Đăng nhập Google thất bại',
+=======
+        tr('Đăng nhập Google thất bại', 'Google sign-in failed'),
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
         String(error?.message ?? error),
       );
       return;
@@ -57,7 +63,6 @@ export function GoogleSignInButton({ role }: Props) {
     } catch (error: any) {
       const data = error?.response?.data;
 
-      // Tài khoản Google chưa tồn tại → cho người dùng chọn role
       if (data?.code === 'ROLE_REQUIRED') {
         setPendingIdToken(idToken);
         return;
@@ -65,9 +70,17 @@ export function GoogleSignInButton({ role }: Props) {
 
       setPendingIdToken(null);
       const message =
+<<<<<<< HEAD
         data?.message ?? error?.message ?? 'Đã xảy ra lỗi, vui lòng thử lại.';
       Alert.alert(
         'Đăng nhập Google thất bại',
+=======
+        data?.message ??
+        error?.message ??
+        tr('Đã có lỗi xảy ra', 'Something went wrong');
+      Alert.alert(
+        tr('Đăng nhập Google thất bại', 'Google sign-in failed'),
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
         Array.isArray(message) ? message.join('\n') : String(message),
       );
     } finally {
@@ -79,7 +92,11 @@ export function GoogleSignInButton({ role }: Props) {
     <>
       <View style={styles.divider}>
         <View style={styles.dividerLine} />
+<<<<<<< HEAD
         <Text style={styles.dividerText}>hoặc</Text>
+=======
+        <Text style={styles.dividerText}>{tr('hoặc', 'or')}</Text>
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
         <View style={styles.dividerLine} />
       </View>
 
@@ -95,11 +112,18 @@ export function GoogleSignInButton({ role }: Props) {
         disabled={isLoading}
       >
         {isLoading ? (
-          <ActivityIndicator color="#29232A" />
+          <ActivityIndicator color={BURGER_COLORS.text} />
         ) : (
           <>
+<<<<<<< HEAD
             <Ionicons name="logo-google" size={20} color="#EA4335" />
             <Text style={styles.buttonText}>Tiếp tục với Google</Text>
+=======
+            <Ionicons name="logo-google" size={19} color="#EA4335" />
+            <Text style={styles.buttonText}>
+              {tr('Tiếp tục với Google', 'Continue with Google')}
+            </Text>
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
           </>
         )}
       </Pressable>
@@ -112,10 +136,21 @@ export function GoogleSignInButton({ role }: Props) {
       >
         <View style={styles.backdrop}>
           <View style={styles.sheet}>
+<<<<<<< HEAD
             <Text style={styles.sheetTitle}>Chọn vai trò của bạn</Text>
             <Text style={styles.sheetSubtitle}>
               Đây là lần đầu bạn đăng nhập bằng Google. Bạn muốn sử dụng ứng
               dụng với vai trò nào?
+=======
+            <Text style={styles.sheetTitle}>
+              {tr('Chọn vai trò của bạn', 'Choose your role')}
+            </Text>
+            <Text style={styles.sheetSubtitle}>
+              {tr(
+                'Đây là lần đầu bạn đăng nhập bằng Google. Bạn muốn sử dụng ứng dụng với vai trò nào?',
+                'This is your first time signing in with Google. How will you use the app?',
+              )}
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
             </Text>
 
             {ROLES.map((r) => (
@@ -131,25 +166,44 @@ export function GoogleSignInButton({ role }: Props) {
                 }}
               >
                 <View style={styles.roleIcon}>
-                  <Ionicons name={r.icon} size={22} color="#FF6B35" />
+                  <Ionicons
+                    name={r.icon}
+                    size={22}
+                    color={BURGER_COLORS.primary}
+                  />
                 </View>
                 <View style={styles.roleInfo}>
-                  <Text style={styles.roleText}>{r.label}</Text>
-                  <Text style={styles.roleSubtitle}>{r.subtitle}</Text>
+                  <Text style={styles.roleText}>
+                    {isVi ? r.labelVi : r.label}
+                  </Text>
+                  <Text style={styles.roleSubtitle}>
+                    {isVi ? r.subtitleVi : r.subtitle}
+                  </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#D8CFCA" />
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={BURGER_COLORS.faint}
+                />
               </Pressable>
             ))}
 
             {isLoading ? (
-              <ActivityIndicator color="#FF6B35" style={styles.cancel} />
+              <ActivityIndicator
+                color={BURGER_COLORS.primary}
+                style={styles.cancel}
+              />
             ) : (
               <Pressable
                 onPress={() => setPendingIdToken(null)}
                 hitSlop={10}
                 style={styles.cancel}
               >
+<<<<<<< HEAD
                 <Text style={styles.cancelText}>Hủy</Text>
+=======
+                <Text style={styles.cancelText}>{tr('Hủy', 'Cancel')}</Text>
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
               </Pressable>
             )}
           </View>
@@ -164,23 +218,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+<<<<<<< HEAD
     marginVertical: 10,
+=======
+    marginVertical: 16,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#F0E8E3',
+    backgroundColor: BURGER_COLORS.border,
   },
   dividerText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#A49AA0',
+    color: BURGER_COLORS.faint,
   },
   button: {
+<<<<<<< HEAD
     minHeight: 46,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#F0E8E3',
+=======
+    minHeight: 52,
+    backgroundColor: BURGER_COLORS.surface,
+    borderWidth: 1,
+    borderColor: BURGER_COLORS.border,
+>>>>>>> 34c1dbf3cba30d6b50dc1c6ca9b738432098a7c6
     borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -188,8 +253,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   buttonPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.99 }],
+    opacity: 0.88,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -197,49 +261,52 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#29232A',
+    color: BURGER_COLORS.text,
   },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(41, 35, 42, 0.45)',
+    backgroundColor: 'rgba(44, 26, 17, 0.45)',
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
   sheet: {
-    backgroundColor: '#FFF9F5',
-    borderRadius: 22,
+    backgroundColor: BURGER_COLORS.background,
+    borderRadius: 20,
     padding: 20,
     gap: 10,
+    borderWidth: 1,
+    borderColor: BURGER_COLORS.border,
   },
   sheetTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '800',
-    color: '#29232A',
+    color: BURGER_COLORS.text,
   },
   sheetSubtitle: {
     fontSize: 13,
-    color: '#8B8289',
+    color: BURGER_COLORS.muted,
     lineHeight: 19,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   roleCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    borderRadius: 15,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#F0E8E3',
-    backgroundColor: '#FFFFFF',
+    borderColor: BURGER_COLORS.border,
+    backgroundColor: BURGER_COLORS.surface,
   },
   roleCardPressed: {
-    borderColor: '#FF6B35',
-    backgroundColor: '#FFF0E8',
+    borderColor: BURGER_COLORS.primary,
+    backgroundColor: BURGER_COLORS.primaryLight,
+    opacity: 0.9,
   },
   roleIcon: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#FFF0E8',
+    backgroundColor: BURGER_COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -250,20 +317,20 @@ const styles = StyleSheet.create({
   roleText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#393039',
-    marginBottom: 3,
+    color: BURGER_COLORS.text,
+    marginBottom: 2,
   },
   roleSubtitle: {
     fontSize: 11,
-    color: '#8B8289',
+    color: BURGER_COLORS.muted,
   },
   cancel: {
     alignSelf: 'center',
-    marginTop: 8,
+    marginTop: 6,
   },
   cancelText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#8B8289',
+    color: BURGER_COLORS.muted,
   },
 });
