@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, ne } from 'drizzle-orm';
 import { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import * as schema from '../db/schema';
@@ -155,6 +155,33 @@ export class DriverService {
     }
 
     return updatedOrder;
+  }
+
+  async acceptOrder(orderId: string, driverId: string) {
+    const [order] = await this.db
+      .select()
+      .from(schema.orders)
+      .where(eq(schema.orders.id, orderId));
+
+    if (!order) throw new NotFoundException('Order not found');
+
+    if (order.status !== 'READY') {
+      throw new BadRequestException('Chỉ có thể nhận đơn ở trạng thái chờ lấy hàng (READY)');
+    }
+
+    if (order.driverId && order.driverId !== driverId) {
+      throw new BadRequestException('Đơn hàng đã được tài xế khác nhận');
+    }
+
+    const [updated] = await this.db
+      .update(schema.orders)
+      .set({ driverId, updatedAt: new Date() })
+      .where(eq(schema.orders.id, orderId))
+      .returning();
+
+    this.ordersGateway.emitOrderUpdate(updated);
+
+    return updated;
   }
 
   async declineOrder(orderId: string, driverId: string) {

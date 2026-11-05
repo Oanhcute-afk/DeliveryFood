@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -14,6 +15,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/axios';
@@ -38,12 +40,13 @@ interface OrderChatModalProps {
   visible: boolean;
   onClose: () => void;
   orderId: string;
-  currentUserRole: 'CUSTOMER' | 'DRIVER';
+  currentUserRole: 'CUSTOMER' | 'DRIVER' | 'RESTAURANT_OWNER';
   currentUserId?: string;
   currentUserName?: string;
   otherPartyName: string;
   otherPartyPhone?: string | null;
   otherPartyRoleTitle: string;
+  chatMode?: 'RESTAURANT' | 'CUSTOMER' | 'DRIVER';
 }
 
 export function OrderChatModal({
@@ -56,10 +59,32 @@ export function OrderChatModal({
   otherPartyName,
   otherPartyPhone,
   otherPartyRoleTitle,
+  chatMode,
 }: OrderChatModalProps) {
+  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [inputText, setInputText] = useState('');
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, () =>
+      setIsKeyboardVisible(true),
+    );
+    const hideSub = Keyboard.addListener(hideEvent, () =>
+      setIsKeyboardVisible(false),
+    );
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const { data: messages = [], isLoading } = useQuery<OrderMessage[]>({
     queryKey: ['order-messages', orderId],
@@ -105,7 +130,13 @@ export function OrderChatModal({
             id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
             orderId,
             senderId: currentUserId ?? 'user',
-            senderName: currentUserName ?? (currentUserRole === 'DRIVER' ? 'Tài xế' : 'Khách hàng'),
+            senderName:
+              currentUserName ??
+              (currentUserRole === 'DRIVER'
+                ? 'Tài xế'
+                : currentUserRole === 'RESTAURANT_OWNER'
+                  ? 'Nhà hàng'
+                  : 'Khách hàng'),
             senderRole: currentUserRole,
             content,
             createdAt: new Date().toISOString(),
@@ -153,20 +184,51 @@ export function OrderChatModal({
     });
   }
 
-  const quickPrompts =
-    currentUserRole === 'DRIVER'
+  const isDriverToRestaurant =
+    currentUserRole === 'DRIVER' &&
+    (chatMode === 'RESTAURANT' ||
+      otherPartyRoleTitle.toLowerCase().includes('quán') ||
+      otherPartyRoleTitle.toLowerCase().includes('nhà hàng'));
+
+  const isOwnerToDriver =
+    currentUserRole === 'RESTAURANT_OWNER' &&
+    (chatMode === 'DRIVER' ||
+      otherPartyRoleTitle.toLowerCase().includes('tài xế') ||
+      otherPartyRoleTitle.toLowerCase().includes('shipper'));
+
+  const quickPrompts = isDriverToRestaurant
+    ? [
+        '🛵 Tôi đang trên đường đến quán lấy món',
+        '📍 Tôi đã đến trước quán rồi nhé',
+        '⏳ Món ăn đã sẵn sàng chưa quán ơi?',
+        '📦 Tôi đã nhận đủ món, bắt đầu đi giao nhé!',
+      ]
+    : isOwnerToDriver
       ? [
-          '🛵 Tôi đang đến điểm giao hàng',
-          '📍 Tôi đã đến trước sảnh/cổng rồi nhé',
-          '📦 Bạn xuống nhận đồ giúp tôi nhé!',
-          '⏳ Tôi chờ ở đây khoảng 5 phút nhé',
+          '👨‍🍳 Quán đang chuẩn bị món, khoảng 5 phút nữa xong',
+          '✨ Món ăn đã làm xong, mời tài xế vào lấy nhé',
+          '📦 Quán đã đóng gói đủ món và nước cho tài xế',
         ]
-      : [
-          '🏃 Tôi đang xuống ngay đây!',
-          '⏳ Bạn đợi tôi 2 phút nhé',
-          '🏢 Bạn gửi giúp tôi ở bàn lễ tân/bảo vệ nhé',
-          '🚪 Vui lòng bấm chuông giúp tôi nhé',
-        ];
+      : currentUserRole === 'DRIVER'
+        ? [
+            '🛵 Tôi đang đến điểm giao hàng',
+            '📍 Tôi đã đến trước sảnh/cổng rồi nhé',
+            '📦 Bạn xuống nhận đồ giúp tôi nhé!',
+            '⏳ Tôi chờ ở đây khoảng 5 phút nhé',
+          ]
+        : currentUserRole === 'RESTAURANT_OWNER'
+          ? [
+              '👨‍🍳 Quán đang chuẩn bị món ăn cho bạn nhé',
+              '⏱️ Món sẽ sẵn sàng trong khoảng 10-15 phút',
+              '⚠️ Quán có lưu ý về ghi chú đơn của bạn',
+              '✨ Món ăn đã làm xong, chờ shipper đến lấy',
+            ]
+          : [
+              '🏃 Tôi đang xuống ngay đây!',
+              '⏳ Bạn đợi tôi 2 phút nhé',
+              '🏢 Bạn gửi giúp tôi ở bàn lễ tân/bảo vệ nhé',
+              '🚪 Vui lòng bấm chuông giúp tôi nhé',
+            ];
 
   return (
     <Modal
@@ -180,7 +242,12 @@ export function OrderChatModal({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View
+          style={[
+            styles.header,
+            { paddingTop: Math.max(insets.top, 16) },
+          ]}
+        >
           <View style={styles.headerAvatar}>
             <Text style={styles.headerAvatarText}>
               {otherPartyName?.[0]?.toUpperCase() ?? 'U'}
@@ -331,7 +398,16 @@ export function OrderChatModal({
         </View>
 
         {/* Thanh nhập tin nhắn */}
-        <View style={styles.inputBar}>
+        <View
+          style={[
+            styles.inputBar,
+            {
+              paddingBottom: isKeyboardVisible
+                ? 12
+                : Math.max(insets.bottom, 12),
+            },
+          ]}
+        >
           <TextInput
             style={styles.input}
             placeholder={`Nhắn cho ${otherPartyName}...`}

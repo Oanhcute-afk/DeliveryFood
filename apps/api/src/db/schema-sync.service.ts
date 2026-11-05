@@ -43,6 +43,7 @@ const MIGRATIONS = [
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS cash_received_at timestamp`,
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS driver_delivered_at timestamp`,
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_confirmed_at timestamp`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS note text`,
   `CREATE TABLE IF NOT EXISTS order_messages (
      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
      order_id uuid NOT NULL REFERENCES orders(id) ON DELETE CASCADE,

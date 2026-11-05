@@ -82,6 +82,7 @@ export class OrdersService {
         voucherCode: applied?.voucher.code ?? null,
         paymentMethod: isCash ? 'CASH' : 'STRIPE',
         isPaid: false,
+        note: dto.note?.trim() || null,
         status,
       })
       .returning();
@@ -311,11 +312,29 @@ export class OrdersService {
       .from(schema.users)
       .where(eq(schema.users.id, user.sub));
 
-    const senderName = sender
+    let senderName = sender
       ? `${sender.firstName} ${sender.lastName}`.trim()
-      : user.role === UserRole.DRIVER
-        ? 'Tài xế'
-        : 'Khách hàng';
+      : 'Người dùng';
+
+    if (user.role === UserRole.RESTAURANT_OWNER) {
+      const [order] = await this.db
+        .select()
+        .from(schema.orders)
+        .where(eq(schema.orders.id, orderId));
+      if (order) {
+        const [restaurant] = await this.db
+          .select({ name: schema.restaurants.name })
+          .from(schema.restaurants)
+          .where(eq(schema.restaurants.id, order.restaurantId));
+        if (restaurant?.name) {
+          senderName = `${restaurant.name} (Quán)`;
+        }
+      }
+    } else if (user.role === UserRole.DRIVER && (!senderName || senderName === 'Người dùng')) {
+      senderName = 'Tài xế';
+    } else if (user.role === UserRole.CUSTOMER && (!senderName || senderName === 'Người dùng')) {
+      senderName = 'Khách hàng';
+    }
 
     const [message] = await this.db
       .insert(schema.orderMessages)
@@ -411,9 +430,8 @@ export class OrdersService {
         orderRows.map((o) => o.driverId).filter(Boolean) as string[],
       ),
     ];
-    const userIds = [...new Set([...customerIds, ...driverIds])];
 
-    const [restaurants, items, userList] = await Promise.all([
+    const [restaurants, items] = await Promise.all([
       this.db
         .select({
           id: schema.restaurants.id,
@@ -421,6 +439,7 @@ export class OrdersService {
           address: schema.restaurants.address,
           imageUrl: schema.restaurants.imageUrl,
           cuisineType: schema.restaurants.cuisineType,
+          ownerId: schema.restaurants.ownerId,
         })
         .from(schema.restaurants)
         .where(inArray(schema.restaurants.id, restaurantIds)),
@@ -445,9 +464,14 @@ export class OrdersService {
           eq(schema.orderItems.menuItemId, schema.menuItems.id),
         )
         .where(inArray(schema.orderItems.orderId, orderIds)),
+    ]);
 
+    const ownerIds = restaurants.map((r) => r.ownerId).filter(Boolean);
+    const userIds = [...new Set([...customerIds, ...driverIds, ...ownerIds])];
+
+    const userList =
       userIds.length > 0
-        ? this.db
+        ? await this.db
             .select({
               id: schema.users.id,
               firstName: schema.users.firstName,
@@ -457,13 +481,19 @@ export class OrdersService {
             })
             .from(schema.users)
             .where(inArray(schema.users.id, userIds))
-        : Promise.resolve([]),
-    ]);
+        : [];
+
+    const userMap = Object.fromEntries(userList.map((u) => [u.id, u]));
 
     const restaurantMap = Object.fromEntries(
-      restaurants.map((r) => [r.id, r]),
+      restaurants.map((r) => [
+        r.id,
+        {
+          ...r,
+          phone: userMap[r.ownerId]?.phone ?? null,
+        },
+      ]),
     );
-    const userMap = Object.fromEntries(userList.map((u) => [u.id, u]));
 
     return orderRows.map((order) => ({
       ...order,

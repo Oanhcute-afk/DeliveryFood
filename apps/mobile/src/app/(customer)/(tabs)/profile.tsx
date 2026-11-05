@@ -335,6 +335,8 @@ export default function ProfileScreen() {
             style={styles.modalBody}
             contentContainerStyle={styles.modalBodyContent}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={true}
           >
             <View style={styles.formGroup}>
               <Text style={styles.inputLabel}>
@@ -701,6 +703,7 @@ const styles = StyleSheet.create({
   },
   modalBodyContent: {
     padding: 20,
+    paddingBottom: 80,
     gap: 16,
   },
   formGroup: {

@@ -32,7 +32,7 @@ import {
 
 type OrderItemDetail = {
   id: string;
-  quantity?: number;
+  quantity?: number | string;
   unitPrice?: string;
   menuItem?: { id: string; name: string };
 };
@@ -107,13 +107,13 @@ function OrderCard({
   });
 
   const itemCount =
-    order.items?.reduce((sum, it) => sum + (it.quantity ?? 1), 0) ?? 0;
+    order.items?.reduce((sum, it) => sum + Number(it.quantity ?? 1), 0) ?? 0;
   const dishNames = (order.items ?? [])
-    .map((it) =>
-      it.menuItem?.name
-        ? `${it.quantity && it.quantity > 1 ? `${it.quantity}x ` : ''}${it.menuItem.name}`
-        : null,
-    )
+    .map((it) => {
+      const q = Number(it.quantity ?? 1);
+      const name = it.menuItem?.name ?? (it as any).name;
+      return name ? `${q > 1 ? `${q}x ` : ''}${name}` : null;
+    })
     .filter(Boolean)
     .join(', ');
 
@@ -202,6 +202,15 @@ function OrderCard({
         <Text style={styles.dishSummaryText} numberOfLines={2}>
           🍱 Món đã đặt: {dishNames}
         </Text>
+      ) : null}
+
+      {order.note ? (
+        <View style={styles.orderNoteBadge}>
+          <Ionicons name="chatbox-ellipses-outline" size={13} color="#D97706" />
+          <Text style={styles.orderNoteBadgeText} numberOfLines={1}>
+            Ghi chú: {order.note}
+          </Text>
+        </View>
       ) : null}
 
       {order.status === 'DELIVERED' && (
@@ -996,5 +1005,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  orderNoteBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FFFBEB',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  orderNoteBadgeText: {
+    fontSize: 12,
+    color: '#B45309',
+    fontWeight: '600',
+    flex: 1,
   },
 });

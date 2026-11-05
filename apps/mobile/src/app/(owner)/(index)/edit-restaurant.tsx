@@ -151,6 +151,8 @@ export default function EditRestaurantScreen() {
           bounces={true}
           alwaysBounceVertical={true}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets={true}
         >
       {/* Header */}
       <View style={styles.header}>
@@ -371,7 +373,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: 22,
-    paddingBottom: 38,
+    paddingBottom: 80,
   },
 
   // Loading và lỗi

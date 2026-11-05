@@ -44,6 +44,7 @@ export interface RestaurantType {
   cuisineType: string;
   isOpen: boolean;
   rating: string;
+  phone?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -146,12 +147,14 @@ export interface Order {
   voucherId?: string | null;
   voucherCode?: string | null;
   cancelReason?: string | null;
+  note?: string | null;
   deliveryAddress: string;
   stripePaymentIntentId: string | null;
   createdAt: Date;
   updatedAt: Date;
   customer?: OrderCustomerInfo | null;
   driver?: OrderDriverInfo | null;
+  items?: OrderItem[];
 }
 
 export interface OrderItem {
@@ -161,6 +164,14 @@ export interface OrderItem {
   quantity: string;
   unitPrice: string;
   createdAt: Date;
+  name?: string;
+  imageUrl?: string | null;
+  menuItem?: {
+    id: string;
+    name: string;
+    imageUrl: string | null;
+    price: string;
+  };
 }
 
 export interface OrderMessage {

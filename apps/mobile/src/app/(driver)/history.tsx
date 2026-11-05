@@ -1,11 +1,16 @@
+import { useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Linking,
+  Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -13,7 +18,12 @@ import { api } from '@/lib/axios';
 import { Order } from '@food-delivery/types';
 
 type DriverOrder = Order & {
-  restaurant: { id: string; name: string };
+  restaurant: {
+    id: string;
+    name: string;
+    address?: string;
+    phone?: string | null;
+  };
 };
 
 const STATUS_CONFIG: Record<
@@ -69,21 +79,25 @@ function DeliveryCard({
 
   const isActive = order.status === 'PICKED_UP';
 
+  const dishSummary = (order.items ?? [])
+    .map((it: any) => {
+      const q = Number(it.quantity ?? 1);
+      const name = it.menuItem?.name ?? it.name ?? 'Món';
+      return `${q > 1 ? `${q}x ` : ''}${name}`;
+    })
+    .filter(Boolean)
+    .join(', ');
+
   return (
     <Pressable
       style={({ pressed }) => [
         styles.card,
         isActive && styles.cardActive,
-        pressed && isActive && styles.cardPressed,
+        pressed && styles.cardPressed,
       ]}
       onPress={onPress}
-      disabled={!isActive}
-      accessibilityRole={isActive ? 'button' : undefined}
-      accessibilityLabel={
-        isActive
-          ? `Mở đơn đang giao từ ${order.restaurant.name}`
-          : `Đơn hàng từ ${order.restaurant.name}, ${status.label}`
-      }
+      accessibilityRole="button"
+      accessibilityLabel={`Đơn hàng từ ${order.restaurant?.name || 'quán'}, ${status.label}`}
     >
       {isActive ? <View style={styles.activeAccent} /> : null}
 
@@ -95,7 +109,7 @@ function DeliveryCard({
         <View style={styles.restaurantInfo}>
           <Text style={styles.restaurantLabel}>NHÀ HÀNG</Text>
           <Text style={styles.restaurant} numberOfLines={1}>
-            {order.restaurant.name}
+            {order.restaurant?.name || 'Nhà hàng đối tác'}
           </Text>
         </View>
 
@@ -126,6 +140,26 @@ function DeliveryCard({
         </View>
       </View>
 
+      {/* Món ăn */}
+      {dishSummary ? (
+        <View style={styles.cardDishesBox}>
+          <Ionicons name="fast-food-outline" size={13} color="#FF6B35" />
+          <Text style={styles.cardDishesText} numberOfLines={1}>
+            {dishSummary}
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Ghi chú */}
+      {order.note ? (
+        <View style={styles.cardNoteBox}>
+          <Ionicons name="alert-circle" size={13} color="#D97706" />
+          <Text style={styles.cardNoteText} numberOfLines={1}>
+            Ghi chú: "{order.note}"
+          </Text>
+        </View>
+      ) : null}
+
       <View style={styles.cardDivider} />
 
       <View style={styles.cardFooter}>
@@ -142,17 +176,19 @@ function DeliveryCard({
         </View>
       </View>
 
-      {isActive ? (
-        <View style={styles.tapHintContainer}>
-          <Text style={styles.tapHint}>Xem hành trình giao hàng</Text>
-          <Text style={styles.tapArrow}>›</Text>
-        </View>
-      ) : null}
+      <View style={styles.tapHintContainer}>
+        <Text style={styles.tapHint}>
+          {isActive ? 'Xem hành trình giao hàng' : 'Xem chi tiết đơn hàng'}
+        </Text>
+        <Text style={styles.tapArrow}>›</Text>
+      </View>
     </Pressable>
   );
 }
 
 export default function DriverHistoryScreen() {
+  const [selectedOrder, setSelectedOrder] = useState<DriverOrder | null>(null);
+
   const {
     data: orders = [],
     isLoading,
@@ -278,14 +314,289 @@ export default function DriverHistoryScreen() {
         renderItem={({ item }) => (
           <DeliveryCard
             order={item}
-            onPress={
-              item.status === 'PICKED_UP'
-                ? () => router.push('/(driver)/active')
-                : undefined
-            }
+            onPress={() => setSelectedOrder(item)}
           />
         )}
       />
+
+      {/* Modal Chi tiết đơn hàng cho Tài xế */}
+      <Modal
+        visible={!!selectedOrder}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSelectedOrder(null)}
+      >
+        <SafeAreaView
+          style={styles.detailModalContainer}
+          edges={['top', 'bottom']}
+        >
+          {selectedOrder && (
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.detailModalScrollContent}
+              showsVerticalScrollIndicator={false}
+              bounces={true}
+            >
+              {/* Header Modal */}
+              <View style={styles.detailModalHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.detailModalEyebrow}>
+                    CHI TIẾT ĐƠN HÀNG
+                  </Text>
+                  <Text style={styles.detailModalTitle}>
+                    #{selectedOrder.id.slice(0, 8).toUpperCase()}
+                  </Text>
+                </View>
+
+                <Pressable
+                  style={styles.detailModalCloseBtn}
+                  onPress={() => setSelectedOrder(null)}
+                >
+                  <Ionicons name="close" size={22} color="#29232A" />
+                </Pressable>
+              </View>
+
+              {/* Trạng thái đơn & nút điều hướng nếu đơn đang hoạt động */}
+              <View style={styles.modalStatusRow}>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    {
+                      backgroundColor:
+                        STATUS_CONFIG[selectedOrder.status]?.background ??
+                        '#F5F0EC',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusEmoji,
+                      {
+                        color:
+                          STATUS_CONFIG[selectedOrder.status]?.color ??
+                          '#8B8289',
+                      },
+                    ]}
+                  >
+                    {STATUS_CONFIG[selectedOrder.status]?.emoji ?? '•'}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.statusText,
+                      {
+                        color:
+                          STATUS_CONFIG[selectedOrder.status]?.color ??
+                          '#8B8289',
+                      },
+                    ]}
+                  >
+                    {STATUS_CONFIG[selectedOrder.status]?.label ??
+                      selectedOrder.status}
+                  </Text>
+                </View>
+
+                {['READY', 'PICKED_UP'].includes(selectedOrder.status) && (
+                  <Pressable
+                    style={styles.detailActiveActionBtn}
+                    onPress={() => {
+                      setSelectedOrder(null);
+                      router.push('/(driver)/active');
+                    }}
+                  >
+                    <Ionicons name="navigate" size={14} color="#FFFFFF" />
+                    <Text style={styles.detailActiveActionText}>
+                      Theo dõi giao hàng
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+
+              {/* Ghi chú của khách */}
+              {selectedOrder.note ? (
+                <View style={styles.detailModalNoteCard}>
+                  <View style={styles.detailModalNoteHeader}>
+                    <Ionicons name="alert-circle" size={17} color="#D97706" />
+                    <Text style={styles.detailModalNoteTitle}>
+                      Ghi chú từ khách hàng
+                    </Text>
+                  </View>
+                  <Text style={styles.detailModalNoteBody}>
+                    "{selectedOrder.note}"
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Danh sách món ăn */}
+              <View style={styles.detailModalSection}>
+                <View style={styles.detailModalSectionHeader}>
+                  <Ionicons
+                    name="fast-food-outline"
+                    size={18}
+                    color="#FF6B35"
+                  />
+                  <Text style={styles.detailModalSectionTitle}>
+                    Danh sách món ăn ({selectedOrder.items?.length ?? 0})
+                  </Text>
+                </View>
+
+                {Array.isArray(selectedOrder.items) &&
+                selectedOrder.items.length > 0 ? (
+                  selectedOrder.items.map((it: any, idx: number) => {
+                    const q = Number(it.quantity ?? 1);
+                    const name =
+                      it.menuItem?.name ?? it.name ?? `Món ăn #${idx + 1}`;
+                    const unitPrice = Number(
+                      it.unitPrice ?? it.menuItem?.price ?? 0,
+                    );
+                    return (
+                      <View key={it.id ?? idx} style={styles.detailDishRow}>
+                        <View style={styles.detailDishBadge}>
+                          <Text style={styles.detailDishQuantity}>{q}x</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.detailDishName}>{name}</Text>
+                          <Text style={styles.detailDishUnitPrice}>
+                            ${unitPrice.toFixed(2)}/phần
+                          </Text>
+                        </View>
+                        <Text style={styles.detailDishTotal}>
+                          ${(q * unitPrice).toFixed(2)}
+                        </Text>
+                      </View>
+                    );
+                  })
+                ) : (
+                  <Text style={styles.emptyDishesText}>
+                    Không có thông tin món ăn chi tiết.
+                  </Text>
+                )}
+              </View>
+
+              {/* Điểm lấy hàng (Nhà hàng) */}
+              <View style={styles.detailModalSection}>
+                <View style={styles.detailModalSectionHeader}>
+                  <Ionicons name="restaurant" size={18} color="#FF6B35" />
+                  <Text style={styles.detailModalSectionTitle}>
+                    Điểm lấy hàng (Nhà hàng)
+                  </Text>
+                </View>
+
+                <Text style={styles.detailEntityName}>
+                  {selectedOrder.restaurant?.name || 'Nhà hàng đối tác'}
+                </Text>
+                <Text style={styles.detailEntityAddress}>
+                  📍{' '}
+                  {selectedOrder.restaurant?.address ||
+                    'Chưa cập nhật địa chỉ'}
+                </Text>
+
+                {selectedOrder.restaurant?.phone ? (
+                  <Pressable
+                    style={styles.detailCallRow}
+                    onPress={() => {
+                      const clean =
+                        selectedOrder.restaurant!.phone!.replace(
+                          /\s+/g,
+                          '',
+                        );
+                      Linking.openURL(`tel:${clean}`);
+                    }}
+                  >
+                    <Ionicons name="call" size={14} color="#168653" />
+                    <Text style={styles.detailCallText}>
+                      Gọi quán:{' '}
+                      <Text style={{ fontWeight: '700' }}>
+                        {selectedOrder.restaurant.phone}
+                      </Text>
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+
+              {/* Điểm giao hàng (Khách hàng) */}
+              <View style={styles.detailModalSection}>
+                <View style={styles.detailModalSectionHeader}>
+                  <Ionicons name="person" size={18} color="#FF6B35" />
+                  <Text style={styles.detailModalSectionTitle}>
+                    Khách hàng & Điểm giao
+                  </Text>
+                </View>
+
+                <Text style={styles.detailEntityName}>
+                  👤{' '}
+                  {selectedOrder.customer
+                    ? `${selectedOrder.customer.firstName ?? ''} ${selectedOrder.customer.lastName ?? ''}`.trim() ||
+                      'Khách hàng'
+                    : 'Khách hàng'}
+                </Text>
+
+                <Text style={styles.detailEntityAddress}>
+                  📍 {selectedOrder.deliveryAddress || 'Chưa có địa chỉ'}
+                </Text>
+
+                {selectedOrder.customer?.phone ? (
+                  <Pressable
+                    style={styles.detailCallRow}
+                    onPress={() => {
+                      const clean =
+                        selectedOrder.customer!.phone!.replace(
+                          /\s+/g,
+                          '',
+                        );
+                      Linking.openURL(`tel:${clean}`);
+                    }}
+                  >
+                    <Ionicons name="call" size={14} color="#168653" />
+                    <Text style={styles.detailCallText}>
+                      Gọi khách:{' '}
+                      <Text style={{ fontWeight: '700' }}>
+                        {selectedOrder.customer.phone}
+                      </Text>
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+
+              {/* Tổng kết thanh toán */}
+              <View style={styles.detailSummaryCard}>
+                <View style={styles.detailSummaryRow}>
+                  <Text style={styles.detailSummaryLabel}>
+                    Hình thức thanh toán
+                  </Text>
+                  <Text style={styles.detailSummaryValue}>
+                    {selectedOrder.paymentMethod === 'CASH'
+                      ? '💵 Tiền mặt khi nhận (COD)'
+                      : '💳 Thanh toán Online (Đã TT)'}
+                  </Text>
+                </View>
+
+                <View style={styles.detailSummaryRow}>
+                  <Text style={styles.detailSummaryLabel}>Ngày đặt</Text>
+                  <Text style={styles.detailSummaryValue}>
+                    {new Date(selectedOrder.createdAt).toLocaleString('vi-VN')}
+                  </Text>
+                </View>
+
+                <View style={styles.cardDivider} />
+
+                <View style={styles.detailSummaryRow}>
+                  <Text
+                    style={[
+                      styles.detailSummaryLabel,
+                      { fontSize: 15, fontWeight: '800' },
+                    ]}
+                  >
+                    Tổng thanh toán
+                  </Text>
+                  <Text style={styles.detailTotalText}>
+                    ${Number(selectedOrder.totalAmount).toFixed(2)}
+                  </Text>
+                </View>
+              </View>
+            </ScrollView>
+          )}
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -701,5 +1012,235 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: 'center',
     marginTop: 9,
+  },
+
+  // Card Dish & Note
+  cardDishesBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFF0E8',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  cardDishesText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FF6B35',
+  },
+  cardNoteBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    marginTop: 8,
+  },
+  cardNoteText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#D97706',
+  },
+
+  // Modal Status & Action
+  modalStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  detailActiveActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  detailActiveActionText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+
+  // Detail Modal
+  detailModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFF9F5',
+  },
+  detailModalScrollContent: {
+    padding: 20,
+    gap: 14,
+  },
+  detailModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0E8E3',
+  },
+  detailModalEyebrow: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#FF6B35',
+    letterSpacing: 0.8,
+  },
+  detailModalTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#29232A',
+    marginTop: 2,
+  },
+  detailModalCloseBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F3ECEA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailModalNoteCard: {
+    backgroundColor: '#FEF3C7',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    gap: 6,
+  },
+  detailModalNoteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  detailModalNoteTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  detailModalNoteBody: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#B45309',
+    lineHeight: 18,
+  },
+  detailModalSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F0E8E3',
+    gap: 10,
+  },
+  detailModalSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5ECE7',
+  },
+  detailModalSectionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#29232A',
+  },
+  detailDishRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  detailDishBadge: {
+    backgroundColor: '#FFF0E8',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  detailDishQuantity: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FF6B35',
+  },
+  detailDishName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#29232A',
+  },
+  detailDishUnitPrice: {
+    fontSize: 11,
+    color: '#8B8289',
+    marginTop: 1,
+  },
+  detailDishTotal: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#29232A',
+  },
+  emptyDishesText: {
+    fontSize: 12,
+    color: '#8B8289',
+    fontStyle: 'italic',
+  },
+  detailEntityName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#29232A',
+  },
+  detailEntityAddress: {
+    fontSize: 12,
+    color: '#8B8289',
+    lineHeight: 17,
+  },
+  detailCallRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+  },
+  detailCallText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#16A34A',
+  },
+  detailSummaryCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F0E8E3',
+    gap: 10,
+  },
+  detailSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  detailSummaryLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B8289',
+  },
+  detailSummaryValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#29232A',
+  },
+  detailTotalText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#FF6B35',
   },
 });

@@ -15,6 +15,7 @@ export default {
 
     android: {
       package: 'com.loopoen.fooddelivery',
+      softwareKeyboardLayoutMode: 'resize',
       adaptiveIcon: {
         backgroundColor: '#FF6B35',
         foregroundImage: './assets/images/android-icon-foreground.png',

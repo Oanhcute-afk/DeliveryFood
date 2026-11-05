@@ -29,4 +29,9 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   paymentMethod?: string;
+
+  // Ghi chú của khách cho nhà hàng (VD: ít đường, không cay, không hành...)
+  @IsOptional()
+  @IsString()
+  note?: string;
 }

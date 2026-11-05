@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Modal,
   Pressable,
   RefreshControl,
@@ -11,6 +12,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -20,7 +22,12 @@ import { useAuth } from '@/context/auth-context';
 import { Order } from '@food-delivery/types';
 
 type DriverOrder = Order & {
-  restaurant?: { id: string; name: string };
+  restaurant?: {
+    id: string;
+    name: string;
+    address?: string;
+    phone?: string | null;
+  };
 };
 
 let socket: Socket | null = null;
@@ -29,6 +36,8 @@ export default function DriverHomeScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [incomingOrder, setIncomingOrder] = useState<DriverOrder | null>(null);
+  const [selectedDetailOrder, setSelectedDetailOrder] =
+    useState<DriverOrder | null>(null);
 
   const {
     data: status,
@@ -115,24 +124,21 @@ export default function DriverHomeScreen() {
     variables: acceptingOrderId,
   } = useMutation({
     mutationFn: (orderId: string) =>
-      api.patch<DriverOrder>(`/orders/${orderId}/status`, {
-        status: 'PICKED_UP',
-      }),
+      api.post<DriverOrder>(`/driver/orders/${orderId}/accept`),
     onSuccess: (response, orderId) => {
       const updatedOrder = response?.data;
-      // Cập nhật đơn sang trạng thái PICKED_UP trong bộ nhớ đệm để thông báo đơn đã nhận luôn được giữ lại trên màn hình
       queryClient.setQueryData<DriverOrder[]>(['driver-orders'], (old = []) => {
         const exists = old.some((o) => o.id === orderId);
         if (exists) {
           return old.map((o) =>
             o.id === orderId
-              ? { ...o, ...(updatedOrder ?? {}), status: 'PICKED_UP' }
+              ? { ...o, ...(updatedOrder ?? {}), driverId: user?.id ?? null }
               : o,
           );
         }
         if (incomingOrder && incomingOrder.id === orderId) {
           return [
-            { ...incomingOrder, ...(updatedOrder ?? {}), status: 'PICKED_UP' },
+            { ...incomingOrder, ...(updatedOrder ?? {}), driverId: user?.id ?? null },
             ...old,
           ];
         }
@@ -141,6 +147,7 @@ export default function DriverHomeScreen() {
       setIncomingOrder(null);
       queryClient.invalidateQueries({ queryKey: ['driver-active-orders'] });
       queryClient.invalidateQueries({ queryKey: ['driver-orders'] });
+      router.push('/(driver)/active');
     },
     onError: (e: any) =>
       Alert.alert(
@@ -401,6 +408,15 @@ export default function DriverHomeScreen() {
               const isThisAccepting = accepting && acceptingOrderId === order.id;
               const isThisDeclining = declining && decliningOrderId === order.id;
 
+              const dishSummary = (order.items ?? [])
+                .map((it: any) => {
+                  const q = Number(it.quantity ?? 1);
+                  const name = it.menuItem?.name ?? it.name ?? 'Món';
+                  return `${q > 1 ? `${q}x ` : ''}${name}`;
+                })
+                .filter(Boolean)
+                .join(', ');
+
               return (
                 <View
                   key={order.id}
@@ -487,6 +503,40 @@ export default function DriverHomeScreen() {
                       </Text>
                     </View>
                   </View>
+
+                  {/* Danh sách món ăn tóm tắt */}
+                  {dishSummary ? (
+                    <View style={styles.cardDishesBox}>
+                      <Ionicons
+                        name="fast-food-outline"
+                        size={14}
+                        color="#FF6B35"
+                      />
+                      <Text style={styles.cardDishesText} numberOfLines={2}>
+                        {dishSummary}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {/* Ghi chú của khách */}
+                  {order.note ? (
+                    <View style={styles.cardNoteBox}>
+                      <Ionicons name="alert-circle" size={14} color="#D97706" />
+                      <Text style={styles.cardNoteText} numberOfLines={2}>
+                        Ghi chú: "{order.note}"
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  <Pressable
+                    style={styles.cardViewDetailRow}
+                    onPress={() => setSelectedDetailOrder(order)}
+                  >
+                    <Text style={styles.cardViewDetailText}>
+                      Xem chi tiết món ăn ({order.items?.length ?? 0} món)
+                    </Text>
+                    <Ionicons name="chevron-forward" size={13} color="#FF6B35" />
+                  </Pressable>
 
                   <View style={styles.notificationFooter}>
                     <View>
@@ -654,6 +704,33 @@ export default function DriverHomeScreen() {
 
               <View style={styles.orderDivider} />
 
+              {activeModalOrder?.restaurant?.name ? (
+                <>
+                  <Text style={styles.orderLabel}>NHÀ HÀNG LẤY MÓN</Text>
+                  <View style={styles.addressRow}>
+                    <View style={styles.addressIcon}>
+                      <Text style={styles.addressEmoji}>🏪</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.addressText, { fontWeight: '700' }]}>
+                        {activeModalOrder.restaurant.name}
+                      </Text>
+                      {activeModalOrder.restaurant.address ? (
+                        <Text
+                          style={[
+                            styles.addressText,
+                            { fontSize: 12, color: '#8B8289' },
+                          ]}
+                        >
+                          📍 {activeModalOrder.restaurant.address}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                  <View style={styles.orderDivider} />
+                </>
+              ) : null}
+
               <Text style={styles.orderLabel}>ĐỊA CHỈ GIAO HÀNG</Text>
               <View style={styles.addressRow}>
                 <View style={styles.addressIcon}>
@@ -663,6 +740,30 @@ export default function DriverHomeScreen() {
                   {activeModalOrder?.deliveryAddress || 'Chưa có địa chỉ'}
                 </Text>
               </View>
+
+              {activeModalOrder?.items && activeModalOrder.items.length > 0 ? (
+                <>
+                  <View style={styles.orderDivider} />
+                  <Text style={styles.orderLabel}>MÓN KHÁCH ĐẶT</Text>
+                  <Text style={[styles.addressText, { color: '#FF6B35', fontWeight: '700' }]}>
+                    {activeModalOrder.items
+                      .map((it: any) => `${Number(it.quantity ?? 1)}x ${it.menuItem?.name ?? it.name ?? 'Món'}`)
+                      .join(', ')}
+                  </Text>
+                </>
+              ) : null}
+
+              {activeModalOrder?.note ? (
+                <>
+                  <View style={styles.orderDivider} />
+                  <View style={styles.cardNoteBox}>
+                    <Ionicons name="alert-circle" size={15} color="#D97706" />
+                    <Text style={styles.cardNoteText}>
+                      Ghi chú: "{activeModalOrder.note}"
+                    </Text>
+                  </View>
+                </>
+              ) : null}
 
               <View style={styles.orderDivider} />
 
@@ -717,6 +818,260 @@ export default function DriverHomeScreen() {
             </ScrollView>
           </View>
         </View>
+      </Modal>
+
+      {/* Modal Chi tiết đơn hàng cho Tài xế */}
+      <Modal
+        visible={!!selectedDetailOrder}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSelectedDetailOrder(null)}
+      >
+        <SafeAreaView
+          style={styles.detailModalContainer}
+          edges={['top', 'bottom']}
+        >
+          {selectedDetailOrder && (
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.detailModalScrollContent}
+              showsVerticalScrollIndicator={false}
+              bounces={true}
+            >
+              {/* Header Modal */}
+              <View style={styles.detailModalHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.detailModalEyebrow}>
+                    CHI TIẾT ĐƠN HÀNG
+                  </Text>
+                  <Text style={styles.detailModalTitle}>
+                    #{selectedDetailOrder.id.slice(0, 8).toUpperCase()}
+                  </Text>
+                </View>
+
+                <Pressable
+                  style={styles.detailModalCloseBtn}
+                  onPress={() => setSelectedDetailOrder(null)}
+                >
+                  <Ionicons name="close" size={22} color="#29232A" />
+                </Pressable>
+              </View>
+
+              {/* Ghi chú của khách */}
+              {selectedDetailOrder.note ? (
+                <View style={styles.detailModalNoteCard}>
+                  <View style={styles.detailModalNoteHeader}>
+                    <Ionicons name="alert-circle" size={17} color="#D97706" />
+                    <Text style={styles.detailModalNoteTitle}>
+                      Ghi chú từ khách hàng
+                    </Text>
+                  </View>
+                  <Text style={styles.detailModalNoteBody}>
+                    "{selectedDetailOrder.note}"
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Danh sách món ăn */}
+              <View style={styles.detailModalSection}>
+                <View style={styles.detailModalSectionHeader}>
+                  <Ionicons
+                    name="fast-food-outline"
+                    size={18}
+                    color="#FF6B35"
+                  />
+                  <Text style={styles.detailModalSectionTitle}>
+                    Danh sách món ăn ({selectedDetailOrder.items?.length ?? 0})
+                  </Text>
+                </View>
+
+                {Array.isArray(selectedDetailOrder.items) &&
+                selectedDetailOrder.items.length > 0 ? (
+                  selectedDetailOrder.items.map((it: any, idx: number) => {
+                    const q = Number(it.quantity ?? 1);
+                    const name =
+                      it.menuItem?.name ?? it.name ?? `Món ăn #${idx + 1}`;
+                    const unitPrice = Number(
+                      it.unitPrice ?? it.menuItem?.price ?? 0,
+                    );
+                    return (
+                      <View key={it.id ?? idx} style={styles.detailDishRow}>
+                        <View style={styles.detailDishBadge}>
+                          <Text style={styles.detailDishQuantity}>{q}x</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.detailDishName}>{name}</Text>
+                          <Text style={styles.detailDishUnitPrice}>
+                            ${unitPrice.toFixed(2)}/phần
+                          </Text>
+                        </View>
+                        <Text style={styles.detailDishTotal}>
+                          ${(q * unitPrice).toFixed(2)}
+                        </Text>
+                      </View>
+                    );
+                  })
+                ) : (
+                  <Text style={styles.emptyDishesText}>
+                    Không có thông tin món ăn chi tiết.
+                  </Text>
+                )}
+              </View>
+
+              {/* Điểm lấy hàng (Nhà hàng) */}
+              <View style={styles.detailModalSection}>
+                <View style={styles.detailModalSectionHeader}>
+                  <Ionicons name="restaurant" size={18} color="#FF6B35" />
+                  <Text style={styles.detailModalSectionTitle}>
+                    Điểm lấy hàng (Nhà hàng)
+                  </Text>
+                </View>
+
+                <Text style={styles.detailEntityName}>
+                  {selectedDetailOrder.restaurant?.name || 'Nhà hàng đối tác'}
+                </Text>
+                <Text style={styles.detailEntityAddress}>
+                  📍{' '}
+                  {selectedDetailOrder.restaurant?.address ||
+                    'Chưa cập nhật địa chỉ'}
+                </Text>
+
+                {selectedDetailOrder.restaurant?.phone ? (
+                  <Pressable
+                    style={styles.detailCallRow}
+                    onPress={() => {
+                      const clean =
+                        selectedDetailOrder.restaurant!.phone!.replace(
+                          /\s+/g,
+                          '',
+                        );
+                      Linking.openURL(`tel:${clean}`);
+                    }}
+                  >
+                    <Ionicons name="call" size={14} color="#16A34A" />
+                    <Text style={styles.detailCallText}>
+                      Gọi quán: {selectedDetailOrder.restaurant.phone}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+
+              {/* Điểm giao hàng (Khách hàng) */}
+              <View style={styles.detailModalSection}>
+                <View style={styles.detailModalSectionHeader}>
+                  <Ionicons name="person" size={18} color="#16A34A" />
+                  <Text style={styles.detailModalSectionTitle}>
+                    Điểm giao hàng (Khách hàng)
+                  </Text>
+                </View>
+
+                <Text style={styles.detailEntityName}>
+                  {selectedDetailOrder.customer
+                    ? `${selectedDetailOrder.customer.firstName ?? ''} ${selectedDetailOrder.customer.lastName ?? ''}`.trim() ||
+                      'Khách hàng'
+                    : 'Khách hàng'}
+                </Text>
+                <Text style={styles.detailEntityAddress}>
+                  📍 {selectedDetailOrder.deliveryAddress || 'Chưa có địa chỉ'}
+                </Text>
+
+                {selectedDetailOrder.customer?.phone ? (
+                  <Pressable
+                    style={styles.detailCallRow}
+                    onPress={() => {
+                      const clean =
+                        selectedDetailOrder.customer!.phone!.replace(
+                          /\s+/g,
+                          '',
+                        );
+                      Linking.openURL(`tel:${clean}`);
+                    }}
+                  >
+                    <Ionicons name="call" size={14} color="#16A34A" />
+                    <Text style={styles.detailCallText}>
+                      Gọi khách: {selectedDetailOrder.customer.phone}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+
+              {/* Thanh toán & Tổng tiền */}
+              <View style={styles.detailModalSection}>
+                <View style={styles.detailModalInfoRow}>
+                  <Text style={styles.detailModalInfoLabel}>
+                    Hình thức thanh toán:
+                  </Text>
+                  <Text style={styles.detailModalInfoValue}>
+                    {selectedDetailOrder.paymentMethod === 'CASH'
+                      ? '💵 Tiền mặt khi nhận (COD)'
+                      : '💳 Trực tuyến (Stripe)'}
+                  </Text>
+                </View>
+
+                <View style={styles.detailModalInfoRow}>
+                  <Text style={styles.detailModalInfoLabel}>
+                    Tổng tiền đơn hàng:
+                  </Text>
+                  <Text style={styles.detailModalTotalValue}>
+                    ${Number(selectedDetailOrder.totalAmount).toFixed(2)}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Nút hành động */}
+              {selectedDetailOrder.status === 'READY' && (
+                <View style={{ gap: 10, marginTop: 10 }}>
+                  <Pressable
+                    style={[styles.modalActionBtn, styles.modalAcceptBtn]}
+                    onPress={() => {
+                      const id = selectedDetailOrder.id;
+                      setSelectedDetailOrder(null);
+                      acceptOrder(id);
+                    }}
+                  >
+                    <Ionicons name="bicycle" size={18} color="#FFFFFF" />
+                    <Text style={styles.modalActionBtnText}>
+                      ✓ Nhận đơn & Đến quán lấy hàng
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.modalActionBtn, styles.modalDeclineBtn]}
+                    onPress={() => {
+                      const id = selectedDetailOrder.id;
+                      setSelectedDetailOrder(null);
+                      declineOrder(id);
+                    }}
+                  >
+                    <Text style={styles.modalDeclineBtnText}>
+                      Từ chối đơn
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+
+              {selectedDetailOrder.status === 'PICKED_UP' && (
+                <Pressable
+                  style={[
+                    styles.modalActionBtn,
+                    styles.modalAcceptBtn,
+                    { marginTop: 10 },
+                  ]}
+                  onPress={() => {
+                    setSelectedDetailOrder(null);
+                    router.push('/(driver)/active');
+                  }}
+                >
+                  <Text style={styles.modalActionBtnText}>
+                    Theo dõi giao hàng chặng cuối →
+                  </Text>
+                </Pressable>
+              )}
+
+              <View style={{ height: 20 }} />
+            </ScrollView>
+          )}
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
@@ -1343,5 +1698,242 @@ const styles = StyleSheet.create({
     color: '#A1989E',
     textAlign: 'center',
     marginTop: 17,
+  },
+  cardDishesBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFF0E8',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  cardDishesText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FF6B35',
+  },
+  cardNoteBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    marginTop: 8,
+  },
+  cardNoteText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  cardViewDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+    marginTop: 8,
+    paddingVertical: 4,
+  },
+  cardViewDetailText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FF6B35',
+  },
+
+  // Detail Modal
+  detailModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFF9F5',
+  },
+  detailModalScrollContent: {
+    padding: 20,
+    gap: 14,
+  },
+  detailModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0E8E3',
+  },
+  detailModalEyebrow: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#FF6B35',
+    letterSpacing: 0.8,
+  },
+  detailModalTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#29232A',
+    marginTop: 2,
+  },
+  detailModalCloseBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F3ECEA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailModalNoteCard: {
+    backgroundColor: '#FEF3C7',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    gap: 6,
+  },
+  detailModalNoteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  detailModalNoteTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  detailModalNoteBody: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#B45309',
+    lineHeight: 18,
+  },
+  detailModalSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F0E8E3',
+    gap: 10,
+  },
+  detailModalSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5ECE7',
+  },
+  detailModalSectionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#29232A',
+  },
+  detailDishRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  detailDishBadge: {
+    backgroundColor: '#FFF0E8',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  detailDishQuantity: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FF6B35',
+  },
+  detailDishName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#29232A',
+  },
+  detailDishUnitPrice: {
+    fontSize: 11,
+    color: '#8B8289',
+    marginTop: 1,
+  },
+  detailDishTotal: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#29232A',
+  },
+  emptyDishesText: {
+    fontSize: 12,
+    color: '#8B8289',
+    fontStyle: 'italic',
+  },
+  detailEntityName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#29232A',
+  },
+  detailEntityAddress: {
+    fontSize: 12,
+    color: '#8B8289',
+    lineHeight: 17,
+  },
+  detailCallRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+  },
+  detailCallText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#16A34A',
+  },
+  detailModalInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  detailModalInfoLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B8289',
+  },
+  detailModalInfoValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#29232A',
+  },
+  detailModalTotalValue: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#FF6B35',
+  },
+  modalActionBtn: {
+    height: 48,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  modalAcceptBtn: {
+    backgroundColor: '#FF6B35',
+  },
+  modalActionBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  modalDeclineBtn: {
+    backgroundColor: '#FEF0EF',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  modalDeclineBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#D94343',
   },
 });

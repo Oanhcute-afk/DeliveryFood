@@ -84,6 +84,7 @@ export default function CartScreen() {
   const [floorApartment, setFloorApartment] = useState('');
   const [streetName, setStreetName] = useState('');
   const [addressNote, setAddressNote] = useState('');
+  const [orderNote, setOrderNote] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'STRIPE'>('CASH');
 
   const specificAddress = useMemo(
@@ -147,6 +148,7 @@ export default function CartScreen() {
           quantity: String(item.quantity),
         })),
         voucherId: selectedVoucher?.id,
+        note: orderNote.trim() || undefined,
       }),
 
     onSuccess: (res) => {
@@ -289,6 +291,8 @@ export default function CartScreen() {
         bounces={true}
         alwaysBounceVertical={true}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets={true}
         ListHeaderComponent={
           <View style={styles.restaurantCard}>
             <View style={styles.restaurantIcon}>
@@ -505,6 +509,32 @@ export default function CartScreen() {
                   </Text>
                 </View>
               ) : null}
+            </View>
+
+            {/* Ghi chú món ăn cho nhà hàng */}
+            <View style={styles.restaurantNoteCard}>
+              <View style={styles.sectionHeading}>
+                <View style={[styles.sectionIcon, { backgroundColor: '#FFF4D6' }]}>
+                  <Ionicons name="create-outline" size={21} color="#D97706" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sectionTitle}>Ghi chú cho quán</Text>
+                  <Text style={styles.sectionSubtitle}>
+                    Yêu cầu chế biến (VD: ít ngọt, không cay, không hành...)
+                  </Text>
+                </View>
+              </View>
+
+              <TextInput
+                style={styles.restaurantNoteInput}
+                placeholder="Nhập ghi chú cho quán chuẩn bị món..."
+                placeholderTextColor="#AAA0A5"
+                value={orderNote}
+                onChangeText={setOrderNote}
+                editable={!isPending}
+                multiline
+                numberOfLines={3}
+              />
             </View>
 
             <VoucherSection
@@ -741,7 +771,7 @@ const styles = StyleSheet.create({
 
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 36,
+    paddingBottom: 120,
   },
 
   restaurantCard: {
@@ -1231,5 +1261,26 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.82,
     transform: [{ scale: 0.98 }],
+  },
+  restaurantNoteCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  restaurantNoteInput: {
+    backgroundColor: '#FFFAF7',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#F0E8E3',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: COLORS.text,
+    minHeight: 76,
+    textAlignVertical: 'top',
+    marginTop: 10,
   },
 });

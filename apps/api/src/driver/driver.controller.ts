@@ -32,6 +32,11 @@ export class DriverController {
     return this.driverService.getStatus(req.user.sub);
   }
 
+  @Post('orders/:id/accept')
+  acceptOrder(@Param('id') id: string, @Request() req: AuthRequest) {
+    return this.driverService.acceptOrder(id, req.user.sub);
+  }
+
   @Post('orders/:id/decline')
   declineOrder(@Param('id') id: string, @Request() req: AuthRequest) {
     return this.driverService.declineOrder(id, req.user.sub);

@@ -29,6 +29,19 @@ const DEFAULT_COORDS = {
   longitude: 106.7009,
 };
 
+const COLORS = {
+  primary: '#FF6B35',
+  primaryLight: '#FFF0E8',
+  green: '#16A34A',
+  greenLight: '#DCFCE7',
+  text: '#29232A',
+  muted: '#8B8289',
+  border: '#F0E8E3',
+  background: '#FFF9F5',
+  white: '#FFFFFF',
+  card: '#FFFFFF',
+};
+
 export default function DriverActiveScreen() {
   const insets = useSafeAreaInsets();
   const TAB_BAR_OFFSET = 88;
@@ -39,8 +52,12 @@ export default function DriverActiveScreen() {
   const socketRef = useRef<Socket | null>(null);
   const locationWatchRef = useRef<Location.LocationSubscription | null>(null);
   const [driverCoords, setDriverCoords] = useState(DEFAULT_COORDS);
-  const [isChatVisible, setIsChatVisible] = useState(false);
 
+  // Khung chat với Nhà hàng (Chặng 1) & Khách hàng (Chặng 2)
+  const [isRestaurantChatVisible, setIsRestaurantChatVisible] = useState(false);
+  const [isCustomerChatVisible, setIsCustomerChatVisible] = useState(false);
+
+  // Lấy danh sách các đơn đang hoạt động (gồm READY - Chặng 1 lấy món & PICKED_UP - Chặng 2 giao khách)
   const {
     data: activeOrders = [],
     isLoading,
@@ -51,7 +68,9 @@ export default function DriverActiveScreen() {
     queryFn: () =>
       api
         .get<Order[]>('/orders/mine')
-        .then((r) => r.data.filter((o) => o.status === 'PICKED_UP')),
+        .then((r) =>
+          r.data.filter((o) => ['READY', 'PICKED_UP'].includes(o.status)),
+        ),
     refetchInterval: 4000,
   });
 
@@ -73,7 +92,33 @@ export default function DriverActiveScreen() {
     socketRef.current = null;
   }
 
-  const { mutate: markDelivered, isPending } = useMutation({
+  // Chặng 1: Xác nhận đã lấy hàng tại quán (READY -> PICKED_UP)
+  const { mutate: markPickedUp, isPending: isPickingUp } = useMutation({
+    mutationFn: (orderId: string) =>
+      api.patch(`/orders/${orderId}/status`, {
+        status: 'PICKED_UP',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['driver-active-orders'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['driver-orders'],
+      });
+      Alert.alert(
+        'Đã nhận món từ quán!',
+        'Chặng 1 hoàn tất. Bây giờ bạn đang trong Chặng 2: Giao hàng cho khách!',
+      );
+    },
+    onError: (e: any) =>
+      Alert.alert(
+        'Không thể cập nhật',
+        e?.response?.data?.message ?? 'Đã xảy ra lỗi. Vui lòng thử lại.',
+      ),
+  });
+
+  // Chặng 2 (Chặng cuối): Xác nhận đã giao hàng cho khách (PICKED_UP -> DELIVERED)
+  const { mutate: markDelivered, isPending: isDelivering } = useMutation({
     mutationFn: (orderId: string) =>
       api.patch(`/orders/${orderId}/status`, {
         status: 'DELIVERED',
@@ -84,12 +129,14 @@ export default function DriverActiveScreen() {
       queryClient.invalidateQueries({
         queryKey: ['driver-active-orders'],
       });
-
       queryClient.invalidateQueries({
         queryKey: ['driver-orders'],
       });
 
-      Alert.alert('Thành công', 'Đơn hàng đã được xác nhận giao thành công.');
+      Alert.alert(
+        'Giao hàng thành công!',
+        'Đơn hàng đã được xác nhận giao thành công cho khách hàng.',
+      );
     },
     onError: (e: any) =>
       Alert.alert(
@@ -182,18 +229,46 @@ export default function DriverActiveScreen() {
     };
   }, [activeOrder?.id]);
 
+  const isReady = activeOrder?.status === 'READY';
+  const isPickedUp = activeOrder?.status === 'PICKED_UP';
+
+  // Thông tin nhà hàng (Chặng 1)
+  const restaurant = (activeOrder as any)?.restaurant;
+  const restaurantName = restaurant?.name || 'Nhà hàng đối tác';
+  const restaurantAddress = restaurant?.address || 'Chưa có địa chỉ quán';
+  const restaurantPhone = restaurant?.phone ?? null;
+
+  // Thông tin khách hàng (Chặng 2)
   const customer = (activeOrder as any)?.customer;
   const customerName = customer
     ? `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || 'Khách hàng'
     : 'Khách hàng';
   const customerPhone = customer?.phone ?? null;
+  const deliveryAddress = activeOrder?.deliveryAddress || 'Chưa có địa chỉ giao';
+
+  const items = activeOrder?.items ?? [];
+  const note = activeOrder?.note;
   const isCash = activeOrder?.paymentMethod === 'CASH';
+
+  function handleCallRestaurant() {
+    if (!restaurantPhone?.trim()) {
+      Alert.alert(
+        'Chưa có số điện thoại',
+        'Nhà hàng chưa cập nhật số điện thoại. Bạn có thể bấm nút "Nhắn tin với quán" để trao đổi nhé!',
+      );
+      return;
+    }
+    const cleanPhone = restaurantPhone.trim().replace(/\s+/g, '');
+    Linking.openURL(`tel:${cleanPhone}`).catch(() => {
+      Alert.alert('Lỗi', 'Không thể mở ứng dụng cuộc gọi.');
+    });
+  }
 
   function handleCallCustomer() {
     if (!customerPhone?.trim()) {
       Alert.alert(
         'Chưa có số điện thoại',
-        'Khách hàng chưa cập nhật số điện thoại. Bạn có thể bấm nút "Nhắn tin" để nhắn tin trao đổi điểm đón nhé!',
+        'Khách hàng chưa cập nhật số điện thoại. Bạn có thể bấm nút "Nhắn tin với khách" để trao đổi nhé!',
       );
       return;
     }
@@ -221,7 +296,7 @@ export default function DriverActiveScreen() {
     } else {
       Alert.alert(
         'Xác nhận giao hàng',
-        'Bạn có chắc chắn đơn hàng đã được giao cho khách hàng không?',
+        'Bạn có chắc chắn đơn hàng đã được giao thành công cho khách hàng không?',
         [
           { text: 'Chưa', style: 'cancel' },
           {
@@ -271,10 +346,10 @@ export default function DriverActiveScreen() {
           <View style={styles.emptyIcon}>
             <Text style={styles.emptyEmoji}>🛵</Text>
           </View>
-          <Text style={styles.emptyTitle}>Chưa có đơn giao hàng</Text>
+          <Text style={styles.emptyTitle}>Chưa có đơn đang nhận</Text>
           <Text style={styles.emptyText}>
-            Khi nhận và lấy hàng từ nhà hàng, đơn hàng đang giao sẽ xuất hiện
-            tại đây.
+            Khi bạn nhận đơn hàng ở trạng thái sẵn sàng, đơn hàng sẽ hiển thị tại
+            đây theo hành trình 2 chặng: lấy hàng tại quán và giao cho khách.
           </Text>
         </ScrollView>
       </SafeAreaView>
@@ -287,7 +362,7 @@ export default function DriverActiveScreen() {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: insets.bottom + TAB_BAR_OFFSET + 20 },
+          { paddingBottom: insets.bottom + TAB_BAR_OFFSET + 24 },
         ]}
         showsVerticalScrollIndicator={false}
         bounces={true}
@@ -302,26 +377,28 @@ export default function DriverActiveScreen() {
           />
         }
       >
-        {/* Tiêu đề */}
+        {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerText}>
             <Text style={styles.eyebrow}>TÀI XẾ ĐANG HOẠT ĐỘNG</Text>
             <Text style={styles.title}>Đơn giao hàng</Text>
             <Text style={styles.subtitle}>
-              Theo dõi hành trình và liên hệ khách để giao hàng.
+              {isReady
+                ? 'Chặng 1: Đến quán nhận món và kiểm tra đơn hàng.'
+                : 'Chặng 2: Đang giao món ăn đến địa chỉ khách hàng.'}
             </Text>
           </View>
 
           <View style={styles.headerIcon}>
-            <Text style={styles.headerEmoji}>🛵</Text>
+            <Text style={styles.headerEmoji}>{isReady ? '🏪' : '🛵'}</Text>
           </View>
         </View>
 
-        {/* Bộ chọn đơn khi tài xế có nhiều đơn đang giao */}
+        {/* Bộ chọn đơn khi tài xế có nhiều đơn */}
         {activeOrders.length > 1 && (
           <View style={styles.orderSelectorContainer}>
             <Text style={styles.orderSelectorLabel}>
-              Đang giao ({activeOrders.length} đơn) - Chạm để chọn đơn:
+              Đơn đang hoạt động ({activeOrders.length} đơn) - Chạm để chọn:
             </Text>
             <ScrollView
               horizontal
@@ -330,6 +407,7 @@ export default function DriverActiveScreen() {
             >
               {activeOrders.map((ord) => {
                 const isSelected = ord.id === activeOrder?.id;
+                const ordReady = ord.status === 'READY';
                 return (
                   <Pressable
                     key={ord.id}
@@ -340,8 +418,8 @@ export default function DriverActiveScreen() {
                     onPress={() => setSelectedOrderId(ord.id)}
                   >
                     <Ionicons
-                      name={isSelected ? 'bicycle' : 'bicycle-outline'}
-                      size={16}
+                      name={ordReady ? 'storefront' : 'bicycle'}
+                      size={15}
                       color={isSelected ? '#FFFFFF' : '#FF6B35'}
                     />
                     <Text
@@ -350,7 +428,8 @@ export default function DriverActiveScreen() {
                         isSelected && styles.orderSelectorTabTextActive,
                       ]}
                     >
-                      Đơn #{ord.id.slice(0, 8).toUpperCase()}
+                      #{ord.id.slice(0, 8).toUpperCase()}{' '}
+                      {ordReady ? '(Chờ lấy)' : '(Đang giao)'}
                     </Text>
                   </Pressable>
                 );
@@ -359,116 +438,403 @@ export default function DriverActiveScreen() {
           </View>
         )}
 
-        {/* Trạng thái giao hàng */}
-        <View style={styles.statusBanner}>
-          <View style={styles.statusIcon}>
-            <Text style={styles.statusEmoji}>📦</Text>
-          </View>
-          <View style={styles.statusContent}>
-            <Text style={styles.statusTitle}>Đang giao hàng</Text>
-            <Text style={styles.statusSubtitle}>
-              Đơn hàng đã được lấy từ nhà hàng.
-            </Text>
-          </View>
-          <View style={styles.statusPill}>
-            <View style={styles.statusDot} />
-            <Text style={styles.statusPillText}>ĐANG GIAO</Text>
+        {/* ======================================================= */}
+        {/* THANH TIẾN TRÌNH 2 CHẶNG TRỰC QUAN                      */}
+        {/* ======================================================= */}
+        <View style={styles.twoStageCard}>
+          <Text style={styles.twoStageHeaderLabel}>HÀNH TRÌNH 2 CHẶNG GIAO NHẬN</Text>
+          <View style={styles.stagesRow}>
+            {/* Chặng 1 */}
+            <View style={[styles.stageBox, isReady && styles.stageBoxActive]}>
+              <View
+                style={[
+                  styles.stageBadge,
+                  isPickedUp
+                    ? styles.badgeCompleted
+                    : isReady
+                      ? styles.badgeActive
+                      : styles.badgePending,
+                ]}
+              >
+                {isPickedUp ? (
+                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.badgeNumberText}>1</Text>
+                )}
+              </View>
+              <View style={styles.stageTextCol}>
+                <Text
+                  style={[
+                    styles.stageTitle,
+                    (isReady || isPickedUp) && styles.stageTitleActive,
+                  ]}
+                >
+                  Lấy tại quán
+                </Text>
+                <Text style={styles.stageStatusDesc}>
+                  {isPickedUp ? '✓ Đã nhận món' : 'Đang đến quán lấy'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Mũi tên kết nối */}
+            <View style={styles.stageConnector}>
+              <Ionicons
+                name="arrow-forward"
+                size={16}
+                color={isPickedUp ? COLORS.green : '#C9BFB9'}
+              />
+            </View>
+
+            {/* Chặng 2 */}
+            <View style={[styles.stageBox, isPickedUp && styles.stageBoxActive]}>
+              <View
+                style={[
+                  styles.stageBadge,
+                  isPickedUp ? styles.badgeActive : styles.badgePending,
+                ]}
+              >
+                <Text style={styles.badgeNumberText}>2</Text>
+              </View>
+              <View style={styles.stageTextCol}>
+                <Text
+                  style={[
+                    styles.stageTitle,
+                    isPickedUp && styles.stageTitleActive,
+                  ]}
+                >
+                  Giao cho khách
+                </Text>
+                <Text style={styles.stageStatusDesc}>
+                  {isPickedUp ? 'Đang đi giao' : 'Chờ nhận món'}
+                </Text>
+              </View>
+            </View>
           </View>
         </View>
 
-        {/* Thẻ liên hệ khách hàng & Gọi/Nhắn tin */}
-        <View style={styles.customerCard}>
-          <View style={styles.customerCardHeader}>
-            <View style={styles.customerAvatar}>
-              <Text style={styles.customerAvatarText}>
-                {customerName[0]?.toUpperCase() ?? 'K'}
-              </Text>
-            </View>
-
-            <View style={styles.customerInfo}>
-              <Text style={styles.customerEyebrow}>KHÁCH HÀNG NHẬN MÓN</Text>
-              <Text style={styles.customerName}>{customerName}</Text>
-              <Text style={styles.customerPhone}>
-                {customerPhone ? `📞 ${customerPhone}` : 'Chưa có SĐT'}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.contactButtonsRow}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.contactButton,
-                styles.callButton,
-                pressed && styles.buttonPressed,
-              ]}
-              onPress={handleCallCustomer}
-            >
-              <Ionicons name="call" size={18} color="#FFFFFF" />
-              <Text style={styles.contactButtonTextWhite}>Gọi khách hàng</Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.contactButton,
-                styles.chatButton,
-                pressed && styles.buttonPressed,
-              ]}
-              onPress={() => setIsChatVisible(true)}
-            >
-              <Ionicons name="chatbubbles" size={18} color="#FF6B35" />
-              <Text style={styles.contactButtonTextOrange}>Nhắn tin hẹn gặp</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Thông tin phương thức thanh toán */}
+        {/* ======================================================= */}
+        {/* CHẶNG 1: THÔNG TIN NHÀ HÀNG & LIÊN HỆ QUÁN             */}
+        {/* ======================================================= */}
         <View
           style={[
-            styles.paymentCard,
-            isCash ? styles.paymentCardCash : styles.paymentCardStripe,
+            styles.sectionCard,
+            isReady && styles.sectionCardHighlight,
           ]}
         >
-          <View style={styles.paymentCardIcon}>
-            <Ionicons
-              name={isCash ? 'cash' : 'card'}
-              size={24}
-              color={isCash ? '#16A34A' : '#FF6B35'}
-            />
+          <View style={styles.cardHeader}>
+            <View style={styles.cardHeaderIconBox}>
+              <Ionicons name="restaurant" size={20} color="#FF6B35" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={styles.cardEyebrowRow}>
+                <Text style={styles.cardEyebrow}>CHẶNG 1 · ĐIỂM LẤY HÀNG</Text>
+                {isReady && (
+                  <View style={styles.activePill}>
+                    <Text style={styles.activePillText}>ĐANG THỰC HIỆN</Text>
+                  </View>
+                )}
+                {isPickedUp && (
+                  <View style={styles.donePill}>
+                    <Text style={styles.donePillText}>✓ ĐÃ XONG</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.cardMainTitle}>{restaurantName}</Text>
+              <Text style={styles.cardSubText} numberOfLines={2}>
+                📍 {restaurantAddress}
+              </Text>
+            </View>
           </View>
 
-          <View style={styles.paymentCardContent}>
-            <Text
-              style={[
-                styles.paymentCardTitle,
-                { color: isCash ? '#16A34A' : '#FF6B35' },
+          {/* Hàng nút Gọi & Nhắn tin với Nhà hàng */}
+          <View style={styles.contactRow}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.contactBtn,
+                styles.callBtn,
+                pressed && styles.btnPressed,
               ]}
+              onPress={handleCallRestaurant}
             >
-              {isCash
-                ? 'ĐƠN HÀNG THU TIỀN MẶT (COD)'
-                : 'ĐÃ THANH TOÁN TRỰC TUYẾN (STRIPE)'}
-            </Text>
-            <Text style={styles.paymentCardSubtitle}>
-              {isCash
-                ? `Cần thu: $${Number(activeOrder.totalAmount).toFixed(2)} từ khách`
-                : 'Khách đã thanh toán qua thẻ, không thu thêm tiền mặt.'}
-            </Text>
+              <Ionicons name="call" size={16} color="#FFFFFF" />
+              <Text style={styles.callBtnText}>Gọi quán</Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.contactBtn,
+                styles.chatBtn,
+                pressed && styles.btnPressed,
+              ]}
+              onPress={() => setIsRestaurantChatVisible(true)}
+            >
+              <Ionicons
+                name="chatbubble-ellipses"
+                size={16}
+                color="#FF6B35"
+              />
+              <Text style={styles.chatBtnText}>Nhắn tin với quán</Text>
+            </Pressable>
           </View>
 
-          {isCash && (
-            <View style={styles.cashAmountBadge}>
-              <Text style={styles.cashAmountText}>
-                ${Number(activeOrder.totalAmount).toFixed(2)}
+          {/* Nút hành động hoàn thành Chặng 1 */}
+          {isReady && (
+            <View style={styles.stageActionContainer}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.primaryActionButton,
+                  styles.pickupActionButton,
+                  isPickingUp && styles.btnDisabled,
+                  pressed && !isPickingUp && styles.btnPressed,
+                ]}
+                disabled={isPickingUp}
+                onPress={() => {
+                  Alert.alert(
+                    'Xác nhận đã lấy hàng',
+                    `Bạn đã nhận đủ ${items.length || 'các'} món từ "${restaurantName}" và chuẩn bị đi giao chưa?`,
+                    [
+                      { text: 'Chưa', style: 'cancel' },
+                      {
+                        text: 'Đã nhận đủ món',
+                        onPress: () => markPickedUp(activeOrder.id),
+                      },
+                    ],
+                  );
+                }}
+              >
+                {isPickingUp ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="bag-check" size={20} color="#FFFFFF" />
+                    <Text style={styles.primaryActionButtonText}>
+                      ✓ Xác nhận đã lấy hàng tại quán
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+              <Text style={styles.stageActionHint}>
+                Bấm xác nhận sau khi quán đã bàn giao đủ món cho bạn.
               </Text>
             </View>
           )}
         </View>
 
-        {/* Bản đồ */}
+        {/* ======================================================= */}
+        {/* CHẶNG 2: THÔNG TIN KHÁCH HÀNG & GIAO HÀNG (CHẶNG CUỐI) */}
+        {/* ======================================================= */}
+        <View
+          style={[
+            styles.sectionCard,
+            isPickedUp && styles.sectionCardHighlight,
+          ]}
+        >
+          <View style={styles.cardHeader}>
+            <View
+              style={[
+                styles.cardHeaderIconBox,
+                { backgroundColor: '#DCFCE7' },
+              ]}
+            >
+              <Ionicons name="person" size={20} color="#16A34A" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={styles.cardEyebrowRow}>
+                <Text style={styles.cardEyebrow}>CHẶNG 2 · ĐIỂM GIAO KHÁCH</Text>
+                {isPickedUp && (
+                  <View style={styles.activePill}>
+                    <Text style={styles.activePillText}>ĐANG GIAO HÀNG</Text>
+                  </View>
+                )}
+                {isReady && (
+                  <View style={styles.waitingPill}>
+                    <Text style={styles.waitingPillText}>CHỜ LẤY MÓN</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.cardMainTitle}>{customerName}</Text>
+              <Text style={styles.cardSubText} numberOfLines={2}>
+                📍 {deliveryAddress}
+              </Text>
+              {customerPhone ? (
+                <Text style={styles.customerPhoneText}>
+                  📞 {customerPhone}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+
+          {/* Hàng nút Gọi & Nhắn tin với Khách hàng */}
+          <View style={styles.contactRow}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.contactBtn,
+                styles.callBtn,
+                pressed && styles.btnPressed,
+              ]}
+              onPress={handleCallCustomer}
+            >
+              <Ionicons name="call" size={16} color="#FFFFFF" />
+              <Text style={styles.callBtnText}>Gọi khách hàng</Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.contactBtn,
+                styles.chatBtn,
+                pressed && styles.btnPressed,
+              ]}
+              onPress={() => setIsCustomerChatVisible(true)}
+            >
+              <Ionicons
+                name="chatbubble-ellipses"
+                size={16}
+                color="#FF6B35"
+              />
+              <Text style={styles.chatBtnText}>Nhắn tin với khách</Text>
+            </Pressable>
+          </View>
+
+          {/* Thông tin phương thức thanh toán */}
+          <View
+            style={[
+              styles.paymentBanner,
+              isCash ? styles.paymentBannerCash : styles.paymentBannerStripe,
+            ]}
+          >
+            <Ionicons
+              name={isCash ? 'cash-outline' : 'card-outline'}
+              size={20}
+              color={isCash ? '#16A34A' : '#FF6B35'}
+            />
+            <View style={{ flex: 1 }}>
+              <Text
+                style={[
+                  styles.paymentTitle,
+                  { color: isCash ? '#16A34A' : '#FF6B35' },
+                ]}
+              >
+                {isCash
+                  ? `THU TIỀN MẶT KHI GIAO: $${Number(activeOrder.totalAmount).toFixed(2)}`
+                  : 'ĐÃ THANH TOÁN TRỰC TUYẾN (STRIPE)'}
+              </Text>
+              <Text style={styles.paymentSubtitle}>
+                {isCash
+                  ? 'Vui lòng thu đủ tiền mặt từ khách hàng trước khi bàn giao món ăn.'
+                  : 'Khách đã thanh toán trực tuyến qua thẻ, không thu thêm tiền mặt.'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Nút hành động hoàn thành Chặng 2 (Chặng cuối) */}
+          {isPickedUp && (
+            <View style={styles.stageActionContainer}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.primaryActionButton,
+                  styles.deliveredActionButton,
+                  isDelivering && styles.btnDisabled,
+                  pressed && !isDelivering && styles.btnPressed,
+                ]}
+                disabled={isDelivering}
+                onPress={handleConfirmDelivered}
+              >
+                {isDelivering ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={20}
+                      color="#FFFFFF"
+                    />
+                    <Text style={styles.primaryActionButtonText}>
+                      ✓ Xác nhận đã giao cho khách {isCash ? '(& Thu tiền)' : ''}
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+              <Text style={styles.stageActionHint}>
+                {isCash
+                  ? 'Chỉ bấm xác nhận sau khi đã nhận đủ tiền mặt và trao món cho khách.'
+                  : 'Chỉ bấm xác nhận khi khách đã nhận được đầy đủ đơn hàng.'}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* ======================================================= */}
+        {/* CHI TIẾT ĐƠN HÀNG ĐỐI SOÁT (MÓN ĂN & GHI CHÚ)            */}
+        {/* ======================================================= */}
+        <View style={styles.dishesCard}>
+          <View style={styles.dishesCardHeader}>
+            <View style={styles.dishesHeaderIcon}>
+              <Ionicons name="fast-food-outline" size={19} color="#FF6B35" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.dishesCardTitle}>
+                Chi tiết món ăn đối soát ({items.length} món)
+              </Text>
+              <Text style={styles.dishesCardSubtitle}>
+                Kiểm tra đúng số lượng món khi nhận tại quán & khi giao khách
+              </Text>
+            </View>
+          </View>
+
+          {/* Danh sách từng món */}
+          <View style={styles.dishesList}>
+            {items.map((it: any, index: number) => {
+              const q = Number(it.quantity ?? 1);
+              const name =
+                it.menuItem?.name ?? it.name ?? `Món ăn #${index + 1}`;
+              const price = Number(it.unitPrice ?? it.menuItem?.price ?? 0);
+              return (
+                <View key={it.id ?? index} style={styles.dishItemRow}>
+                  <View style={styles.dishQuantityBadge}>
+                    <Text style={styles.dishQuantityText}>{q}x</Text>
+                  </View>
+                  <Text style={styles.dishNameText} numberOfLines={2}>
+                    {name}
+                  </Text>
+                  <Text style={styles.dishPriceText}>
+                    ${(q * price).toFixed(2)}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Ghi chú của khách */}
+          {note ? (
+            <View style={styles.driverNoteBox}>
+              <Ionicons name="alert-circle" size={18} color="#D97706" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.driverNoteLabel}>
+                  Ghi chú của khách hàng:
+                </Text>
+                <Text style={styles.driverNoteText}>"{note}"</Text>
+              </View>
+            </View>
+          ) : null}
+
+          {/* Tổng giá trị đơn hàng */}
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Tổng giá trị đơn hàng:</Text>
+            <Text style={styles.totalValue}>
+              ${Number(activeOrder.totalAmount).toFixed(2)}
+            </Text>
+          </View>
+        </View>
+
+        {/* ======================================================= */}
+        {/* BẢN ĐỒ VÀ GPS THEO DÕI TRỰC TIẾP                        */}
+        {/* ======================================================= */}
         <View style={styles.sectionHeading}>
-          <Text style={styles.sectionTitle}>Vị trí giao hàng</Text>
+          <Text style={styles.sectionHeadingTitle}>Vị trí và GPS trực tiếp</Text>
           <View style={styles.liveBadge}>
             <View style={styles.liveDot} />
-            <Text style={styles.liveText}>TRỰC TIẾP</Text>
+            <Text style={styles.liveText}>GPS LIVE</Text>
           </View>
         </View>
 
@@ -478,112 +844,42 @@ export default function DriverActiveScreen() {
             longitude={driverCoords.longitude}
           />
         </View>
-
-        {/* Thông tin đơn */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View>
-              <Text style={styles.cardEyebrow}>THÔNG TIN ĐƠN HÀNG</Text>
-              <Text style={styles.cardTitle}>Chi tiết giao hàng</Text>
-            </View>
-            <View style={styles.packageIcon}>
-              <Text style={styles.packageEmoji}>🧾</Text>
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoIcon}>
-              <Text style={styles.infoEmoji}>#</Text>
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.label}>Mã đơn hàng</Text>
-              <Text style={styles.value}>
-                #{activeOrder.id.slice(0, 8).toUpperCase()}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoIcon}>
-              <Text style={styles.infoEmoji}>📍</Text>
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.label}>Địa chỉ cụ thể</Text>
-              <Text style={styles.value}>
-                {activeOrder.deliveryAddress}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoIcon}>
-              <Text style={styles.infoEmoji}>💵</Text>
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.label}>Tổng tiền đơn hàng</Text>
-              <Text style={styles.amountValue}>
-                ${Number(activeOrder.totalAmount).toFixed(2)}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Trạng thái gửi vị trí */}
-        <View style={styles.trackingCard}>
-          <View style={styles.trackingIcon}>
-            <Text style={styles.trackingEmoji}>📡</Text>
-          </View>
-          <View style={styles.trackingContent}>
-            <Text style={styles.trackingTitle}>Theo dõi vị trí</Text>
-            <Text style={styles.trackingDescription}>
-              Ứng dụng đang phát sóng GPS trực tiếp để khách hàng theo dõi.
-            </Text>
-          </View>
-          <View style={styles.trackingIndicator} />
-        </View>
-
-        {/* Xác nhận giao hàng */}
-        <View style={styles.actionSection}>
-          <Text style={styles.actionTitle}>Đã giao hàng thành công?</Text>
-          <Text style={styles.actionDescription}>
-            {isCash
-              ? 'Thu đủ tiền mặt và bàn giao món cho khách trước khi xác nhận.'
-              : 'Chỉ xác nhận sau khi khách hàng đã nhận được đơn hàng.'}
-          </Text>
-
-          <Pressable
-            style={({ pressed }) => [
-              styles.deliveredButton,
-              isPending && styles.disabledButton,
-              pressed && !isPending && styles.buttonPressed,
-            ]}
-            onPress={handleConfirmDelivered}
-            disabled={isPending}
-          >
-            {isPending ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.deliveredButtonText}>
-                ✓  Xác nhận đã giao hàng {isCash ? '(& Đã thu tiền)' : ''}
-              </Text>
-            )}
-          </Pressable>
-        </View>
       </ScrollView>
 
-      {/* Khung chat với khách hàng */}
+      {/* Khung chat CHẶNG 1: Tài xế và Nhà hàng */}
       <OrderChatModal
-        visible={isChatVisible}
-        onClose={() => setIsChatVisible(false)}
-        orderId={activeOrder?.id ?? ''}
-        currentUserName={user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : 'Tài xế'}
+        visible={isRestaurantChatVisible}
+        onClose={() => setIsRestaurantChatVisible(false)}
+        orderId={activeOrder.id}
+        currentUserName={
+          user
+            ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
+            : 'Tài xế'
+        }
+        currentUserRole="DRIVER"
+        currentUserId={user?.id}
+        otherPartyName={restaurantName}
+        otherPartyPhone={restaurantPhone}
+        otherPartyRoleTitle="Nhà hàng đối tác"
+        chatMode="RESTAURANT"
+      />
+
+      {/* Khung chat CHẶNG 2: Tài xế và Khách hàng */}
+      <OrderChatModal
+        visible={isCustomerChatVisible}
+        onClose={() => setIsCustomerChatVisible(false)}
+        orderId={activeOrder.id}
+        currentUserName={
+          user
+            ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
+            : 'Tài xế'
+        }
         currentUserRole="DRIVER"
         currentUserId={user?.id}
         otherPartyName={customerName}
         otherPartyPhone={customerPhone}
         otherPartyRoleTitle="Khách nhận món"
+        chatMode="CUSTOMER"
       />
     </SafeAreaView>
   );
@@ -599,9 +895,56 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 18,
-    paddingTop: 20,
-    gap: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 14,
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFF0E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: COLORS.muted,
+  },
+  emptyScrollContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+    gap: 12,
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FFF0E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyEmoji: {
+    fontSize: 34,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.text,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: COLORS.muted,
+    textAlign: 'center',
+    lineHeight: 19,
+    paddingHorizontal: 28,
   },
 
   // Header
@@ -618,106 +961,21 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '900',
     color: '#FF6B35',
-    letterSpacing: 1.5,
-    marginBottom: 7,
+    letterSpacing: 0.8,
   },
   title: {
-    fontSize: 28,
-    lineHeight: 35,
+    fontSize: 22,
     fontWeight: '900',
-    color: '#29232A',
-    letterSpacing: -0.7,
+    color: COLORS.text,
+    marginTop: 2,
   },
   subtitle: {
-    marginTop: 6,
     fontSize: 13,
-    lineHeight: 20,
-    color: '#8B8289',
+    color: COLORS.muted,
+    marginTop: 2,
+    lineHeight: 18,
   },
   headerIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 20,
-    backgroundColor: '#FFF0E8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerEmoji: {
-    fontSize: 30,
-  },
-
-  // Trạng thái banner
-  statusBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F0E8E3',
-    borderRadius: 20,
-    padding: 16,
-    gap: 13,
-  },
-  statusIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#FFF0E8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statusEmoji: {
-    fontSize: 23,
-  },
-  statusContent: {
-    flex: 1,
-  },
-  statusTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#29232A',
-  },
-  statusSubtitle: {
-    fontSize: 11,
-    color: '#8B8289',
-    marginTop: 3,
-  },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#F0E9FF',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#8256D0',
-  },
-  statusPillText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#8256D0',
-    letterSpacing: 0.5,
-  },
-
-  // Khách hàng Card
-  customerCard: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F0E8E3',
-    borderRadius: 20,
-    padding: 16,
-    gap: 14,
-  },
-  customerCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  customerAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -725,398 +983,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  customerAvatarText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#FF6B35',
-  },
-  customerInfo: {
-    flex: 1,
-  },
-  customerEyebrow: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#8B8289',
-    letterSpacing: 1,
-  },
-  customerName: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#29232A',
-    marginTop: 2,
-  },
-  customerPhone: {
-    fontSize: 12,
-    color: '#16A34A',
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  contactButtonsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  contactButton: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-  },
-  callButton: {
-    backgroundColor: '#16A34A',
-  },
-  chatButton: {
-    backgroundColor: '#FFF0E8',
-    borderWidth: 1,
-    borderColor: '#FCD8C8',
-  },
-  contactButtonTextWhite: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  contactButtonTextOrange: {
-    color: '#FF6B35',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-
-  // Phương thức thanh toán Card
-  paymentCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    gap: 12,
-  },
-  paymentCardCash: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
-  },
-  paymentCardStripe: {
-    backgroundColor: '#FFF7ED',
-    borderColor: '#FFEDD5',
-  },
-  paymentCardIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  paymentCardContent: {
-    flex: 1,
-  },
-  paymentCardTitle: {
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  paymentCardSubtitle: {
-    fontSize: 12,
-    color: '#4B5563',
-    marginTop: 2,
-  },
-  cashAmountBadge: {
-    backgroundColor: '#16A34A',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-  },
-  cashAmountText: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-    fontSize: 14,
-  },
-
-  // Bản đồ
-  sectionHeading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#29232A',
-  },
-  liveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#E8F8F0',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  liveDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#16A36A',
-  },
-  liveText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#16A36A',
-    letterSpacing: 0.8,
-  },
-  mapContainer: {
-    height: 250,
-    borderRadius: 22,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#F0E8E3',
-    backgroundColor: '#FFFFFF',
-  },
-
-  // Chi tiết đơn
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F0E8E3',
-    borderRadius: 22,
-    padding: 18,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  cardEyebrow: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FF6B35',
-    letterSpacing: 1.2,
-    marginBottom: 4,
-  },
-  cardTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#29232A',
-  },
-  packageIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 15,
-    backgroundColor: '#FFF0E8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  packageEmoji: {
-    fontSize: 20,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F5ECE7',
-    marginBottom: 14,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 9,
-    gap: 12,
-  },
-  infoIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: '#FFF0E8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  infoEmoji: {
-    fontSize: 15,
-  },
-  infoContent: {
-    flex: 1,
-  },
-  label: {
-    fontSize: 11,
-    color: '#8B8289',
-    marginBottom: 3,
-  },
-  value: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#29232A',
-  },
-  amountValue: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: '#FF6B35',
-  },
-
-  // Tracking
-  trackingCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F0E8E3',
-    borderRadius: 18,
-    padding: 15,
-    gap: 12,
-  },
-  trackingIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#FFF0E8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  trackingEmoji: {
-    fontSize: 19,
-  },
-  trackingContent: {
-    flex: 1,
-  },
-  trackingTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#29232A',
-  },
-  trackingDescription: {
-    fontSize: 11,
-    color: '#8B8289',
-    marginTop: 2,
-    lineHeight: 16,
-  },
-  trackingIndicator: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: '#16A36A',
-  },
-
-  // Action
-  actionSection: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F0E8E3',
-    borderRadius: 22,
-    padding: 18,
-    alignItems: 'center',
-    gap: 8,
-  },
-  actionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#29232A',
-  },
-  actionDescription: {
-    fontSize: 12,
-    color: '#8B8289',
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  deliveredButton: {
-    width: '100%',
-    minHeight: 54,
-    borderRadius: 16,
-    backgroundColor: '#16A36A',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#16A36A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  deliveredButtonText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  buttonPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.98 }],
-  },
-
-  // Empty state
-  emptyScrollContent: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 50,
-  },
-  emptyIcon: {
-    width: 96,
-    height: 96,
-    borderRadius: 32,
-    backgroundColor: '#FFF0E8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-  },
-  emptyTitle: {
+  headerEmoji: {
     fontSize: 22,
-    fontWeight: '900',
-    color: '#29232A',
-    marginBottom: 10,
-  },
-  emptyText: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#8B8289',
-    textAlign: 'center',
-    maxWidth: 280,
   },
 
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingIcon: {
-    marginBottom: 14,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#8B8289',
-  },
+  // Selector
   orderSelectorContainer: {
-    marginBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#F0E8E3',
+    gap: 8,
   },
   orderSelectorLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#8B8289',
-    marginBottom: 8,
+    color: COLORS.text,
   },
   orderSelectorScroll: {
-    flexDirection: 'row',
     gap: 8,
   },
   orderSelectorTab: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 12,
-    backgroundColor: '#FFF0E8',
+    paddingVertical: 8,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#FCD8C8',
+    borderColor: '#F0E8E3',
   },
   orderSelectorTabActive: {
     backgroundColor: '#FF6B35',
@@ -1124,10 +1016,436 @@ const styles = StyleSheet.create({
   },
   orderSelectorTabText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FF6B35',
   },
   orderSelectorTabTextActive: {
     color: '#FFFFFF',
+  },
+
+  // Two-Stage Progress Card
+  twoStageCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#F0E8E3',
+    shadowColor: '#29232A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  twoStageHeaderLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#8B8289',
+    letterSpacing: 0.7,
+    marginBottom: 10,
+  },
+  stagesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  stageBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 8,
+    borderRadius: 12,
+  },
+  stageBoxActive: {
+    backgroundColor: '#FFF9F5',
+  },
+  stageBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeActive: {
+    backgroundColor: '#FF6B35',
+  },
+  badgeCompleted: {
+    backgroundColor: COLORS.green,
+  },
+  badgePending: {
+    backgroundColor: '#E7DDD8',
+  },
+  badgeNumberText: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  stageTextCol: {
+    flex: 1,
+  },
+  stageTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8B8289',
+  },
+  stageTitleActive: {
+    color: COLORS.text,
+  },
+  stageStatusDesc: {
+    fontSize: 10,
+    color: '#8B8289',
+    marginTop: 1,
+  },
+  stageConnector: {
+    paddingHorizontal: 4,
+  },
+
+  // Section Cards (Nhà hàng / Khách hàng)
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F0E8E3',
+    gap: 12,
+    shadowColor: '#29232A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  sectionCardHighlight: {
+    borderColor: '#FFD3C0',
+    borderWidth: 1.5,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cardHeaderIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#FFF0E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardEyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  cardEyebrow: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#FF6B35',
+    letterSpacing: 0.6,
+  },
+  activePill: {
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  activePillText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  donePill: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  donePillText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#16A34A',
+  },
+  waitingPill: {
+    backgroundColor: '#F3ECEA',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  waitingPillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#8B8289',
+  },
+  cardMainTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginTop: 2,
+  },
+  cardSubText: {
+    fontSize: 12,
+    color: COLORS.muted,
+    marginTop: 2,
+    lineHeight: 17,
+  },
+  customerPhoneText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.green,
+    marginTop: 3,
+  },
+
+  // Contact Buttons (Gọi / Nhắn tin)
+  contactRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#F5ECE7',
+  },
+  contactBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  callBtn: {
+    backgroundColor: COLORS.green,
+  },
+  callBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  chatBtn: {
+    backgroundColor: '#FFF0E8',
+    borderWidth: 1,
+    borderColor: '#FCD8C8',
+  },
+  chatBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FF6B35',
+  },
+  btnPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
+  },
+  btnDisabled: {
+    opacity: 0.6,
+  },
+
+  // Primary Action Buttons for Stages
+  stageActionContainer: {
+    gap: 6,
+    marginTop: 4,
+  },
+  primaryActionButton: {
+    height: 48,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  pickupActionButton: {
+    backgroundColor: '#16A34A',
+  },
+  deliveredActionButton: {
+    backgroundColor: '#FF6B35',
+  },
+  primaryActionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  stageActionHint: {
+    fontSize: 11,
+    color: COLORS.muted,
+    textAlign: 'center',
+  },
+
+  // Payment banner
+  paymentBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  paymentBannerCash: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  paymentBannerStripe: {
+    backgroundColor: '#FFF7ED',
+    borderColor: '#FED7AA',
+  },
+  paymentTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+  },
+  paymentSubtitle: {
+    fontSize: 11,
+    color: COLORS.muted,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+
+  // Dishes Card
+  dishesCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F0E8E3',
+    gap: 12,
+    shadowColor: '#29232A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  dishesCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  dishesHeaderIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#FFF0E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dishesCardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.text,
+  },
+  dishesCardSubtitle: {
+    fontSize: 11,
+    color: COLORS.muted,
+    marginTop: 1,
+  },
+  dishesList: {
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F5ECE7',
+    paddingTop: 10,
+  },
+  dishItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  dishQuantityBadge: {
+    backgroundColor: '#FFF0E8',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  dishQuantityText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FF6B35',
+  },
+  dishNameText: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  dishPriceText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  driverNoteBox: {
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: '#FEF3C7',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  driverNoteLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  driverNoteText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#B45309',
+    marginTop: 2,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F5ECE7',
+  },
+  totalLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.muted,
+  },
+  totalValue: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: '#FF6B35',
+  },
+
+  // Map & Live
+  sectionHeading: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sectionHeadingTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.text,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#16A34A',
+  },
+  liveText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#16A34A',
+  },
+  mapContainer: {
+    height: 220,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F0E8E3',
   },
 });

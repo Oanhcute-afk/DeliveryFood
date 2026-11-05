@@ -305,11 +305,18 @@ export default function OrderConfirmationScreen() {
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [lastDriverMessage, setLastDriverMessage] = useState<string | null>(null);
 
+  const [isRestaurantChatVisible, setIsRestaurantChatVisible] = useState(false);
+  const [unreadRestaurantChatCount, setUnreadRestaurantChatCount] = useState(0);
+
   useOrderChatSocket(id ?? null, (msg) => {
     if (msg && msg.senderRole === 'DRIVER') {
       if (!isChatVisible) {
         setUnreadChatCount((prev) => prev + 1);
         setLastDriverMessage(msg.content);
+      }
+    } else if (msg && msg.senderRole === 'RESTAURANT_OWNER') {
+      if (!isRestaurantChatVisible) {
+        setUnreadRestaurantChatCount((prev) => prev + 1);
       }
     }
   });
@@ -320,6 +327,12 @@ export default function OrderConfirmationScreen() {
       setLastDriverMessage(null);
     }
   }, [isChatVisible]);
+
+  useEffect(() => {
+    if (isRestaurantChatVisible) {
+      setUnreadRestaurantChatCount(0);
+    }
+  }, [isRestaurantChatVisible]);
 
   useEffect(() => {
     if (!id) return;
@@ -386,6 +399,16 @@ export default function OrderConfirmationScreen() {
     enabled: !!id,
     refetchInterval: 4000,
   });
+
+  const canChatWithRestaurant = ['CONFIRMED', 'PREPARING'].includes(
+    order?.status ?? '',
+  );
+
+  useEffect(() => {
+    if (!canChatWithRestaurant && isRestaurantChatVisible) {
+      setIsRestaurantChatVisible(false);
+    }
+  }, [canChatWithRestaurant, isRestaurantChatVisible]);
 
   const isAutoConfirmed = useMemo(() => {
     return isOrderAutoConfirmed(order?.updatedAt);
@@ -765,20 +788,60 @@ export default function OrderConfirmationScreen() {
 
         {/* Tên tiệm của món ăn */}
         <View style={styles.restaurantBannerCard}>
-          <View style={styles.restaurantBannerIcon}>
-            <Ionicons name="restaurant" size={22} color={COLORS.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.restaurantBannerEyebrow}>TIỆM LÀM MÓN</Text>
-            <Text style={styles.restaurantBannerName}>
-              {(order as any)?.restaurant?.name || 'Nhà hàng đối tác'}
-            </Text>
-            {(order as any)?.restaurant?.address ? (
-              <Text style={styles.restaurantBannerAddress} numberOfLines={1}>
-                📍 {(order as any).restaurant.address}
+          <View style={styles.restaurantBannerHeader}>
+            <View style={styles.restaurantBannerIcon}>
+              <Ionicons name="restaurant" size={22} color={COLORS.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.restaurantBannerEyebrow}>TIỆM LÀM MÓN</Text>
+              <Text style={styles.restaurantBannerName}>
+                {(order as any)?.restaurant?.name || 'Nhà hàng đối tác'}
               </Text>
-            ) : null}
+              {(order as any)?.restaurant?.address ? (
+                <Text style={styles.restaurantBannerAddress} numberOfLines={1}>
+                  📍 {(order as any).restaurant.address}
+                </Text>
+              ) : null}
+            </View>
           </View>
+
+          {canChatWithRestaurant && (
+            <View style={styles.restaurantActionsRow}>
+              {(order as any)?.restaurant?.phone ? (
+                <Pressable
+                  style={[styles.contactBtn, styles.callBtn, { flex: 0, paddingHorizontal: 16 }]}
+                  onPress={() => {
+                    const clean = (order as any).restaurant.phone.trim().replace(/\s+/g, '');
+                    Linking.openURL(`tel:${clean}`).catch(() => {
+                      Alert.alert('Lỗi', 'Không thể mở ứng dụng cuộc gọi.');
+                    });
+                  }}
+                >
+                  <Ionicons name="call" size={16} color="#FFFFFF" />
+                  <Text style={styles.callBtnText}>Gọi quán</Text>
+                </Pressable>
+              ) : null}
+
+              <Pressable
+                style={[styles.contactBtn, styles.chatBtn, { flex: 1 }]}
+                onPress={() => setIsRestaurantChatVisible(true)}
+              >
+                <Ionicons
+                  name="chatbubble-ellipses"
+                  size={17}
+                  color={COLORS.primary}
+                />
+                <Text style={styles.chatBtnText}>Nhắn tin với quán</Text>
+                {unreadRestaurantChatCount > 0 ? (
+                  <View style={styles.chatBtnBadge}>
+                    <Text style={styles.chatBtnBadgeText}>
+                      {unreadRestaurantChatCount}
+                    </Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            </View>
+          )}
         </View>
 
         {/* Thông tin tài xế & Liên hệ Chat / Gọi điện */}
@@ -912,6 +975,25 @@ export default function OrderConfirmationScreen() {
               </Text>
             </View>
           </View>
+
+          {order.note ? (
+            <View style={styles.infoRow}>
+              <View style={[styles.infoIcon, { backgroundColor: '#FFF4D6' }]}>
+                <Ionicons
+                  name="create-outline"
+                  size={20}
+                  color="#D97706"
+                />
+              </View>
+
+              <View style={styles.infoTextContainer}>
+                <Text style={styles.infoLabel}>Ghi chú cho quán</Text>
+                <Text style={[styles.infoValue, { color: '#B45309', fontWeight: '700' }]}>
+                  {order.note}
+                </Text>
+              </View>
+            </View>
+          ) : null}
 
           <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
@@ -1453,6 +1535,24 @@ export default function OrderConfirmationScreen() {
           otherPartyPhone={driverPhone}
           otherPartyRoleTitle="Tài xế giao hàng"
         />
+
+        {canChatWithRestaurant && (
+          <OrderChatModal
+            visible={isRestaurantChatVisible}
+            onClose={() => setIsRestaurantChatVisible(false)}
+            orderId={order.id}
+            currentUserRole="CUSTOMER"
+            currentUserId={order.customerId}
+            currentUserName={
+              user
+                ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
+                : 'Khách hàng'
+            }
+            otherPartyName={(order as any)?.restaurant?.name || 'Nhà hàng'}
+            otherPartyPhone={(order as any)?.restaurant?.phone || null}
+            otherPartyRoleTitle="Nhà hàng chuẩn bị món"
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -2281,9 +2381,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderRadius: 20,
     padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -2292,6 +2389,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+  },
+  restaurantBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  restaurantActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F5ECE7',
   },
   restaurantBannerIcon: {
     width: 46,
