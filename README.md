@@ -8,21 +8,6 @@
 
 **React Native · Expo · NestJS · PostgreSQL · Redis · Socket.IO · Gemini AI**
 
-<p>
-  <img alt="TypeScript" src="https://img.shields.io/badge/Language-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
-  <img alt="Expo SDK 55" src="https://img.shields.io/badge/Expo-SDK%2055-000020?style=for-the-badge&logo=expo&logoColor=white" />
-  <img alt="React Native 0.83" src="https://img.shields.io/badge/React%20Native-0.83-61DAFB?style=for-the-badge&logo=react&logoColor=20232A" />
-  <img alt="NestJS 11" src="https://img.shields.io/badge/NestJS-11-E0234E?style=for-the-badge&logo=nestjs&logoColor=white" />
-</p>
-<p>
-  <img alt="PostgreSQL" src="https://img.shields.io/badge/Database-PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white" />
-  <img alt="Redis" src="https://img.shields.io/badge/Cache-Upstash%20Redis-DC382D?style=flat-square&logo=redis&logoColor=white" />
-  <img alt="Stripe" src="https://img.shields.io/badge/Payment-Stripe-635BFF?style=flat-square&logo=stripe&logoColor=white" />
-  <img alt="Gemini" src="https://img.shields.io/badge/AI-Gemini-4285F4?style=flat-square&logo=googlegemini&logoColor=white" />
-  <img alt="pnpm" src="https://img.shields.io/badge/Workspace-pnpm-F69220?style=flat-square&logo=pnpm&logoColor=white" />
-</p>
-
-**Dự án nhóm môn Lập trình thiết bị di động** · [📂 Repository](https://github.com/Oanhcute-afk/DeliveryFood) · [🚀 Bắt đầu](#-cài-đặt-và-chạy-project) · [🧩 Kiến trúc](#-kiến-trúc-hệ-thống) · [🗃️ Database](#-cơ-sở-dữ-liệu)
 
 </div>
 
@@ -40,9 +25,6 @@
 | 🛡️ **Admin** | Quản lý tài khoản, nhà hàng, voucher và theo dõi hoạt động hệ thống. |
 
 Ngoài nghiệp vụ đặt món, dự án triển khai **Socket.IO cho sự kiện realtime**, **Upstash Redis để cache và lưu vị trí GPS tạm thời**, **Stripe cho luồng thanh toán**, **Google Gemini cho chatbot Deli** và **dashboard monitor** của Backend.
-
-> [!NOTE]
-> Đây là dự án học tập/prototype. Các dịch vụ bên ngoài cần cấu hình tài khoản và khóa hợp lệ; không mặc định rằng mọi tính năng đã được kiểm thử hoặc triển khai production. Giao diện Web của Expo có thể có giới hạn riêng so với Android/iOS, nhất là với thư viện native.
 
 ## ✨ Chức năng chính
 
@@ -88,6 +70,24 @@ Ngoài nghiệp vụ đặt món, dự án triển khai **Socket.IO cho sự ki�
 - Truy cập trang theo dõi kỹ thuật **`/monitor`** để xem các chỉ số Backend (phần dữ liệu cần quyền Admin).
 
 </details>
+
+## 💬📞 Nhắn tin và gọi điện giữa Driver – Customer
+
+### Mục đích và trải nghiệm 
+
+Khi đơn hàng đã có tài xế được phân công, Customer và Driver có thể chủ động liên hệ để xác nhận địa chỉ, hướng dẫn điểm nhận hàng hoặc xử lý tình huống khó tìm vị trí giao.
+
+| Vai trò | Giao diện liên hệ | Tác vụ |
+|---|---|---|
+| 🛍️ **Customer** | Chi tiết đơn hàng đang giao | Chọn **Nhắn tin tài xế** hoặc **Gọi tài xế** để trao đổi về địa chỉ và thời điểm nhận món. |
+| 🛵 **Driver** | Màn hình đơn đang giao | Chọn **Nhắn tin khách hàng** hoặc **Gọi khách hàng** khi cần hướng dẫn đường đi hoặc xác nhận điểm giao. |
+
+**Luồng trao đổi đề xuất:**
+
+1. Hệ thống kiểm tra đơn hàng có tài xế đã nhận chuyến và người dùng hiện tại là **Customer/Driver của chính đơn đó**.
+2. Nếu chọn **Nhắn tin**, ứng dụng mở hội thoại gắn với `orderId`; các tin nhắn được gửi/nhận gần thời gian thực, hiển thị thời điểm gửi và trạng thái gửi cơ bản.
+3. Nếu chọn **Gọi**, ứng dụng khởi tạo cuộc gọi đến số liên hệ được phép hiển thị; trên thiết bị di động có thể mở ứng dụng điện thoại mặc định. **Chưa có gọi VoIP trong ứng dụng** ở bản mã nguồn hiện tại.
+4. Khi đơn hoàn thành hoặc bị hủy, quyền liên hệ trực tiếp cần được giới hạn hoặc đóng theo quy tắc nghiệp vụ của nhóm để bảo vệ thông tin cá nhân.
 
 ## 🏗️ Kiến trúc hệ thống
 
@@ -287,7 +287,6 @@ erDiagram
     vouchers |o--o{ orders : applies_to
 ```
 
-> **Không có bảng riêng** `payments`, `deliveries` hoặc `driver_profiles` trong phiên bản schema này. Đơn hàng lưu `stripe_payment_intent_id`, `driver_id` và trạng thái; tọa độ tài xế được lưu tạm trong Redis.
 
 ## 🔌 REST API & Realtime
 
@@ -316,8 +315,6 @@ Authorization: Bearer <ACCESS_TOKEN>
 
 **Socket.IO:** namespace **`/orders`** hỗ trợ các event `join:order`, `join:restaurant`, `join:driver`, `order:updated`, `driver:assigned` và `driver:location`. Ngoài việc lấy vị trí realtime, client có thể gọi API location để hiển thị tọa độ gần nhất khi vừa mở màn hình theo dõi.
 
-> [!IMPORTANT]
-> Không coi các kênh WebSocket là đã được bảo vệ đầy đủ chỉ vì REST API có JWT: các handler join room/GPS trong bản mã nguồn hiện tại cần tiếp tục được kiểm tra xác thực và quyền truy cập trước khi triển khai công khai.
 
 ## ⚡ Điểm nhấn kỹ thuật: Redis, GPS, Performance và AI
 
@@ -340,6 +337,8 @@ Trợ lý AI được triển khai tại `apps/api/src/chat/`:
 4. Backend trả lời kèm thẻ món/nhà hàng phù hợp với dữ liệu đã tra cứu.
 
 Chatbot giới hạn số tin nhắn theo cửa sổ thời gian trong bộ nhớ tiến trình; chức năng “gần đây” dùng thông tin khu vực/địa chỉ chứ **không bảo đảm khoảng cách GPS chính xác**.
+
+> **Phân biệt:** `POST /api/chat` là chatbot Deli sử dụng Gemini, **không phải API nhắn tin giữa Customer và Driver**. Xem [định hướng liên hệ trực tiếp](#-nhắn-tin-và-gọi-điện-giữa-driver--customer).
 
 ## 🚀 Cài đặt và chạy project
 
@@ -427,9 +426,6 @@ EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=<STRIPE_PUBLISHABLE_KEY>
 ```
 
 **Chú ý:** `192.168.1.10` chỉ là **ví dụ IP LAN**. Khi dùng điện thoại thật, thay bằng IP máy tính chạy API (hoặc địa chỉ HTTPS của Backend đã triển khai). Trên Android Emulator có thể cần `10.0.2.2` thay cho localhost. Hai biến `EXPO_PUBLIC_*URL` không được nhầm `/api` với địa chỉ socket/server gốc.
-
-> [!CAUTION]
-> Mọi biến `EXPO_PUBLIC_*` được đóng gói vào ứng dụng client và **không phải bí mật**. Không đặt `DATABASE_URL`, `JWT_SECRET`, `STRIPE_SECRET_KEY`, token Redis hoặc Firebase Admin private key trong Mobile. Không dán thông tin mật vào issue, commit, README hoặc ảnh chụp màn hình.
 
 ### 4. Thiết lập Database (chỉ với database phát triển riêng)
 
@@ -557,7 +553,6 @@ Phạm vi phối hợp của nhóm trong quá trình phát triển Frontend:
 | Customer & Admin | Thành viên phụ trách khách hàng/quản trị | `apps/mobile/src/app/(customer)/`, `(admin)/` |
 | Backend & Database | Thành viên phụ trách API và DB | `apps/api/` |
 
-> Bổ sung họ tên, MSSV và vai trò chi tiết theo danh sách chính thức của nhóm trước khi nộp báo cáo.
 
 Ví dụ quy trình làm việc an toàn: tạo branch chức năng, chỉ `git add` các file được phân công, commit có mô tả rõ, push lên branch và mở Pull Request cho chủ repository kiểm tra. **Không force push lên branch chung; không commit `.env`, `node_modules` hoặc file khóa thật.**
 
@@ -586,15 +581,3 @@ git push origin <TEN_BRANCH_CUA_BAN>
 - [Socket.IO](https://socket.io/docs/v4/)
 - [Stripe React Native SDK](https://docs.stripe.com/sdks/react-native)
 - [Google Gemini API](https://ai.google.dev/)
-
----
-
-<div align="center">
-
-**🍊 DeliFood — Khám phá món ngon, đặt món dễ dàng.**
-
-Made with TypeScript, React Native & NestJS · **Mobile Development Group Project**
-
-[⬆️ Về đầu trang](#️-delifood) · [Xem repository](https://github.com/Oanhcute-afk/DeliveryFood)
-
-</div>
