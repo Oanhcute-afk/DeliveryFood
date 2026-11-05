@@ -215,32 +215,53 @@ export class AuthService {
   }
 
   private async verifyFirebaseIdToken(idToken: string) {
-    let decoded: DecodedIdToken;
     try {
-      decoded = await firebaseAuth().verifyIdToken(idToken);
+      const decoded = await firebaseAuth().verifyIdToken(idToken);
+      const googleSub = (
+        decoded.firebase.identities['google.com'] as string[] | undefined
+      )?.[0];
+
+      if (
+        decoded.firebase.sign_in_provider !== 'google.com' ||
+        !googleSub ||
+        !decoded.email ||
+        !decoded.email_verified
+      ) {
+        throw new UnauthorizedException('Invalid Google token');
+      }
+
+      return {
+        sub: googleSub,
+        email: decoded.email,
+        name: decoded.name as string | undefined,
+      };
     } catch {
+      // Fallback: Xác thực trực tiếp qua Google OAuth tokeninfo endpoint
+      try {
+        const res = await fetch(
+          `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+        );
+        if (res.ok) {
+          const gInfo = (await res.json()) as {
+            sub?: string;
+            email?: string;
+            name?: string;
+            email_verified?: string | boolean;
+          };
+          const isVerified =
+            gInfo.email_verified === true || gInfo.email_verified === 'true';
+          if (gInfo.sub && gInfo.email && isVerified) {
+            return {
+              sub: gInfo.sub,
+              email: gInfo.email,
+              name: gInfo.name,
+            };
+          }
+        }
+      } catch {}
+
       throw new UnauthorizedException('Invalid Google token');
     }
-
-    // Google account ID (sub) — giữ nguyên dù user Firebase bị xoá/tạo lại
-    const googleSub = (
-      decoded.firebase.identities['google.com'] as string[] | undefined
-    )?.[0];
-
-    if (
-      decoded.firebase.sign_in_provider !== 'google.com' ||
-      !googleSub ||
-      !decoded.email ||
-      !decoded.email_verified
-    ) {
-      throw new UnauthorizedException('Invalid Google token');
-    }
-
-    return {
-      sub: googleSub,
-      email: decoded.email,
-      name: decoded.name as string | undefined,
-    };
   }
 
   async getProfile(userId: string) {

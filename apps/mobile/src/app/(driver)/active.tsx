@@ -516,70 +516,58 @@ export default function DriverActiveScreen() {
         {/* ======================================================= */}
         {/* CHẶNG 1: THÔNG TIN NHÀ HÀNG & LIÊN HỆ QUÁN             */}
         {/* ======================================================= */}
-        <View
-          style={[
-            styles.sectionCard,
-            isReady && styles.sectionCardHighlight,
-          ]}
-        >
-          <View style={styles.cardHeader}>
-            <View style={styles.cardHeaderIconBox}>
-              <Ionicons name="restaurant" size={20} color="#FF6B35" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={styles.cardEyebrowRow}>
-                <Text style={styles.cardEyebrow}>CHẶNG 1 · ĐIỂM LẤY HÀNG</Text>
-                {isReady && (
+        {isReady ? (
+          <View style={[styles.sectionCard, styles.sectionCardHighlight]}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardHeaderIconBox}>
+                <Ionicons name="restaurant" size={20} color="#FF6B35" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.cardEyebrowRow}>
+                  <Text style={styles.cardEyebrow}>CHẶNG 1 · ĐIỂM LẤY HÀNG</Text>
                   <View style={styles.activePill}>
                     <Text style={styles.activePillText}>ĐANG THỰC HIỆN</Text>
                   </View>
-                )}
-                {isPickedUp && (
-                  <View style={styles.donePill}>
-                    <Text style={styles.donePillText}>✓ ĐÃ XONG</Text>
-                  </View>
-                )}
+                </View>
+                <Text style={styles.cardMainTitle}>{restaurantName}</Text>
+                <Text style={styles.cardSubText} numberOfLines={2}>
+                  📍 {restaurantAddress}
+                </Text>
               </View>
-              <Text style={styles.cardMainTitle}>{restaurantName}</Text>
-              <Text style={styles.cardSubText} numberOfLines={2}>
-                📍 {restaurantAddress}
-              </Text>
             </View>
-          </View>
 
-          {/* Hàng nút Gọi & Nhắn tin với Nhà hàng */}
-          <View style={styles.contactRow}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.contactBtn,
-                styles.callBtn,
-                pressed && styles.btnPressed,
-              ]}
-              onPress={handleCallRestaurant}
-            >
-              <Ionicons name="call" size={16} color="#FFFFFF" />
-              <Text style={styles.callBtnText}>Gọi quán</Text>
-            </Pressable>
+            {/* Hàng nút Gọi & Nhắn tin với Nhà hàng */}
+            <View style={styles.contactRow}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.contactBtn,
+                  styles.callBtn,
+                  pressed && styles.btnPressed,
+                ]}
+                onPress={handleCallRestaurant}
+              >
+                <Ionicons name="call" size={16} color="#FFFFFF" />
+                <Text style={styles.callBtnText}>Gọi quán</Text>
+              </Pressable>
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.contactBtn,
-                styles.chatBtn,
-                pressed && styles.btnPressed,
-              ]}
-              onPress={() => setIsRestaurantChatVisible(true)}
-            >
-              <Ionicons
-                name="chatbubble-ellipses"
-                size={16}
-                color="#FF6B35"
-              />
-              <Text style={styles.chatBtnText}>Nhắn tin với quán</Text>
-            </Pressable>
-          </View>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.contactBtn,
+                  styles.chatBtn,
+                  pressed && styles.btnPressed,
+                ]}
+                onPress={() => setIsRestaurantChatVisible(true)}
+              >
+                <Ionicons
+                  name="chatbubble-ellipses"
+                  size={16}
+                  color="#FF6B35"
+                />
+                <Text style={styles.chatBtnText}>Nhắn tin với quán</Text>
+              </Pressable>
+            </View>
 
-          {/* Nút hành động hoàn thành Chặng 1 */}
-          {isReady && (
+            {/* Nút hành động hoàn thành Chặng 1 */}
             <View style={styles.stageActionContainer}>
               <Pressable
                 style={({ pressed }) => [
@@ -615,120 +603,128 @@ export default function DriverActiveScreen() {
                 )}
               </Pressable>
               <Text style={styles.stageActionHint}>
-                Bấm xác nhận sau khi quán đã bàn giao đủ món cho bạn.
+                Bấm xác nhận sau khi quán đã bàn giao đủ món cho bạn để chuyển sang Chặng 2.
               </Text>
             </View>
-          )}
-        </View>
+          </View>
+        ) : (
+          /* Chặng 1 đã hoàn thành */
+          <View style={styles.stageCompletedCard}>
+            <View style={styles.stageCompletedIcon}>
+              <Ionicons name="checkmark-circle" size={22} color="#16A34A" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.stageCompletedEyebrow}>CHẶNG 1: ĐÃ LẤY HÀNG XONG</Text>
+              <Text style={styles.stageCompletedName}>{restaurantName}</Text>
+              <Text style={styles.stageCompletedAddress} numberOfLines={1}>
+                📍 {restaurantAddress}
+              </Text>
+            </View>
+            {restaurantPhone ? (
+              <Pressable style={styles.miniCallBtn} onPress={handleCallRestaurant}>
+                <Ionicons name="call" size={12} color="#FFFFFF" />
+                <Text style={styles.miniCallText}>Gọi quán</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        )}
 
         {/* ======================================================= */}
         {/* CHẶNG 2: THÔNG TIN KHÁCH HÀNG & GIAO HÀNG (CHẶNG CUỐI) */}
         {/* ======================================================= */}
-        <View
-          style={[
-            styles.sectionCard,
-            isPickedUp && styles.sectionCardHighlight,
-          ]}
-        >
-          <View style={styles.cardHeader}>
-            <View
-              style={[
-                styles.cardHeaderIconBox,
-                { backgroundColor: '#DCFCE7' },
-              ]}
-            >
-              <Ionicons name="person" size={20} color="#16A34A" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={styles.cardEyebrowRow}>
-                <Text style={styles.cardEyebrow}>CHẶNG 2 · ĐIỂM GIAO KHÁCH</Text>
-                {isPickedUp && (
+        {isPickedUp ? (
+          <View style={[styles.sectionCard, styles.sectionCardHighlight]}>
+            <View style={styles.cardHeader}>
+              <View
+                style={[
+                  styles.cardHeaderIconBox,
+                  { backgroundColor: '#DCFCE7' },
+                ]}
+              >
+                <Ionicons name="person" size={20} color="#16A34A" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.cardEyebrowRow}>
+                  <Text style={styles.cardEyebrow}>CHẶNG 2 · ĐIỂM GIAO KHÁCH</Text>
                   <View style={styles.activePill}>
                     <Text style={styles.activePillText}>ĐANG GIAO HÀNG</Text>
                   </View>
-                )}
-                {isReady && (
-                  <View style={styles.waitingPill}>
-                    <Text style={styles.waitingPillText}>CHỜ LẤY MÓN</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.cardMainTitle}>{customerName}</Text>
-              <Text style={styles.cardSubText} numberOfLines={2}>
-                📍 {deliveryAddress}
-              </Text>
-              {customerPhone ? (
-                <Text style={styles.customerPhoneText}>
-                  📞 {customerPhone}
+                </View>
+                <Text style={styles.cardMainTitle}>{customerName}</Text>
+                <Text style={styles.cardSubText} numberOfLines={2}>
+                  📍 {deliveryAddress}
                 </Text>
-              ) : null}
+                {customerPhone ? (
+                  <Text style={styles.customerPhoneText}>
+                    📞 {customerPhone}
+                  </Text>
+                ) : null}
+              </View>
             </View>
-          </View>
 
-          {/* Hàng nút Gọi & Nhắn tin với Khách hàng */}
-          <View style={styles.contactRow}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.contactBtn,
-                styles.callBtn,
-                pressed && styles.btnPressed,
-              ]}
-              onPress={handleCallCustomer}
-            >
-              <Ionicons name="call" size={16} color="#FFFFFF" />
-              <Text style={styles.callBtnText}>Gọi khách hàng</Text>
-            </Pressable>
+            {/* Hàng nút Gọi & Nhắn tin với Khách hàng */}
+            <View style={styles.contactRow}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.contactBtn,
+                  styles.callBtn,
+                  pressed && styles.btnPressed,
+                ]}
+                onPress={handleCallCustomer}
+              >
+                <Ionicons name="call" size={16} color="#FFFFFF" />
+                <Text style={styles.callBtnText}>Gọi khách hàng</Text>
+              </Pressable>
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.contactBtn,
-                styles.chatBtn,
-                pressed && styles.btnPressed,
+              <Pressable
+                style={({ pressed }) => [
+                  styles.contactBtn,
+                  styles.chatBtn,
+                  pressed && styles.btnPressed,
+                ]}
+                onPress={() => setIsCustomerChatVisible(true)}
+              >
+                <Ionicons
+                  name="chatbubble-ellipses"
+                  size={16}
+                  color="#FF6B35"
+                />
+                <Text style={styles.chatBtnText}>Nhắn tin với khách</Text>
+              </Pressable>
+            </View>
+
+            {/* Thông tin phương thức thanh toán */}
+            <View
+              style={[
+                styles.paymentBanner,
+                isCash ? styles.paymentBannerCash : styles.paymentBannerStripe,
               ]}
-              onPress={() => setIsCustomerChatVisible(true)}
             >
               <Ionicons
-                name="chatbubble-ellipses"
-                size={16}
-                color="#FF6B35"
+                name={isCash ? 'cash-outline' : 'card-outline'}
+                size={20}
+                color={isCash ? '#16A34A' : '#FF6B35'}
               />
-              <Text style={styles.chatBtnText}>Nhắn tin với khách</Text>
-            </Pressable>
-          </View>
-
-          {/* Thông tin phương thức thanh toán */}
-          <View
-            style={[
-              styles.paymentBanner,
-              isCash ? styles.paymentBannerCash : styles.paymentBannerStripe,
-            ]}
-          >
-            <Ionicons
-              name={isCash ? 'cash-outline' : 'card-outline'}
-              size={20}
-              color={isCash ? '#16A34A' : '#FF6B35'}
-            />
-            <View style={{ flex: 1 }}>
-              <Text
-                style={[
-                  styles.paymentTitle,
-                  { color: isCash ? '#16A34A' : '#FF6B35' },
-                ]}
-              >
-                {isCash
-                  ? `THU TIỀN MẶT KHI GIAO: $${Number(activeOrder.totalAmount).toFixed(2)}`
-                  : 'ĐÃ THANH TOÁN TRỰC TUYẾN (STRIPE)'}
-              </Text>
-              <Text style={styles.paymentSubtitle}>
-                {isCash
-                  ? 'Vui lòng thu đủ tiền mặt từ khách hàng trước khi bàn giao món ăn.'
-                  : 'Khách đã thanh toán trực tuyến qua thẻ, không thu thêm tiền mặt.'}
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[
+                    styles.paymentTitle,
+                    { color: isCash ? '#16A34A' : '#FF6B35' },
+                  ]}
+                >
+                  {isCash
+                    ? `THU TIỀN MẶT KHI GIAO: $${Number(activeOrder.totalAmount).toFixed(2)}`
+                    : 'ĐÃ THANH TOÁN TRỰC TUYẾN (STRIPE)'}
+                </Text>
+                <Text style={styles.paymentSubtitle}>
+                  {isCash
+                    ? 'Vui lòng thu đủ tiền mặt từ khách hàng trước khi bàn giao món ăn.'
+                    : 'Khách đã thanh toán trực tuyến qua thẻ, không thu thêm tiền mặt.'}
+                </Text>
+              </View>
             </View>
-          </View>
 
-          {/* Nút hành động hoàn thành Chặng 2 (Chặng cuối) */}
-          {isPickedUp && (
+            {/* Nút hành động hoàn thành Chặng 2 (Chặng cuối) */}
             <View style={styles.stageActionContainer}>
               <Pressable
                 style={({ pressed }) => [
@@ -761,8 +757,22 @@ export default function DriverActiveScreen() {
                   : 'Chỉ bấm xác nhận khi khách đã nhận được đầy đủ đơn hàng.'}
               </Text>
             </View>
-          )}
-        </View>
+          </View>
+        ) : (
+          /* Chặng 2 khi đang ở Chặng 1 (Khoá/Chờ hoàn thành Chặng 1) */
+          <View style={styles.stageLockedCard}>
+            <View style={styles.stageLockedIcon}>
+              <Ionicons name="lock-closed" size={20} color="#A1989E" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.stageLockedEyebrow}>CHẶNG 2 · GIAO CHO KHÁCH</Text>
+              <Text style={styles.stageLockedTitle}>Chưa mở chặng giao hàng</Text>
+              <Text style={styles.stageLockedDesc}>
+                Bạn cần đến lấy món tại quán và bấm "Xác nhận đã lấy hàng tại quán" ở Chặng 1 trước để mở thông tin giao hàng và liên hệ khách.
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* ======================================================= */}
         {/* CHI TIẾT ĐƠN HÀNG ĐỐI SOÁT (MÓN ĂN & GHI CHÚ)            */}
@@ -828,22 +838,26 @@ export default function DriverActiveScreen() {
         </View>
 
         {/* ======================================================= */}
-        {/* BẢN ĐỒ VÀ GPS THEO DÕI TRỰC TIẾP                        */}
+        {/* BẢN ĐỒ VÀ GPS THEO DÕI TRỰC TIẾP (KHI ĐANG ĐI GIAO)     */}
         {/* ======================================================= */}
-        <View style={styles.sectionHeading}>
-          <Text style={styles.sectionHeadingTitle}>Vị trí và GPS trực tiếp</Text>
-          <View style={styles.liveBadge}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>GPS LIVE</Text>
-          </View>
-        </View>
+        {isPickedUp ? (
+          <>
+            <View style={styles.sectionHeading}>
+              <Text style={styles.sectionHeadingTitle}>Vị trí và GPS trực tiếp</Text>
+              <View style={styles.liveBadge}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveText}>GPS LIVE</Text>
+              </View>
+            </View>
 
-        <View style={styles.mapContainer}>
-          <DeliveryMap
-            latitude={driverCoords.latitude}
-            longitude={driverCoords.longitude}
-          />
-        </View>
+            <View style={styles.mapContainer}>
+              <DeliveryMap
+                latitude={driverCoords.latitude}
+                longitude={driverCoords.longitude}
+              />
+            </View>
+          </>
+        ) : null}
       </ScrollView>
 
       {/* Khung chat CHẶNG 1: Tài xế và Nhà hàng */}
@@ -1447,5 +1461,94 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#F0E8E3',
+  },
+
+  // Chặng 1 đã hoàn thành (thu gọn)
+  stageCompletedCard: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  stageCompletedIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stageCompletedEyebrow: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#16A34A',
+    letterSpacing: 0.8,
+  },
+  stageCompletedName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginTop: 2,
+  },
+  stageCompletedAddress: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  miniCallBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#16A34A',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 10,
+  },
+  miniCallText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  // Chặng 2 chưa mở (Locked)
+  stageLockedCard: {
+    backgroundColor: '#F8F6F4',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#EAE2DC',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  stageLockedIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#ECE5E0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stageLockedEyebrow: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#8B8289',
+    letterSpacing: 0.8,
+  },
+  stageLockedTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#60585E',
+    marginTop: 2,
+  },
+  stageLockedDesc: {
+    fontSize: 11,
+    color: '#8B8289',
+    marginTop: 2,
+    lineHeight: 16,
   },
 });

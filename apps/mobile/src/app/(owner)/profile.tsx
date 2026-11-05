@@ -1,15 +1,19 @@
-import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/auth-context';
 
 const COLORS = {
@@ -22,26 +26,59 @@ const COLORS = {
   border: '#F0E8E3',
   red: '#E5484D',
   redLight: '#FDEBEC',
+  green: '#16A34A',
+  greenLight: '#DCFCE7',
 };
 
-export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+export default function OwnerProfileScreen() {
+  const { user, logout, updateProfile } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [firstName, setFirstName] = useState(user?.firstName ?? '');
+  const [lastName, setLastName] = useState(user?.lastName ?? '');
+  const [phone, setPhone] = useState(user?.phone ?? '');
+  const [isSaving, setIsSaving] = useState(false);
 
   const fullName =
     `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() ||
-    'Người dùng';
+    'Chủ nhà hàng';
 
   const initials =
     `${user?.firstName?.charAt(0) ?? ''}${user?.lastName?.charAt(0) ?? ''}`
       .trim()
-      .toUpperCase() || 'U';
+      .toUpperCase() || 'CH';
 
-  const roleLabels: Record<string, string> = {
-    CUSTOMER: 'Khách hàng',
-    RESTAURANT_OWNER: 'Chủ nhà hàng',
-    DRIVER: 'Tài xế giao hàng',
-  };
+  function openEditModal() {
+    setFirstName(user?.firstName ?? '');
+    setLastName(user?.lastName ?? '');
+    setPhone(user?.phone ?? '');
+    setIsEditModalVisible(true);
+  }
+
+  async function handleSaveProfile() {
+    if (!firstName.trim()) {
+      Alert.alert('Thiếu thông tin', 'Vui lòng nhập tên của bạn.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await updateProfile({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone: phone.trim(),
+      });
+      setIsEditModalVisible(false);
+      Alert.alert('Thành công', 'Thông tin chủ quán đã được cập nhật.');
+    } catch (error: any) {
+      Alert.alert(
+        'Không thể cập nhật',
+        error?.response?.data?.message ?? 'Đã xảy ra lỗi. Vui lòng thử lại.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   async function handleLogout() {
     if (isLoggingOut) return;
@@ -89,20 +126,30 @@ export default function ProfileScreen() {
         bounces={true}
         alwaysBounceVertical={true}
       >
+        {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.eyebrow}>FOODDELIVERY</Text>
-            <Text style={styles.title}>Tài khoản</Text>
+            <Text style={styles.eyebrow}>TRUNG TÂM CHỦ QUÁN</Text>
+            <Text style={styles.title}>Hồ sơ cá nhân</Text>
             <Text style={styles.subtitle}>
-              Quản lý thông tin cá nhân của bạn
+              Quản lý thông tin liên hệ và tài khoản nhà hàng
             </Text>
           </View>
 
-          <View style={styles.headerIcon}>
-            <Text style={styles.headerEmoji}>👤</Text>
-          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.editHeaderButton,
+              pressed && styles.pressed,
+            ]}
+            onPress={openEditModal}
+            accessibilityLabel="Chỉnh sửa thông tin"
+          >
+            <Ionicons name="create-outline" size={19} color={COLORS.primary} />
+            <Text style={styles.editHeaderText}>Sửa</Text>
+          </Pressable>
         </View>
 
+        {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials}</Text>
@@ -115,31 +162,74 @@ export default function ProfileScreen() {
 
           <View style={styles.roleBadge}>
             <View style={styles.roleDot} />
-            <Text style={styles.roleText}>
-              {roleLabels[user?.role ?? ''] ?? user?.role ?? 'Thành viên'}
-            </Text>
+            <Text style={styles.roleText}>Chủ nhà hàng</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
+        {/* Thông tin chi tiết */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Thông tin cá nhân & Liên hệ</Text>
+          <Pressable onPress={openEditModal}>
+            <Text style={styles.sectionEditAction}>Chỉnh sửa</Text>
+          </Pressable>
+        </View>
 
         <View style={styles.infoCard}>
+          {/* Họ và tên */}
           <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
-              <Text style={styles.infoEmoji}>👤</Text>
+              <Ionicons name="person-outline" size={20} color={COLORS.primary} />
             </View>
 
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Họ và tên</Text>
+              <Text style={styles.infoLabel}>Họ và tên chủ quán</Text>
               <Text style={styles.infoValue}>{fullName}</Text>
             </View>
           </View>
 
           <View style={styles.divider} />
 
+          {/* Số điện thoại */}
+          <View style={styles.infoRow}>
+            <View
+              style={[
+                styles.infoIcon,
+                { backgroundColor: user?.phone ? '#DCFCE7' : COLORS.primaryLight },
+              ]}
+            >
+              <Ionicons
+                name="call-outline"
+                size={20}
+                color={user?.phone ? COLORS.green : COLORS.primary}
+              />
+            </View>
+
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Số điện thoại liên hệ</Text>
+              <Text
+                style={[
+                  styles.infoValue,
+                  !user?.phone && styles.infoValueMissing,
+                ]}
+              >
+                {user?.phone ? user.phone : 'Chưa cập nhật (Bấm sửa để thêm)'}
+              </Text>
+              <Text style={styles.infoHelper}>
+                Tài xế và khách hàng sẽ dùng số này để gọi cho quán khi giao nhận món.
+              </Text>
+            </View>
+
+            <Pressable style={styles.editRowBtn} onPress={openEditModal}>
+              <Ionicons name="pencil" size={14} color={COLORS.primary} />
+            </Pressable>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Email */}
           <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
-              <Text style={styles.infoEmoji}>✉️</Text>
+              <Ionicons name="mail-outline" size={20} color={COLORS.primary} />
             </View>
 
             <View style={styles.infoContent}>
@@ -148,35 +238,51 @@ export default function ProfileScreen() {
                 {user?.email || 'Chưa cập nhật'}
               </Text>
             </View>
+
+            <Ionicons name="lock-closed-outline" size={16} color="#C4BAB4" />
           </View>
 
           <View style={styles.divider} />
 
+          {/* Vai trò */}
           <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
-              <Text style={styles.infoEmoji}>🏷️</Text>
+              <Ionicons name="ribbon-outline" size={20} color={COLORS.primary} />
             </View>
 
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Vai trò tài khoản</Text>
-              <Text style={styles.infoValue}>
-                {roleLabels[user?.role ?? ''] ?? user?.role ?? 'Thành viên'}
-              </Text>
+              <Text style={styles.infoValue}>Chủ nhà hàng</Text>
             </View>
+
+            <Ionicons name="checkmark-circle-outline" size={18} color={COLORS.green} />
           </View>
         </View>
 
+        {/* Nút bấm chỉnh sửa thông tin nổi bật */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.editActionButton,
+            pressed && styles.pressed,
+          ]}
+          onPress={openEditModal}
+        >
+          <Ionicons name="create-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.editActionText}>Chỉnh sửa thông tin cá nhân</Text>
+        </Pressable>
+
+        {/* Tip Card */}
         <View style={styles.tipCard}>
-          <Text style={styles.tipEmoji}>🍊</Text>
+          <Text style={styles.tipEmoji}>🏪</Text>
           <View style={styles.tipContent}>
-            <Text style={styles.tipTitle}>Chào mừng bạn!</Text>
+            <Text style={styles.tipTitle}>Lưu ý liên hệ</Text>
             <Text style={styles.tipDescription}>
-              Cảm ơn bạn đã sử dụng FoodDelivery. Chúc bạn có trải nghiệm
-              thật tuyệt vời.
+              Cập nhật đúng số điện thoại giúp tài xế liên hệ nhanh khi đến quán lấy món và tránh nhầm lẫn đơn hàng.
             </Text>
           </View>
         </View>
 
+        {/* Đăng xuất */}
         <Pressable
           accessibilityRole="button"
           disabled={isLoggingOut}
@@ -191,15 +297,118 @@ export default function ProfileScreen() {
             <ActivityIndicator color={COLORS.red} />
           ) : (
             <>
-              <Text style={styles.logoutIcon}>↪</Text>
-              <Text style={styles.logoutText}>Đăng xuất</Text>
+              <Ionicons name="log-out-outline" size={20} color={COLORS.red} />
+              <Text style={styles.logoutText}>Đăng xuất tài khoản</Text>
               <Text style={styles.logoutArrow}>›</Text>
             </>
           )}
         </Pressable>
 
-        <Text style={styles.footer}>FoodDelivery · Đặt món thật dễ dàng</Text>
+        <Text style={styles.footer}>DeliFood · Dành cho đối tác nhà hàng</Text>
       </ScrollView>
+
+      {/* Modal chỉnh sửa thông tin cá nhân */}
+      <Modal
+        visible={isEditModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsEditModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalHeader}>
+            <View>
+              <Text style={styles.modalHeaderEyebrow}>CHỦ NHÀ HÀNG</Text>
+              <Text style={styles.modalHeaderTitle}>Chỉnh sửa thông tin</Text>
+            </View>
+
+            <Pressable
+              style={styles.modalCloseButton}
+              onPress={() => setIsEditModalVisible(false)}
+            >
+              <Ionicons name="close" size={22} color={COLORS.text} />
+            </Pressable>
+          </View>
+
+          <ScrollView
+            style={styles.modalBody}
+            contentContainerStyle={styles.modalBodyContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={true}
+          >
+            <View style={styles.formGroup}>
+              <Text style={styles.inputLabel}>
+                Họ & tên đệm <Text style={styles.requiredStar}>*</Text>
+              </Text>
+              <TextInput
+                style={styles.inputField}
+                placeholder="VD: Nguyễn Văn"
+                placeholderTextColor="#A89EA6"
+                value={firstName}
+                onChangeText={setFirstName}
+                editable={!isSaving}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.inputLabel}>
+                Tên <Text style={styles.requiredStar}>*</Text>
+              </Text>
+              <TextInput
+                style={styles.inputField}
+                placeholder="VD: Tuấn"
+                placeholderTextColor="#A89EA6"
+                value={lastName}
+                onChangeText={setLastName}
+                editable={!isSaving}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <View style={styles.phoneLabelRow}>
+                <Text style={styles.inputLabel}>Số điện thoại liên hệ</Text>
+                <View style={styles.recommendBadge}>
+                  <Text style={styles.recommendBadgeText}>Khuyên dùng</Text>
+                </View>
+              </View>
+              <Text style={styles.inputHint}>
+                Tài xế và khách hàng sẽ gọi vào số này khi đến nhận hoặc hỏi về đơn hàng.
+              </Text>
+              <TextInput
+                style={styles.inputField}
+                placeholder="VD: 0912345678"
+                placeholderTextColor="#A89EA6"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                editable={!isSaving}
+              />
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.saveButton,
+                isSaving && styles.saveButtonDisabled,
+                pressed && !isSaving && styles.pressed,
+              ]}
+              onPress={handleSaveProfile}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                  <Text style={styles.saveButtonText}>Lưu thay đổi</Text>
+                </>
+              )}
+            </Pressable>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -238,6 +447,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 5,
   },
+  editHeaderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: COLORS.primaryLight,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 14,
+  },
+  editHeaderText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
   headerIcon: {
     width: 52,
     height: 52,
@@ -251,49 +474,47 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 24,
-    alignItems: 'center',
+    borderRadius: 22,
+    paddingVertical: 24,
     paddingHorizontal: 20,
-    paddingVertical: 26,
+    alignItems: 'center',
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: COLORS.border,
-    marginBottom: 27,
   },
   avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 30,
-    backgroundColor: COLORS.primary,
+    width: 76,
+    height: 76,
+    borderRadius: 26,
+    backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 15,
+    marginBottom: 14,
   },
   avatarText: {
-    color: '#FFFFFF',
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 28,
+    fontWeight: '900',
+    color: COLORS.primary,
   },
   name: {
-    color: COLORS.text,
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
-    textAlign: 'center',
+    color: COLORS.text,
+    marginBottom: 4,
   },
   email: {
-    color: COLORS.muted,
     fontSize: 13,
-    marginTop: 7,
-    textAlign: 'center',
+    color: COLORS.muted,
+    marginBottom: 12,
   },
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 6,
     backgroundColor: COLORS.primaryLight,
-    paddingHorizontal: 13,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 12,
-    marginTop: 15,
   },
   roleDot: {
     width: 7,
@@ -302,120 +523,271 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   roleText: {
-    color: COLORS.primary,
     fontSize: 12,
     fontWeight: '800',
+    color: COLORS.primary,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    marginTop: 8,
   },
   sectionTitle: {
-    color: COLORS.text,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
-    marginBottom: 13,
+    color: COLORS.text,
+  },
+  sectionEditAction: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
   infoCard: {
     backgroundColor: COLORS.surface,
     borderRadius: 20,
-    paddingHorizontal: 16,
+    padding: 16,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
     gap: 12,
+    paddingVertical: 6,
   },
   infoIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 13,
     backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  infoEmoji: {
-    fontSize: 19,
   },
   infoContent: {
     flex: 1,
   },
   infoLabel: {
-    color: COLORS.muted,
     fontSize: 11,
-    marginBottom: 5,
+    color: COLORS.muted,
+    fontWeight: '600',
+    marginBottom: 3,
   },
   infoValue: {
-    color: COLORS.text,
     fontSize: 14,
     fontWeight: '700',
+    color: COLORS.text,
+  },
+  infoValueMissing: {
+    color: '#D97706',
+    fontWeight: '600',
+    fontStyle: 'italic',
+  },
+  infoHelper: {
+    fontSize: 11,
+    color: COLORS.muted,
+    marginTop: 4,
+    lineHeight: 15,
+  },
+  editRowBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.border,
+    backgroundColor: '#F7F0EB',
+    marginVertical: 10,
+  },
+  editActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  editActionText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
   },
   tipCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: COLORS.primaryLight,
+    gap: 12,
+    backgroundColor: '#FFF0E8',
     borderRadius: 18,
     padding: 16,
-    marginTop: 20,
-    gap: 12,
+    marginBottom: 16,
   },
   tipEmoji: {
-    fontSize: 25,
+    fontSize: 22,
   },
   tipContent: {
     flex: 1,
   },
   tipTitle: {
-    color: COLORS.text,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
-    marginBottom: 5,
+    color: '#8A3B14',
+    marginBottom: 3,
   },
   tipDescription: {
-    color: COLORS.muted,
     fontSize: 12,
-    lineHeight: 19,
+    color: '#A85A32',
+    lineHeight: 18,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#F5D8D8',
-    borderRadius: 16,
-    paddingHorizontal: 17,
-    paddingVertical: 16,
-    marginTop: 24,
-    gap: 12,
-  },
-  logoutIcon: {
-    color: COLORS.red,
-    fontSize: 23,
-    fontWeight: '700',
+    borderColor: '#F8D7DA',
+    marginTop: 4,
+    marginBottom: 20,
   },
   logoutText: {
     flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
     color: COLORS.red,
-    fontSize: 15,
-    fontWeight: '800',
+    marginLeft: 10,
   },
   logoutArrow: {
+    fontSize: 20,
     color: COLORS.red,
-    fontSize: 25,
-  },
-  pressed: {
-    opacity: 0.75,
   },
   disabledButton: {
-    opacity: 0.55,
+    opacity: 0.6,
+  },
+  pressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.99 }],
   },
   footer: {
-    color: COLORS.muted,
-    fontSize: 11,
     textAlign: 'center',
-    marginTop: 22,
+    fontSize: 11,
+    color: '#A1989E',
+    marginTop: 4,
+  },
+
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  modalHeaderEyebrow: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: COLORS.primary,
+    letterSpacing: 1,
+  },
+  modalHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginTop: 2,
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBody: {
+    flex: 1,
+  },
+  modalBodyContent: {
+    padding: 20,
+    gap: 16,
+  },
+  formGroup: {
+    gap: 6,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  requiredStar: {
+    color: COLORS.red,
+  },
+  phoneLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  recommendBadge: {
+    backgroundColor: COLORS.greenLight,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  recommendBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: COLORS.green,
+  },
+  inputHint: {
+    fontSize: 11,
+    color: COLORS.muted,
+    lineHeight: 16,
+  },
+  inputField: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: COLORS.text,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: COLORS.primary,
+    borderRadius: 16,
+    paddingVertical: 14,
+    marginTop: 10,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

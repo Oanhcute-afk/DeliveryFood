@@ -47,18 +47,15 @@ export const isGoogleSignInAvailable = true;
 export async function signInWithGoogle(
   returnPath: string,
 ): Promise<string | null> {
-  const auth = getFirebaseAuth();
-  if (!auth) {
-    throw new Error(
-      'Chưa cấu hình Firebase (thiếu EXPO_PUBLIC_FIREBASE_API_KEY trong file .env).',
-    );
-  }
-
   const returnUrl = Linking.createURL(returnPath);
   const startUrl = `${process.env.EXPO_PUBLIC_API_URL}/auth/google/start?redirect=${encodeURIComponent(returnUrl)}`;
 
-  const result = await WebBrowser.openAuthSessionAsync(startUrl, returnUrl);
-  if (result.type !== 'success') return null;
+  const result = await WebBrowser.openAuthSessionAsync(startUrl, returnUrl, {
+    showInRecents: true,
+    createTask: false,
+  });
+
+  if (result.type !== 'success' || !result.url) return null;
 
   const { queryParams } = Linking.parse(result.url);
   const error = queryParams?.error;
@@ -70,9 +67,19 @@ export async function signInWithGoogle(
     throw new Error('Google did not return an ID token');
   }
 
-  const credential = GoogleAuthProvider.credential(googleIdToken);
-  const { user } = await signInWithCredential(auth, credential);
-  return user.getIdToken();
+  // Cố gắng lấy Firebase ID token; nếu môi trường React Native thiếu storage browser thì dùng trực tiếp googleIdToken
+  try {
+    const auth = getFirebaseAuth();
+    if (auth) {
+      const credential = GoogleAuthProvider.credential(googleIdToken);
+      const { user } = await signInWithCredential(auth, credential);
+      return await user.getIdToken();
+    }
+  } catch (err) {
+    console.warn('[firebase-auth] Firebase client sign-in fallback to raw token:', err);
+  }
+
+  return googleIdToken;
 }
 
 export async function signOutGoogle() {

@@ -53,7 +53,6 @@ export function GoogleSignInButton({ role }: Props) {
     try {
       await googleLogin(idToken, selectedRole);
       setPendingIdToken(null);
-      router.replace('/');
     } catch (error: any) {
       const data = error?.response?.data;
 

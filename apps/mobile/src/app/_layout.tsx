@@ -1,4 +1,5 @@
 import React from 'react';
+import * as WebBrowser from 'expo-web-browser';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StripeProvider } from '@stripe/stripe-react-native';
@@ -7,6 +8,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { UserRole } from '@food-delivery/types';
+
+// Cho phép hoàn tất OAuth session và đóng trình duyệt in-app khi quay lại app
+WebBrowser.maybeCompleteAuthSession();
 
 const queryClient = new QueryClient();
 

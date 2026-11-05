@@ -215,6 +215,14 @@ export default function OwnerHomeScreen() {
     }
   }, [restaurant, isLoading]);
 
+  useEffect(() => {
+    if (!chatTargetOrder) return;
+    const current = orders.find((o) => o.id === chatTargetOrder.id);
+    if (current && !['CONFIRMED', 'PREPARING'].includes(current.status)) {
+      setChatTargetOrder(null);
+    }
+  }, [orders, chatTargetOrder]);
+
   if (isLoading || !restaurant) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
@@ -237,14 +245,6 @@ export default function OwnerHomeScreen() {
   const pastOrders = orders.filter((order) =>
     ['DELIVERED', 'CANCELLED'].includes(order.status),
   );
-
-  useEffect(() => {
-    if (!chatTargetOrder) return;
-    const current = orders.find((o) => o.id === chatTargetOrder.id);
-    if (current && !['CONFIRMED', 'PREPARING'].includes(current.status)) {
-      setChatTargetOrder(null);
-    }
-  }, [orders, chatTargetOrder]);
 
   function renderActionButton(order: Order) {
     const isUpdating = isUpdatingStatus && updatingOrder?.id === order.id;
@@ -491,24 +491,27 @@ export default function OwnerHomeScreen() {
         </View>
 
         <View style={styles.orderFooter}>
-          <View>
+          <View style={styles.orderRevenueLeft}>
             <Text style={styles.detailLabel}>Nhà hàng nhận</Text>
-            <Text style={styles.orderTotal}>
+            <Text style={styles.orderTotal} numberOfLines={1}>
               ${restaurantAmount(order).toFixed(2)}
             </Text>
-            {voucherSubsidy(order) > 0 ? (
-              <Text style={styles.subsidyNote}>
-                Khách dùng voucher {order.voucherCode ?? ''} · app bù $
-                {voucherSubsidy(order).toFixed(2)}
-              </Text>
-            ) : null}
           </View>
 
           <View style={styles.viewDetailsPrompt}>
             <Text style={styles.viewDetailsPromptText}>Xem chi tiết món</Text>
-            <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+            <Ionicons name="chevron-forward" size={13} color={COLORS.primary} />
           </View>
         </View>
+
+        {voucherSubsidy(order) > 0 ? (
+          <View style={styles.subsidyContainer}>
+            <Text style={styles.subsidyNote} numberOfLines={2}>
+              Khách dùng voucher {order.voucherCode ?? ''} · app bù $
+              {voucherSubsidy(order).toFixed(2)}
+            </Text>
+          </View>
+        ) : null}
 
         {!isPast && (
           <View style={{ marginTop: 12 }}>
@@ -1691,11 +1694,24 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingTop: 12,
   },
+  orderRevenueLeft: {
+    flex: 1,
+    minWidth: 0,
+    marginRight: 10,
+  },
+  subsidyContainer: {
+    marginTop: 8,
+    backgroundColor: '#F0FDF4',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+  },
   subsidyNote: {
     color: COLORS.green,
     fontSize: 11,
     fontWeight: '700',
-    marginTop: 2,
   },
   orderTotal: {
     color: COLORS.primary,
@@ -1786,9 +1802,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: '#FFF0E8',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 8,
+    flexShrink: 0,
   },
   viewDetailsPromptText: {
     fontSize: 11,

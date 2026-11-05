@@ -313,16 +313,16 @@ export default function OwnerAnalyticsScreen() {
               <View style={styles.orderDivider} />
 
               <View style={styles.orderFooter}>
-                <View>
+                <View style={styles.orderFooterLeft}>
                   <Text style={styles.orderTotalLabel}>Nhà hàng nhận</Text>
                   {voucherSubsidy(item) > 0 ? (
-                    <Text style={styles.subsidyNote}>
+                    <Text style={styles.subsidyNote} numberOfLines={2}>
                       Khách dùng voucher {item.voucherCode ?? ''} · app bù{' '}
                       {formatMoney(voucherSubsidy(item))}
                     </Text>
                   ) : null}
                 </View>
-                <Text style={styles.orderTotal}>
+                <Text style={styles.orderTotal} numberOfLines={1}>
                   {formatMoney(restaurantAmount(item))}
                 </Text>
               </View>
@@ -624,7 +624,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: 12,
+  },
+  orderFooterLeft: {
+    flex: 1,
+    minWidth: 0,
   },
   orderTotalLabel: {
     color: COLORS.muted,
@@ -635,11 +639,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     marginTop: 2,
+    lineHeight: 16,
   },
   orderTotal: {
     color: COLORS.primary,
     fontSize: 17,
     fontWeight: '800',
+    flexShrink: 0,
+    textAlign: 'right',
   },
   emptyOrders: {
     alignItems: 'center',
